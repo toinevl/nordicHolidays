@@ -1,6 +1,6 @@
 # Deployment Plan
 
-Status: Ready for Validation
+Status: Deployed
 
 ## Goal
 
@@ -55,3 +55,5 @@ Publish the SwedenTravel static site to the best free Azure hosting option and c
 - Added GitHub Actions workflow and build indicator.
 - Created Azure Static Web App `swedentravel` in `rgWebsite`.
 - Stored the deployment token in GitHub secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
+- Pushed commit `78f014c` to `main`; GitHub Actions deployment run `26720720643` completed successfully.
+- Verified deployed `build-info.json` reports run `1`, ref `main`, and SHA `78f014c845cefb335bbe6a444faa7ad486084e9d`.
