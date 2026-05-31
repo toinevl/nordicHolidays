@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
 :root {
   --bg: #f7f5f0;
@@ -53,8 +53,7 @@ nav.scrolled { background: rgba(26,43,60,0.93); }
 .hero-overlay {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
-  padding: 4rem 4rem 5rem;
-  pointer-events: none;
+  padding: 4rem 4rem 5rem; pointer-events: none;
   background: linear-gradient(to top, rgba(26,43,60,0.88) 0%, rgba(26,43,60,0.15) 55%, transparent 100%);
 }
 .hero-badge { display: inline-block; background: var(--red); color: #fff; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.3rem 0.9rem; border-radius: 2rem; margin-bottom: 1rem; }
@@ -62,28 +61,12 @@ nav.scrolled { background: rgba(26,43,60,0.93); }
 .hero-sub { font-size: clamp(1rem, 2vw, 1.25rem); color: rgba(255,255,255,0.75); font-style: italic; margin-bottom: 0.75rem; }
 .hero-meta { display: flex; gap: 2rem; flex-wrap: wrap; color: rgba(255,255,255,0.65); font-size: 0.88rem; margin-bottom: 2rem; }
 .hero-actions { display: flex; gap: 0.85rem; flex-wrap: wrap; pointer-events: all; }
+
 .btn { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.7rem 1.4rem; border-radius: 2rem; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; font-family: 'Inter', sans-serif; }
 .btn-primary { background: var(--red); color: #fff; }
 .btn-primary:hover { background: #a50d23; transform: translateY(-2px); box-shadow: 0 4px 16px rgba(200,16,46,0.4); }
 .btn-secondary { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.28); }
 .btn-secondary:hover { background: rgba(255,255,255,0.22); transform: translateY(-2px); }
-
-/* TOKEN SETUP */
-#token-setup {
-  position: absolute; inset: 0; background: var(--navy);
-  display: none; align-items: center; justify-content: center;
-  z-index: 10; padding: 2rem;
-}
-.setup-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: var(--r); padding: 2.75rem; max-width: 540px; width: 100%; text-align: center; color: #fff; }
-.setup-card h2 { font-size: 1.75rem; margin-bottom: 0.75rem; }
-.setup-card p { color: rgba(255,255,255,0.65); margin-bottom: 1.5rem; line-height: 1.7; font-size: 0.95rem; }
-.setup-steps { counter-reset: sc; text-align: left; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1.75rem; list-style: none; }
-.setup-steps li { counter-increment: sc; color: rgba(255,255,255,0.75); margin-bottom: 0.6rem; padding-left: 1.6rem; position: relative; font-size: 0.9rem; }
-.setup-steps li::before { content: counter(sc); position: absolute; left: 0; font-weight: 700; color: var(--red); }
-.token-row { display: flex; gap: 0.65rem; }
-.token-input { flex: 1; padding: 0.7rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); color: #fff; font-family: 'Inter', sans-serif; font-size: 0.88rem; }
-.token-input::placeholder { color: rgba(255,255,255,0.28); }
-.token-error { color: #ff6b6b; font-size: 0.82rem; margin-top: 0.5rem; display: none; }
 
 /* SECTIONS */
 .section-wrap { max-width: 1200px; margin: 0 auto; padding: 5rem 2rem; }
@@ -98,26 +81,27 @@ nav.scrolled { background: rgba(26,43,60,0.93); }
 .t-dot { display: flex; justify-content: center; padding-top: 1.5rem; position: relative; z-index: 1; }
 .dot { width: 38px; height: 38px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; border: 3px solid var(--bg); box-shadow: 0 0 0 2px var(--navy); flex-shrink: 0; }
 .t-meta { padding: 1.75rem 1.25rem; }
-.t-item:nth-child(odd) .t-meta { grid-column: 3; }
+.t-item:nth-child(odd)  .t-meta { grid-column: 3; }
 .t-item:nth-child(even) .t-meta { grid-column: 1; text-align: right; }
-.t-item:nth-child(odd) .t-card { grid-column: 1; }
+.t-item:nth-child(odd)  .t-card { grid-column: 1; }
 .t-item:nth-child(even) .t-card { grid-column: 3; }
-.t-item:nth-child(odd) .t-dot, .t-item:nth-child(even) .t-dot { grid-column: 2; }
-.stop-date { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--red); margin-bottom: 0.2rem; }
+.t-item:nth-child(odd)  .t-dot,
+.t-item:nth-child(even) .t-dot { grid-column: 2; }
+.stop-date  { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--red); margin-bottom: 0.2rem; }
 .stop-drive { font-size: 0.78rem; color: var(--muted); font-style: italic; margin-top: 0.4rem; line-height: 1.5; }
 
 /* CARD */
 .t-card { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 1.6rem; border: 1px solid var(--border); transition: transform 0.2s, box-shadow 0.2s; }
 .t-card:hover { transform: translateY(-3px); box-shadow: 0 8px 36px rgba(0,0,0,0.11); }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.85rem; }
-.card-dest { font-size: 1.35rem; font-family: 'Playfair Display', Georgia, serif; color: var(--navy); }
+.card-dest   { font-size: 1.35rem; font-family: 'Playfair Display', Georgia, serif; color: var(--navy); }
 .card-region { font-size: 0.82rem; color: var(--muted); margin-top: 0.1rem; }
 .card-nights { background: var(--navy); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 0.22rem 0.6rem; border-radius: 2rem; white-space: nowrap; flex-shrink: 0; margin-top: 0.2rem; }
 .tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
 .tag { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.18rem 0.6rem; border-radius: 2rem; }
-.tag-city { background: #eef2f5; color: var(--city); }
-.tag-historic { background: #fdf6e3; color: var(--historic); }
-.tag-nature { background: #edf5f0; color: var(--nature); }
+.tag-city    { background: #eef2f5; color: var(--city); }
+.tag-historic{ background: #fdf6e3; color: var(--historic); }
+.tag-nature  { background: #edf5f0; color: var(--nature); }
 .tag-offbeat { background: #f3eeff; color: var(--offbeat); }
 .card-desc { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.9rem; line-height: 1.65; }
 .card-highlights { list-style: none; margin-bottom: 1.1rem; }
@@ -126,19 +110,18 @@ nav.scrolled { background: rgba(26,43,60,0.93); }
 .card-highlights li::before { content: '→'; position: absolute; left: 0; color: var(--red); font-size: 0.78rem; }
 .btn-fly { display: inline-flex; align-items: center; gap: 0.35rem; background: none; border: 1px solid var(--navy); color: var(--navy); padding: 0.45rem 0.9rem; border-radius: 2rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
 .btn-fly:hover { background: var(--navy); color: #fff; }
-.btn-fly:disabled { opacity: 0.4; cursor: default; }
 
 /* CULINARY */
 #culinary-section { background: var(--navy); }
 .cul-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; }
 .cul-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: var(--r); padding: 1.6rem; transition: all 0.2s; }
 .cul-card:hover { background: rgba(255,255,255,0.09); transform: translateY(-2px); }
-.cul-icon { font-size: 2.4rem; margin-bottom: 0.85rem; }
-.cul-name { font-size: 1.2rem; font-family: 'Playfair Display', Georgia, serif; color: #fff; margin-bottom: 0.2rem; }
+.cul-icon   { font-size: 2.4rem; margin-bottom: 0.85rem; }
+.cul-name   { font-size: 1.2rem; font-family: 'Playfair Display', Georgia, serif; color: #fff; margin-bottom: 0.2rem; }
 .cul-region { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 0.7rem; }
-.cul-desc { font-size: 0.86rem; color: rgba(255,255,255,0.62); margin-bottom: 1.1rem; line-height: 1.65; }
-.cul-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 0.4rem; }
-.cul-list { list-style: none; }
+.cul-desc   { font-size: 0.86rem; color: rgba(255,255,255,0.62); margin-bottom: 1.1rem; line-height: 1.65; }
+.cul-label  { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 0.4rem; }
+.cul-list   { list-style: none; }
 .cul-list li { font-size: 0.8rem; color: rgba(255,255,255,0.72); padding: 0.18rem 0 0.18rem 1rem; position: relative; }
 .cul-list li::before { content: '·'; position: absolute; left: 0; color: var(--red); font-size: 1.1rem; line-height: 0.9; }
 
@@ -154,8 +137,7 @@ tbody tr:nth-child(even) td { background: var(--bg); }
 tbody td:first-child { font-weight: 600; color: var(--navy); }
 .badge { display: inline-flex; align-items: center; font-size: 0.75rem; font-weight: 600; padding: 0.18rem 0.55rem; border-radius: 2rem; }
 .b-free { background: #d4edda; color: #155724; }
-.b-mod { background: #fff3cd; color: #856404; }
-.b-strict { background: #f8d7da; color: #721c24; }
+.b-mod  { background: #fff3cd; color: #856404; }
 .ok { color: var(--nature); font-weight: 700; }
 .no { color: #aaa; }
 .td-note { color: var(--muted); font-size: 0.8rem; }
@@ -168,18 +150,32 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
 .footer-div { width: 36px; height: 1px; background: rgba(255,255,255,0.1); margin: 2rem auto; }
 .footer-txt { font-size: 0.83rem; line-height: 1.75; }
 
-/* MAPBOX */
-.mapboxgl-popup-content { border-radius: 8px; padding: 0.9rem 1.1rem; font-family: 'Inter', sans-serif; font-size: 0.85rem; }
-.map-marker { width: 34px; height: 34px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700; border: 2.5px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.15s, background 0.15s; font-family: 'Inter', sans-serif; }
+/* MAP MARKERS */
+.map-marker {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.68rem; font-weight: 700;
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  cursor: pointer; transition: transform 0.15s, background 0.15s;
+  font-family: 'Inter', sans-serif;
+}
 .map-marker:hover, .map-marker.active { transform: scale(1.25); background: var(--red); }
+
+/* MapLibre attribution */
+.maplibregl-ctrl-attrib { font-size: 0.7rem !important; }
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .timeline::before { left: 19px; }
   .t-item { grid-template-columns: 40px 1fr; }
-  .t-item:nth-child(odd) .t-card, .t-item:nth-child(even) .t-card { grid-column: 2; grid-row: 1; }
-  .t-item:nth-child(odd) .t-dot, .t-item:nth-child(even) .t-dot { grid-column: 1; grid-row: 1; }
-  .t-item:nth-child(odd) .t-meta, .t-item:nth-child(even) .t-meta { grid-column: 2; grid-row: 2; text-align: left; padding: 0.25rem 0 0; }
+  .t-item:nth-child(odd)  .t-card,
+  .t-item:nth-child(even) .t-card { grid-column: 2; grid-row: 1; }
+  .t-item:nth-child(odd)  .t-dot,
+  .t-item:nth-child(even) .t-dot  { grid-column: 1; grid-row: 1; }
+  .t-item:nth-child(odd)  .t-meta,
+  .t-item:nth-child(even) .t-meta { grid-column: 2; grid-row: 2; text-align: left; padding: 0.25rem 0 0; }
   .cul-grid { grid-template-columns: 1fr 1fr; }
   .nav-links { display: none; }
 }
@@ -207,23 +203,6 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
 
 <section id="hero">
   <div id="map"></div>
-  <div id="token-setup">
-    <div class="setup-card">
-      <div style="font-size:2.75rem;margin-bottom:0.75rem">🗺️</div>
-      <h2>One Quick Setup</h2>
-      <p>The 3D animated map needs a free Mapbox token — takes about 2 minutes to get one.</p>
-      <ol class="setup-steps">
-        <li>Go to <strong>mapbox.com</strong> → sign up (free)</li>
-        <li>Copy your <strong>Default public token</strong> from the dashboard</li>
-        <li>Paste it below and click Activate</li>
-      </ol>
-      <div class="token-row">
-        <input type="text" id="token-input" class="token-input" placeholder="pk.eyJ1Ij…" autocomplete="off" spellcheck="false">
-        <button class="btn btn-primary" onclick="activateToken()">Activate</button>
-      </div>
-      <div class="token-error" id="token-error">Token should start with "pk." — please check and try again.</div>
-    </div>
-  </div>
   <div class="hero-overlay">
     <div class="hero-badge">Road Trip · Aug 25 – Sep 14, 2026</div>
     <h1 class="hero-title">Sweden</h1>
@@ -267,7 +246,12 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
     <div class="accom-tip"><strong>Booking tip:</strong> Use Booking.com's "Free cancellation" filter. For lake lodges and Höga Kusten, book 2–3 months ahead — they sell out. Search <em>gäststugor</em> (guest cottages) directly for the most authentic Swedish stays.</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Destination</th><th>Accommodation Type</th><th>Cancellation</th><th>Private Bathroom</th><th>Terrace / Balcony</th><th>Notes</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Destination</th><th>Accommodation Type</th><th>Cancellation</th>
+            <th>Private Bathroom</th><th>Terrace / Balcony</th><th>Notes</th>
+          </tr>
+        </thead>
         <tbody id="accom-tbody"></tbody>
       </table>
     </div>
@@ -285,61 +269,118 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
   <p class="footer-txt">Sweden Road Trip 2026 · Aug 25 – Sep 14<br>Netherlands → Malmö → Gothenburg → Dalarna → High Coast → Stockholm → Netherlands</p>
 </footer>
 
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 /* ── DATA ────────────────────────────────────────────────────────────────── */
-const MAPBOX_TOKEN = 'YOUR_MAPBOX_TOKEN_HERE';
-
 const STOPS = [
-  { id:1,  days:"1",    dates:"Aug 25",    dest:"Malmö",                  region:"Skåne",           coords:[13.0007,55.6059], tags:["city","historic"],          nights:1, desc:"Cross the Øresund Bridge and arrive in Sweden's southernmost city. Malmö blends Scandinavian modernity with medieval charm — the Turning Torso punctuates a skyline still holding 16th-century cobblestones.", highlights:["Gamla Väster medieval quarter","Turning Torso & Western Harbour","Lilla Torg square & food market","Malmö Saluhallen indoor market hall"],   from:"Netherlands border via Øresund Bridge", km:400, time:"~5 hrs", zoom:12, pitch:50, bearing:-15 },
-  { id:2,  days:"2",    dates:"Aug 26",    dest:"Ystad",                  region:"Skåne",           coords:[13.8201,55.4295], tags:["historic","offbeat"],       nights:1, desc:"A perfectly preserved medieval town with cobblestones unchanged since the 14th century — and the filming location for the Wallander crime series. The active fishing harbour brews excellent local beer.", highlights:["1300s cobblestone merchant district","Wallander filming locations","Ystad Harbour Brewery","Stortorget central square"],                        from:"Malmö", km:60, time:"45 min", zoom:13, pitch:45, bearing:20 },
-  { id:3,  days:"3",    dates:"Aug 27",    dest:"Kristianstad",           region:"Skåne",           coords:[14.1567,56.0294], tags:["nature","offbeat"],         nights:1, desc:"An off-the-beaten-track surprise: the Vattenriket biosphere reserve offers extraordinary birdwatching in ancient bog landscapes. The Renaissance town centre is one of Sweden's oldest planned cities, unchanged since 1614.", highlights:["Naturum Vattenriket biosphere & birdwatching","Renaissance town grid (1614)","Helge å river kayaking","Lake Hammarsjön scenic drive"],        from:"Ystad", km:100, time:"1.5 hrs", zoom:12, pitch:40, bearing:10 },
-  { id:4,  days:"4",    dates:"Aug 28",    dest:"Helsingborg",            region:"Skåne",           coords:[12.6945,56.0465], tags:["city","historic"],          nights:1, desc:"A lively harbour city at the narrowest Sweden–Denmark crossing. The medieval Kärnan tower is the sole survivor of one of Scandinavia's most powerful fortresses, with sweeping views to Helsingør.", highlights:["Kärnan medieval tower (1310s)","Views across to Helsingør, Denmark","Sofiero Palace gardens","Stortorget & waterfront promenade"],           from:"Kristianstad", km:110, time:"1.5 hrs", zoom:13, pitch:55, bearing:-30 },
-  { id:5,  days:"5–6",  dates:"Aug 29–30", dest:"Gothenburg",             region:"Västra Götaland", coords:[11.9746,57.7089], tags:["city","nature"],            nights:2, desc:"Sweden's second city: relaxed, worldly, with an archipelago at its doorstep. The Feskekörka fish market and Saluhallen food hall are unmissable. On day 6, ferry to the island fortress of Marstrand — crowd-free and spectacular.", highlights:["Feskekörka fish market","Saluhallen food hall","Marstrand island fortress (ferry)","Haga historic district","Bohuslän archipelago cruise"],   from:"Helsingborg", km:115, time:"1.5 hrs", zoom:11, pitch:45, bearing:-5 },
-  { id:6,  days:"7",    dates:"Aug 31",    dest:"Karlstad & Värmland",    region:"Värmland",        coords:[13.5036,59.3793], tags:["nature","offbeat"],         nights:1, desc:"Karlstad — Sweden's sun city — borders Lake Vänern (Europe's 3rd-largest lake). The forested Värmland region is largely bypassed by tourists, rewarding with quiet forest lakes, traditional farm culture, and the Klarälven river float experience.", highlights:["Lake Vänern shoreline drives","Klarälven river float trips","Mariebergsskogen nature park","Farm stays in Lövvik village"],              from:"Gothenburg", km:250, time:"3 hrs", zoom:11, pitch:40, bearing:15 },
-  { id:7,  days:"8",    dates:"Sep 1",     dest:"Mora & Lake Siljan",     region:"Dalarna",         coords:[14.5356,61.0015], tags:["nature","offbeat"],         nights:1, desc:"Lake Siljan — a meteor crater turned impossibly beautiful lake — is the heart of Dalarna. September brings early autumn colours and almost no crowds. The village of Nusnäs still hand-paints Dala horses using centuries-old techniques.", highlights:["Lake Siljan circuit drive","Vasaloppet museum","Zornmuseet (artist Anders Zorn)","Nusnäs — Dala horse workshops"],                       from:"Karlstad", km:200, time:"2.5 hrs", zoom:11, pitch:50, bearing:25 },
-  { id:8,  days:"9",    dates:"Sep 2",     dest:"Falun",                  region:"Dalarna",         coords:[15.6355,60.6065], tags:["historic"],                 nights:1, desc:"The UNESCO-listed Falun Copper Mine was active for 1,000 years. Its red ochre pigment literally painted Sweden red — every classic Swedish red farmhouse owes its colour to Falun. The underground tour is unmissable.", highlights:["Falun Copper Mine (UNESCO) — underground tour","Mine museum & ochre demonstration","Carl Larsson-gården artist home","Dala horse craft shops"], from:"Mora", km:80, time:"1.5 hrs", zoom:13, pitch:45, bearing:-10 },
-  { id:9,  days:"10",   dates:"Sep 3",     dest:"Rättvik",                region:"Dalarna",         coords:[15.1106,60.8912], tags:["nature","historic"],        nights:1, desc:"Rättvik's 1733 church reaching into Lake Siljan on a long wooden pier is one of Sweden's most photographed scenes. Folk Sweden at its most authentic: church boats, traditional textiles, and superb lake swimming.", highlights:["Rättvik church & church-boat piers","Lake Siljan swimming at Rättviksstrand","Vidablick viewpoint hike","Dalecarlian textile & folk art shops"], from:"Falun", km:80, time:"1.5 hrs", zoom:13, pitch:60, bearing:30 },
-  { id:10, days:"11–12",dates:"Sep 4–5",   dest:"Höga Kusten",            region:"Ångermanland",    coords:[18.3,62.8],       tags:["nature","offbeat"],         nights:2, desc:"Sweden's most dramatic coastline — a UNESCO World Heritage Site still rising from the sea after the last ice age. Towering cliff gorges, primeval forest, Viking burial mounds, and white-tailed eagles. Almost no mass tourism.", highlights:["Skuleskogen National Park trails","Slåttdalskrevan gorge (only 1m wide)","Nordingrå viewpoint over fjords","Viking runestones at Nämforsen","White-tailed eagle spotting"], from:"Rättvik (via Gävle & Sundsvall)", km:290, time:"4 hrs", zoom:11, pitch:65, bearing:40 },
-  { id:11, days:"13",   dates:"Sep 6",     dest:"Uppsala",                region:"Uppland",         coords:[17.6389,59.8586], tags:["historic","city"],          nights:1, desc:"The ancient capital of Sweden, predating Stockholm. Scandinavia's largest cathedral holds royal tombs. The Viking burial mounds at Gamla Uppsala are among the most significant in northern Europe.", highlights:["Uppsala Cathedral (Scandinavia's largest)","Gamla Uppsala Viking burial mounds","Uppsala University (est. 1477)","Linnaeus Garden & Museum","Fyrisån river waterfront"], from:"Höga Kusten", km:340, time:"4 hrs", zoom:13, pitch:45, bearing:-20 },
-  { id:12, days:"14–17",dates:"Sep 7–10",  dest:"Stockholm",              region:"Stockholm County", coords:[18.0686,59.3293], tags:["city","historic","nature"], nights:4, desc:"The capital across 14 islands. Four days barely scratches the surface: medieval Gamla Stan, the spectacular Vasa Museum, open-air Skansen, UNESCO Drottningholm Palace, and the finest smörgåsbord at Operakällaren.", highlights:["Gamla Stan (1200s Old Town)","Vasa Museum — recovered 17th-century warship","Skansen open-air museum","Drottningholm Palace (UNESCO)","Östermalm food hall"], from:"Uppsala", km:75, time:"1 hr", zoom:12, pitch:50, bearing:10 },
-  { id:13, days:"18",   dates:"Sep 11",    dest:"Stockholm Archipelago",  region:"Stockholm County", coords:[18.5,59.45],      tags:["nature"],                  nights:0, desc:"A day trip by public ferry to the outer islands — Vaxholm's fortress, Grinda's sandy shores, or bohemian Sandhamn where Sweden's sailing elite summer. Traditional red cabins dot granite between pine and sea.", highlights:["Vaxholm fortress island","Sandhamn sailing village","Grinda island swimming & hiking","Archipelago ferry experience"], from:"Stockholm (ferry from Strömkajen)", km:0, time:"Ferry", zoom:10, pitch:55, bearing:20 },
-  { id:14, days:"19",   dates:"Sep 12",    dest:"Västerås",               region:"Västmanland",     coords:[16.5448,59.6099], tags:["historic"],                 nights:1, desc:"A transition day with real rewards: the cathedral holds Erik XIV's ornate tomb, and Anundshög is Sweden's largest Viking burial mound. Lake Mälaren's shores give a calm final taste of Swedish nature before the long drive south.", highlights:["Västerås Cathedral & Erik XIV tomb","Anundshög — Sweden's largest Viking mound","Västerås Castle on the Svartån","Lake Mälaren waterfront walk"], from:"Stockholm", km:110, time:"1.5 hrs", zoom:13, pitch:40, bearing:-5 },
-  { id:15, days:"20–21",dates:"Sep 13–14", dest:"Return → Netherlands",   region:"Skåne / Denmark", coords:[13.0007,55.6059], tags:["city"],                     nights:1, desc:"The long drive home. Consider an overnight in Helsingborg or Malmö before crossing the Øresund Bridge back to Denmark and on to the Netherlands. Malmö's seafood markets earn a worthy final Swedish meal and a proper fika farewell.", highlights:["Optional overnight: Gothenburg","Final fika at Malmö Saluhallen","Øresund Bridge crossing","Return to Netherlands"], from:"Västerås", km:620, time:"7.5 hrs", zoom:10, pitch:35, bearing:-20 }
+  { id:1,  days:"1",     dates:"Aug 25",    dest:"Malmö",               region:"Skåne",            coords:[13.0007,55.6059], tags:["city","historic"],          nights:1,
+    desc:"Cross the Øresund Bridge and arrive in Sweden's southernmost city. Malmö blends Scandinavian modernity with medieval charm — the Turning Torso punctuates a skyline still holding 16th-century cobblestones.",
+    highlights:["Gamla Väster medieval quarter","Turning Torso & Western Harbour","Lilla Torg square & food market","Malmö Saluhallen indoor market hall"],
+    from:"Netherlands border via Øresund Bridge", km:400, time:"~5 hrs", zoom:12, pitch:50, bearing:-15 },
+
+  { id:2,  days:"2",     dates:"Aug 26",    dest:"Ystad",               region:"Skåne",            coords:[13.8201,55.4295], tags:["historic","offbeat"],       nights:1,
+    desc:"A perfectly preserved medieval town with cobblestones unchanged since the 14th century — and the filming location for the Wallander crime series. The active fishing harbour brews excellent local beer.",
+    highlights:["1300s cobblestone merchant district","Wallander filming locations","Ystad Harbour Brewery","Stortorget central square"],
+    from:"Malmö", km:60, time:"45 min", zoom:13, pitch:45, bearing:20 },
+
+  { id:3,  days:"3",     dates:"Aug 27",    dest:"Kristianstad",        region:"Skåne",            coords:[14.1567,56.0294], tags:["nature","offbeat"],         nights:1,
+    desc:"An off-the-beaten-track surprise: the Vattenriket biosphere reserve offers extraordinary birdwatching in ancient bog landscapes. The Renaissance town centre is one of Sweden's oldest planned cities, unchanged since 1614.",
+    highlights:["Naturum Vattenriket biosphere & birdwatching","Renaissance town grid (1614)","Helge å river kayaking","Lake Hammarsjön scenic drive"],
+    from:"Ystad", km:100, time:"1.5 hrs", zoom:12, pitch:40, bearing:10 },
+
+  { id:4,  days:"4",     dates:"Aug 28",    dest:"Helsingborg",         region:"Skåne",            coords:[12.6945,56.0465], tags:["city","historic"],          nights:1,
+    desc:"A lively harbour city at the narrowest Sweden–Denmark crossing. The medieval Kärnan tower is the sole survivor of one of Scandinavia's most powerful fortresses, with sweeping views to Helsingør.",
+    highlights:["Kärnan medieval tower (1310s)","Views across to Helsingør, Denmark","Sofiero Palace gardens","Stortorget & waterfront promenade"],
+    from:"Kristianstad", km:110, time:"1.5 hrs", zoom:13, pitch:55, bearing:-30 },
+
+  { id:5,  days:"5–6",   dates:"Aug 29–30", dest:"Gothenburg",          region:"Västra Götaland",  coords:[11.9746,57.7089], tags:["city","nature"],            nights:2,
+    desc:"Sweden's second city: relaxed, worldly, with an archipelago at its doorstep. The Feskekörka fish market and Saluhallen food hall are unmissable. On day 6 ferry to the island fortress of Marstrand — crowd-free and spectacular.",
+    highlights:["Feskekörka fish market","Saluhallen food hall","Marstrand island fortress (ferry)","Haga historic district","Bohuslän archipelago cruise"],
+    from:"Helsingborg", km:115, time:"1.5 hrs", zoom:11, pitch:45, bearing:-5 },
+
+  { id:6,  days:"7",     dates:"Aug 31",    dest:"Karlstad & Värmland", region:"Värmland",         coords:[13.5036,59.3793], tags:["nature","offbeat"],         nights:1,
+    desc:"Karlstad — Sweden's sun city — borders Lake Vänern (Europe's 3rd-largest lake). The forested Värmland region is largely bypassed by tourists, rewarding with quiet forest lakes, traditional farm culture, and the Klarälven river float experience.",
+    highlights:["Lake Vänern shoreline drives","Klarälven river float trips","Mariebergsskogen nature park","Farm stays in Lövvik village"],
+    from:"Gothenburg", km:250, time:"3 hrs", zoom:11, pitch:40, bearing:15 },
+
+  { id:7,  days:"8",     dates:"Sep 1",     dest:"Mora & Lake Siljan",  region:"Dalarna",          coords:[14.5356,61.0015], tags:["nature","offbeat"],         nights:1,
+    desc:"Lake Siljan — a meteor crater turned impossibly beautiful lake — is the heart of Dalarna. September brings early autumn colours and almost no crowds. The village of Nusnäs still hand-paints Dala horses using centuries-old techniques.",
+    highlights:["Lake Siljan circuit drive","Vasaloppet museum","Zornmuseet (artist Anders Zorn)","Nusnäs — Dala horse workshops"],
+    from:"Karlstad", km:200, time:"2.5 hrs", zoom:11, pitch:50, bearing:25 },
+
+  { id:8,  days:"9",     dates:"Sep 2",     dest:"Falun",               region:"Dalarna",          coords:[15.6355,60.6065], tags:["historic"],                 nights:1,
+    desc:"The UNESCO-listed Falun Copper Mine was active for 1,000 years. Its red ochre pigment literally painted Sweden red — every classic Swedish red farmhouse owes its colour to Falun. The underground tour is unmissable.",
+    highlights:["Falun Copper Mine (UNESCO) — underground tour","Mine museum & ochre demonstration","Carl Larsson-gården artist home","Dala horse craft shops"],
+    from:"Mora", km:80, time:"1.5 hrs", zoom:13, pitch:45, bearing:-10 },
+
+  { id:9,  days:"10",    dates:"Sep 3",     dest:"Rättvik",             region:"Dalarna",          coords:[15.1106,60.8912], tags:["nature","historic"],        nights:1,
+    desc:"Rättvik's 1733 church reaching into Lake Siljan on a long wooden pier is one of Sweden's most photographed scenes. Folk Sweden at its most authentic: church boats, traditional textiles, and superb lake swimming.",
+    highlights:["Rättvik church & church-boat piers","Lake Siljan swimming at Rättviksstrand","Vidablick viewpoint hike","Dalecarlian textile & folk art shops"],
+    from:"Falun", km:80, time:"1.5 hrs", zoom:13, pitch:60, bearing:30 },
+
+  { id:10, days:"11–12", dates:"Sep 4–5",   dest:"Höga Kusten",         region:"Ångermanland",     coords:[18.3,62.8],       tags:["nature","offbeat"],         nights:2,
+    desc:"Sweden's most dramatic coastline — a UNESCO World Heritage Site still rising from the sea after the last ice age. Towering cliff gorges, primeval forest, Viking burial mounds, and white-tailed eagles. Almost no mass tourism.",
+    highlights:["Skuleskogen National Park trails","Slåttdalskrevan gorge (only 1m wide)","Nordingrå viewpoint over fjords","Viking runestones at Nämforsen","White-tailed eagle spotting"],
+    from:"Rättvik (via Gävle & Sundsvall)", km:290, time:"4 hrs", zoom:11, pitch:65, bearing:40 },
+
+  { id:11, days:"13",    dates:"Sep 6",     dest:"Uppsala",             region:"Uppland",          coords:[17.6389,59.8586], tags:["historic","city"],          nights:1,
+    desc:"The ancient capital of Sweden, predating Stockholm. Scandinavia's largest cathedral holds royal tombs. The Viking burial mounds at Gamla Uppsala are among the most significant in northern Europe.",
+    highlights:["Uppsala Cathedral (Scandinavia's largest)","Gamla Uppsala Viking burial mounds","Uppsala University (est. 1477)","Linnaeus Garden & Museum","Fyrisån river waterfront"],
+    from:"Höga Kusten", km:340, time:"4 hrs", zoom:13, pitch:45, bearing:-20 },
+
+  { id:12, days:"14–17", dates:"Sep 7–10",  dest:"Stockholm",           region:"Stockholm County", coords:[18.0686,59.3293], tags:["city","historic","nature"], nights:4,
+    desc:"The capital across 14 islands. Four days barely scratches the surface: medieval Gamla Stan, the spectacular Vasa Museum, open-air Skansen, UNESCO Drottningholm Palace, and the finest smörgåsbord at Operakällaren.",
+    highlights:["Gamla Stan (1200s Old Town)","Vasa Museum — recovered 17th-century warship","Skansen open-air museum","Drottningholm Palace (UNESCO)","Östermalm food hall"],
+    from:"Uppsala", km:75, time:"1 hr", zoom:12, pitch:50, bearing:10 },
+
+  { id:13, days:"18",    dates:"Sep 11",    dest:"Stockholm Archipelago",region:"Stockholm County", coords:[18.5,59.45],      tags:["nature"],                  nights:0,
+    desc:"A day trip by public ferry to the outer islands — Vaxholm's fortress, Grinda's sandy shores, or bohemian Sandhamn where Sweden's sailing elite summer. Traditional red cabins dot granite between pine and sea.",
+    highlights:["Vaxholm fortress island","Sandhamn sailing village","Grinda island swimming & hiking","Archipelago ferry experience"],
+    from:"Stockholm (ferry from Strömkajen)", km:0, time:"Ferry", zoom:10, pitch:55, bearing:20 },
+
+  { id:14, days:"19",    dates:"Sep 12",    dest:"Västerås",            region:"Västmanland",      coords:[16.5448,59.6099], tags:["historic"],                 nights:1,
+    desc:"A transition day with real rewards: the cathedral holds Erik XIV's ornate tomb, and Anundshög is Sweden's largest Viking burial mound. Lake Mälaren's shores give a calm final taste of Swedish nature before the long drive south.",
+    highlights:["Västerås Cathedral & Erik XIV tomb","Anundshög — Sweden's largest Viking mound","Västerås Castle on the Svartån","Lake Mälaren waterfront walk"],
+    from:"Stockholm", km:110, time:"1.5 hrs", zoom:13, pitch:40, bearing:-5 },
+
+  { id:15, days:"20–21", dates:"Sep 13–14", dest:"Return → Netherlands",region:"Skåne / Denmark",  coords:[13.0007,55.6059], tags:["city"],                     nights:1,
+    desc:"The long drive home. Consider an overnight in Helsingborg or Malmö before crossing the Øresund Bridge back to Denmark and on to the Netherlands. Malmö's seafood markets earn a worthy final Swedish meal.",
+    highlights:["Optional overnight: Gothenburg","Final fika at Malmö Saluhallen","Øresund Bridge crossing","Return to Netherlands"],
+    from:"Västerås", km:620, time:"7.5 hrs", zoom:10, pitch:35, bearing:-20 }
 ];
 
 const CULINARY = [
-  { name:"Fika", region:"Nationwide", icon:"☕", color:"#8b6914", desc:"The sacred Swedish coffee break — a social ritual of cinnamon and cardamom buns taken twice daily. Fika is built into the working day and is a national institution, not just a coffee habit.", must:["Kanelbullar (cinnamon bun)","Kardemummabulle (cardamom bun)","Kladdkaka (sticky chocolate cake)","Semla (cream-filled cardamom bun)"] },
-  { name:"West Coast Seafood", region:"Gothenburg & Bohuslän", icon:"🦐", color:"#2d6a9f", desc:"Bohuslän produces some of Europe's finest shellfish. September crayfish parties (kräftskiva) are a cultural institution — bib mandatory, aquavit obligatory. Feskekörka fish market is a rite of passage.", must:["Räksmörgås (shrimp open sandwich)","Fresh oysters from the fjords","Kräftskiva (crayfish party boil)","Hummer (grilled lobster)","Gothenburg fish soup"] },
-  { name:"Skåne Smörgåsbord", region:"Southern Sweden", icon:"🐟", color:"#4a7c59", desc:"The south Swedish table is generous — multiple preparations of herring, gravlax, meatballs, and seasonal vegetables. Skåne is Sweden's agricultural heartland with a slightly French-influenced food culture.", must:["Inlagd sill (pickled herring, 6 ways)","Gravad lax with mustard-dill sauce","Köttbullar med lingon (meatballs)","Fläskpannkaka (bacon pancake)","Smörgåstårta (savoury sandwich cake)"] },
-  { name:"Forest & Game", region:"Dalarna & Värmland", icon:"🦌", color:"#7a5c3e", desc:"Central Sweden's forests yield elk, reindeer, and wild game. September is peak chanterelle season. Farm stands overflow with lingonberries, cloudberries, and blueberries — the real taste of Swedish autumn.", must:["Älgbiff (elk steak)","Rensktek (slow-cooked reindeer)","Chanterelle toast with forest cream","Cloudberries with fresh cream","Blåbärssoppa (warm blueberry soup)"] },
-  { name:"High Coast Smoked Fish", region:"Höga Kusten", icon:"🐠", color:"#5a6b7a", desc:"Ancient preservation traditions survive on the High Coast. Surströmming — fermented herring with a legendary aroma — is consumed here in its heartland. Cold-smoked salmon is the more approachable entry point.", must:["Surströmming (fermented herring — an experience)","Kallrökt lax (cold-smoked salmon)","Rökt abborre (smoked perch)","Chanterelles on sourdough","Local herb aquavit"] },
-  { name:"Stockholm Nordic Kitchen", region:"Stockholm", icon:"🍽️", color:"#c8102e", desc:"Stockholm leads the New Nordic movement — ancient Swedish ingredients reinterpreted with fine-dining technique. The Östermalm food hall is Scandinavia's finest market. Book tasting menus well ahead.", must:["Östermalm food hall tasting","Classic smörgåsbord at Operakällaren","Strömming (fried herring) street food","New Nordic tasting menu","Swedish craft aquavit tasting"] }
+  { name:"Fika",                 region:"Nationwide",             icon:"☕", color:"#8b6914", desc:"The sacred Swedish coffee break — a social ritual of cinnamon and cardamom buns taken twice daily. Fika is built into the working day and is a national institution, not just a coffee habit.", must:["Kanelbullar (cinnamon bun)","Kardemummabulle (cardamom bun)","Kladdkaka (sticky chocolate cake)","Semla (cream-filled cardamom bun)"] },
+  { name:"West Coast Seafood",   region:"Gothenburg & Bohuslän",  icon:"🦐", color:"#2d6a9f", desc:"Bohuslän produces some of Europe's finest shellfish. September crayfish parties (kräftskiva) are a cultural institution — bib mandatory, aquavit obligatory. Feskekörka fish market is a rite of passage.", must:["Räksmörgås (shrimp open sandwich)","Fresh oysters from the fjords","Kräftskiva (crayfish party boil)","Hummer (grilled lobster)","Gothenburg fish soup"] },
+  { name:"Skåne Smörgåsbord",   region:"Southern Sweden",         icon:"🐟", color:"#4a7c59", desc:"The south Swedish table is generous — multiple preparations of herring, gravlax, meatballs, and seasonal vegetables. Skåne is Sweden's agricultural heartland with a slightly French-influenced food culture.", must:["Inlagd sill (pickled herring, 6 ways)","Gravad lax with mustard-dill sauce","Köttbullar med lingon (meatballs)","Fläskpannkaka (bacon pancake)","Smörgåstårta (savoury sandwich cake)"] },
+  { name:"Forest & Game",        region:"Dalarna & Värmland",      icon:"🦌", color:"#7a5c3e", desc:"Central Sweden's forests yield elk, reindeer, and wild game. September is peak chanterelle season. Farm stands overflow with lingonberries, cloudberries, and blueberries — the real taste of Swedish autumn.", must:["Älgbiff (elk steak)","Rensktek (slow-cooked reindeer)","Chanterelle toast with forest cream","Cloudberries with fresh cream","Blåbärssoppa (warm blueberry soup)"] },
+  { name:"High Coast Smoked Fish",region:"Höga Kusten",            icon:"🐠", color:"#5a6b7a", desc:"Ancient preservation traditions survive on the High Coast. Surströmming — fermented herring with a legendary aroma — is consumed here in its heartland. Cold-smoked salmon is the more approachable entry point.", must:["Surströmming (fermented herring — an experience)","Kallrökt lax (cold-smoked salmon)","Rökt abborre (smoked perch)","Chanterelles on sourdough","Local herb aquavit"] },
+  { name:"Stockholm Nordic Kitchen",region:"Stockholm",            icon:"🍽️", color:"#c8102e", desc:"Stockholm leads the New Nordic movement — ancient Swedish ingredients reinterpreted with fine-dining technique. The Östermalm food hall is Scandinavia's finest market. Book tasting menus well ahead.", must:["Östermalm food hall tasting","Classic smörgåsbord at Operakällaren","Strömming (fried herring) street food","New Nordic tasting menu","Swedish craft aquavit tasting"] }
 ];
 
 const ACCOMMODATIONS = [
-  { dest:"Malmö",              type:"Boutique Hotel",      policy:"free",        bath:true,  terrace:true,  note:"Gamla Väster area — walk to old town" },
-  { dest:"Ystad",              type:"Guesthouse / B&B",    policy:"free",        bath:true,  terrace:true,  note:"Harbour-view rooms; historic centre B&Bs" },
-  { dest:"Kristianstad",       type:"Hotel",               policy:"free",        bath:true,  terrace:false, note:"Central Scandic or boutique hotel" },
-  { dest:"Helsingborg",        type:"Hotel",               policy:"free",        bath:true,  terrace:true,  note:"Harbour-view rooms with views to Denmark" },
-  { dest:"Gothenburg",         type:"Apartment / Hotel",   policy:"free",        bath:true,  terrace:true,  note:"Haga or Linnéstaden; balcony apartments via Airbnb" },
-  { dest:"Karlstad / Värmland",type:"Lake Lodge",          policy:"free",        bath:true,  terrace:true,  note:"Lakeside gäststugor with veranda — book direct" },
-  { dest:"Mora / Lake Siljan", type:"Lake Cabin",          policy:"free",        bath:true,  terrace:true,  note:"Waterfront cabins on Lake Siljan — Nusnäs area" },
-  { dest:"Falun",              type:"Hotel",               policy:"free",        bath:true,  terrace:false, note:"Central hotel; filter for terrace on Booking.com" },
-  { dest:"Rättvik",            type:"Lake Hotel",          policy:"free",        bath:true,  terrace:true,  note:"Lakeside lodge — wake to Lake Siljan views" },
-  { dest:"Höga Kusten",        type:"Mountain Lodge",      policy:"conditional", bath:true,  terrace:true,  note:"Very limited — book 3+ months ahead" },
-  { dest:"Uppsala",            type:"Hotel / Apartment",   policy:"free",        bath:true,  terrace:false, note:"City centre; Fyrisån river view preferred" },
-  { dest:"Stockholm",          type:"Apartment (4 nights)","policy":"moderate",  bath:true,  terrace:true,  note:"Södermalm or Östermalm; balcony essential" },
-  { dest:"Västerås",           type:"Hotel",               policy:"free",        bath:true,  terrace:false, note:"Central; last night before the long drive home" }
+  { dest:"Malmö",               type:"Boutique Hotel",      policy:"free",  bath:true, terrace:true,  note:"Gamla Väster area — walk to old town" },
+  { dest:"Ystad",               type:"Guesthouse / B&B",    policy:"free",  bath:true, terrace:true,  note:"Harbour-view rooms; historic centre B&Bs" },
+  { dest:"Kristianstad",        type:"Hotel",               policy:"free",  bath:true, terrace:false, note:"Central Scandic or boutique hotel" },
+  { dest:"Helsingborg",         type:"Hotel",               policy:"free",  bath:true, terrace:true,  note:"Harbour-view rooms with views to Denmark" },
+  { dest:"Gothenburg",          type:"Apartment / Hotel",   policy:"free",  bath:true, terrace:true,  note:"Haga or Linnéstaden; balcony apartments via Airbnb" },
+  { dest:"Karlstad / Värmland", type:"Lake Lodge",          policy:"free",  bath:true, terrace:true,  note:"Lakeside gäststugor with veranda — book direct" },
+  { dest:"Mora / Lake Siljan",  type:"Lake Cabin",          policy:"free",  bath:true, terrace:true,  note:"Waterfront cabins on Lake Siljan — Nusnäs area" },
+  { dest:"Falun",               type:"Hotel",               policy:"free",  bath:true, terrace:false, note:"Central hotel; filter for terrace on Booking.com" },
+  { dest:"Rättvik",             type:"Lake Hotel",          policy:"free",  bath:true, terrace:true,  note:"Lakeside lodge — wake to Lake Siljan views" },
+  { dest:"Höga Kusten",         type:"Mountain Lodge",      policy:"cond",  bath:true, terrace:true,  note:"Very limited — book 3+ months ahead" },
+  { dest:"Uppsala",             type:"Hotel / Apartment",   policy:"free",  bath:true, terrace:false, note:"City centre; Fyrisån river view preferred" },
+  { dest:"Stockholm",           type:"Apartment (4 nights)","policy":"mod", bath:true, terrace:true,  note:"Södermalm or Östermalm; balcony essential" },
+  { dest:"Västerås",            type:"Hotel",               policy:"free",  bath:true, terrace:false, note:"Central; last night before the long drive home" }
 ];
 
 /* ── RENDER ──────────────────────────────────────────────────────────────── */
 function renderTimeline() {
   const tl = document.getElementById('timeline');
   tl.innerHTML = STOPS.map(s => {
-    const tags = s.tags.map(t => `<span class="tag tag-${t}">${t==='offbeat'?'Off-beat':t[0].toUpperCase()+t.slice(1)}</span>`).join('');
-    const nights = s.nights===0?'Day trip':s.nights===1?'1 night':`${s.nights} nights`;
-    const drive = s.km>0
+    const tags   = s.tags.map(t => `<span class="tag tag-${t}">${t==='offbeat'?'Off-beat':t[0].toUpperCase()+t.slice(1)}</span>`).join('');
+    const nights = s.nights===0 ? 'Day trip' : s.nights===1 ? '1 night' : `${s.nights} nights`;
+    const drive  = s.km > 0
       ? `<div class="stop-drive">🚗 from ${s.from}<br>${s.km} km · ${s.time}</div>`
       : `<div class="stop-drive">⛴️ ${s.from}</div>`;
 
@@ -360,14 +401,16 @@ function renderTimeline() {
     </div>`;
 
     const dot = `<div class="t-dot"><div class="dot">${s.id}</div></div>`;
-
     return `<div class="t-item">${card}${dot}${meta}</div>`;
   }).join('');
 
   tl.querySelectorAll('.btn-fly').forEach(btn => {
     btn.addEventListener('click', () => {
-      const stop = STOPS.find(s => s.id === parseInt(btn.dataset.id));
-      if (stop) flyTo(stop);
+      const stop = STOPS.find(s => s.id === +btn.dataset.id);
+      if (stop) {
+        flyTo(stop);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     });
   });
 }
@@ -385,8 +428,8 @@ function renderCulinary() {
 }
 
 function renderAccommodation() {
-  const pl = {free:'Free cancellation',conditional:'Conditional',moderate:'Moderate'};
-  const pc = {free:'b-free',conditional:'b-mod',moderate:'b-mod'};
+  const pl = { free:'Free cancellation', cond:'Conditional', mod:'Moderate' };
+  const pc = { free:'b-free', cond:'b-mod', mod:'b-mod' };
   document.getElementById('accom-tbody').innerHTML = ACCOMMODATIONS.map(a => `
     <tr>
       <td>${a.dest}</td>
@@ -398,148 +441,177 @@ function renderAccommodation() {
     </tr>`).join('');
 }
 
-/* ── MAP ─────────────────────────────────────────────────────────────────── */
-let map = null, flyIdx = 0, isFlying = false;
-const markers = [];
+/* ── MAP (MapLibre GL JS — no token required) ────────────────────────────── */
+let map, flyIdx = 0, isFlying = false;
+const markerEls = new Map();
 
-function initMap(token) {
-  mapboxgl.accessToken = token;
-  map = new mapboxgl.Map({
+function initMap() {
+  map = new maplibregl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/outdoors-v12',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
     center: [16.5, 62.0],
-    zoom: 4.5, pitch: 28, bearing: 0,
+    zoom: 4.5,
+    pitch: 28,
+    bearing: 0,
     antialias: true
   });
-  map.addControl(new mapboxgl.NavigationControl({showCompass:true}), 'top-right');
+
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
   map.on('load', onMapLoad);
 }
 
 function onMapLoad() {
-  map.addSource('dem', {
+  /* 3D terrain via AWS open elevation tiles (Mapzen Terrarium, no key needed) */
+  map.addSource('terrain', {
     type: 'raster-dem',
-    url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
-    tileSize: 512, maxzoom: 14
+    tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+    encoding: 'terrarium',
+    tileSize: 256,
+    maxzoom: 14
   });
-  map.setTerrain({ source:'dem', exaggeration:1.8 });
-  map.setFog({ color:'#d6e8f0', 'high-color':'#aac8e0', 'space-color':'#1a2b3c', 'horizon-blend':0.08 });
+  map.setTerrain({ source: 'terrain', exaggeration: 2.0 });
 
+  /* Sky / atmosphere */
+  map.setSky({
+    'sky-color': '#b8d4e8',
+    'sky-horizon-blend': 0.5,
+    'horizon-color': '#d4e8f4',
+    'horizon-fog-blend': 0.4,
+    'fog-color': '#c8dcea',
+    'fog-ground-blend': 0.9,
+    'atmosphere-blend': 0.4
+  });
+
+  /* Route source — starts empty, drawn progressively */
   map.addSource('route', {
     type: 'geojson',
-    data: { type:'Feature', geometry:{ type:'LineString', coordinates:[] } }
+    data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
   });
-  map.addLayer({ id:'route-glow', type:'line', source:'route', paint:{ 'line-color':'#c8102e','line-width':8,'line-opacity':0.18,'line-blur':6,'line-cap':'round' } });
-  map.addLayer({ id:'route-line', type:'line', source:'route', paint:{ 'line-color':'#c8102e','line-width':2.5,'line-cap':'butt','line-join':'round' } });
+
+  /* Glow layer beneath the route line */
+  map.addLayer({
+    id: 'route-glow',
+    type: 'line',
+    source: 'route',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#c8102e', 'line-width': 10, 'line-opacity': 0.18, 'line-blur': 8 }
+  });
+
+  /* Main route line */
+  map.addLayer({
+    id: 'route-line',
+    type: 'line',
+    source: 'route',
+    layout: { 'line-cap': 'butt', 'line-join': 'round' },
+    paint: { 'line-color': '#c8102e', 'line-width': 2.5, 'line-opacity': 0.95 }
+  });
 
   addMarkers();
   animateDraw();
 
-  document.getElementById('btn-fly').addEventListener('click', startFlythrough);
+  document.getElementById('btn-fly').addEventListener('click', toggleFlythrough);
 }
 
 function animateDraw() {
   const all = STOPS.map(s => s.coords);
-  const steps = 150;
+  const STEPS = 160;
   let step = 0;
+
   function frame() {
     step++;
-    const frac = Math.min(step/steps, 1);
-    const eased = 1 - Math.pow(1-frac, 3);
-    const ti = eased * (all.length-1);
-    const base = Math.floor(ti);
-    const seg = ti - base;
-    const coords = all.slice(0, base+1);
-    if (base < all.length-1) {
-      const [ax,ay]=all[base],[bx,by]=all[base+1];
-      coords.push([ax+(bx-ax)*seg, ay+(by-ay)*seg]);
+    const frac  = Math.min(step / STEPS, 1);
+    const eased = 1 - Math.pow(1 - frac, 3);          // cubic ease-out
+    const ti    = eased * (all.length - 1);
+    const base  = Math.floor(ti);
+    const seg   = ti - base;
+
+    const coords = all.slice(0, base + 1);
+    if (base < all.length - 1) {
+      const [ax, ay] = all[base], [bx, by] = all[base + 1];
+      coords.push([ax + (bx - ax) * seg, ay + (by - ay) * seg]);
     }
-    map.getSource('route').setData({ type:'Feature', geometry:{ type:'LineString', coordinates:coords } });
-    if (frac<1) requestAnimationFrame(frame);
+
+    map.getSource('route').setData({
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: coords }
+    });
+
+    if (frac < 1) requestAnimationFrame(frame);
   }
-  setTimeout(()=>requestAnimationFrame(frame), 900);
+
+  setTimeout(() => requestAnimationFrame(frame), 1000);
 }
 
 function addMarkers() {
-  STOPS.forEach(s => {
+  STOPS.forEach(stop => {
     const el = document.createElement('div');
     el.className = 'map-marker';
-    el.textContent = s.id;
-    el.title = s.dest;
+    el.textContent = stop.id;
+    el.title = stop.dest;
+
     el.addEventListener('click', () => {
-      flyTo(s);
-      const card = document.getElementById(`stop-${s.id}`);
-      if (card) setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'center'}), 400);
+      flyTo(stop);
+      const card = document.getElementById(`stop-${stop.id}`);
+      if (card) setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
     });
-    const m = new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat(s.coords).addTo(map);
-    markers.push({marker:m, el, id:s.id});
+
+    new maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat(stop.coords)
+      .addTo(map);
+
+    markerEls.set(stop.id, el);
   });
 }
 
 function flyTo(stop) {
   if (!map) return;
-  markers.forEach(m => m.el.classList.remove('active'));
-  const active = markers.find(m => m.id===stop.id);
-  if (active) active.el.classList.add('active');
-  map.flyTo({ center:stop.coords, zoom:stop.zoom, pitch:stop.pitch, bearing:stop.bearing, duration:2600, essential:true });
+  markerEls.forEach(el => el.classList.remove('active'));
+  markerEls.get(stop.id)?.classList.add('active');
+  map.flyTo({
+    center:   stop.coords,
+    zoom:     stop.zoom,
+    pitch:    stop.pitch,
+    bearing:  stop.bearing,
+    duration: 2800,
+    essential: true
+  });
 }
 
-function startFlythrough() {
-  if (isFlying) { stopFlythrough(); return; }
-  if (!map) return;
-  isFlying = true; flyIdx = 0;
-  document.getElementById('btn-fly').textContent = '⏸ Stop';
-  flyStep();
-}
-
-function stopFlythrough() {
-  isFlying = false;
-  document.getElementById('btn-fly').textContent = '▶ Fly the Route';
+function toggleFlythrough() {
+  if (isFlying) {
+    isFlying = false;
+    document.getElementById('btn-fly').textContent = '▶ Fly the Route';
+  } else {
+    isFlying = true;
+    flyIdx = 0;
+    document.getElementById('btn-fly').textContent = '⏸ Stop';
+    flyStep();
+  }
 }
 
 function flyStep() {
-  if (!isFlying || flyIdx >= STOPS.length) {
-    if (isFlying) {
-      map.flyTo({center:[16.5,62.0],zoom:4.5,pitch:28,bearing:0,duration:3000});
-    }
-    stopFlythrough(); return;
+  if (!isFlying) return;
+  if (flyIdx >= STOPS.length) {
+    map.flyTo({ center:[16.5,62.0], zoom:4.5, pitch:28, bearing:0, duration:3000 });
+    isFlying = false;
+    document.getElementById('btn-fly').textContent = '▶ Fly the Route';
+    return;
   }
-  const stop = STOPS[flyIdx++];
-  flyTo(stop);
-  map.once('moveend', ()=>{ if(isFlying) setTimeout(flyStep, 700); });
+  flyTo(STOPS[flyIdx++]);
+  map.once('moveend', () => { if (isFlying) setTimeout(flyStep, 600); });
 }
 
-/* ── TOKEN SETUP ─────────────────────────────────────────────────────────── */
-function activateToken() {
-  const val = document.getElementById('token-input').value.trim();
-  const err = document.getElementById('token-error');
-  if (!val.startsWith('pk.')) { err.style.display='block'; return; }
-  err.style.display = 'none';
-  localStorage.setItem('mb_token', val);
-  document.getElementById('token-setup').style.display = 'none';
-  initMap(val);
-}
-
-document.getElementById('token-input').addEventListener('keydown', e => { if(e.key==='Enter') activateToken(); });
-
-/* ── INIT ────────────────────────────────────────────────────────────────── */
-function init() {
+/* ── BOOT ────────────────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
   renderTimeline();
   renderCulinary();
   renderAccommodation();
-
-  const tok = MAPBOX_TOKEN !== 'YOUR_MAPBOX_TOKEN_HERE'
-    ? MAPBOX_TOKEN
-    : localStorage.getItem('mb_token');
-
-  if (tok) { initMap(tok); }
-  else { document.getElementById('token-setup').style.display = 'flex'; }
+  initMap();
 
   window.addEventListener('scroll', () => {
     document.getElementById('nav').classList.toggle('scrolled', scrollY > 60);
   });
-}
-
-document.addEventListener('DOMContentLoaded', init);
+});
 </script>
 </body>
 </html>
