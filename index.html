@@ -50,6 +50,17 @@ nav.scrolled { background: rgba(26,43,60,0.93); }
 /* HERO */
 #hero { position: relative; height: 100vh; min-height: 600px; overflow: hidden; }
 #map { position: absolute; inset: 0; }
+#map.map-fallback {
+  background:
+    linear-gradient(to bottom, rgba(26,43,60,0.2), rgba(26,43,60,0.78)),
+    url('https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1800&q=80') center/cover;
+}
+.map-message {
+  position: absolute; top: 84px; right: 1rem; z-index: 3;
+  max-width: 280px; padding: 0.8rem 1rem; border-radius: 8px;
+  background: rgba(15,27,40,0.84); color: rgba(255,255,255,0.82);
+  font-size: 0.78rem; line-height: 1.5; backdrop-filter: blur(10px);
+}
 .hero-overlay {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
@@ -74,6 +85,24 @@ nav.scrolled { background: rgba(26,43,60,0.93); }
 .section-title { font-size: clamp(1.75rem, 3.5vw, 2.75rem); color: var(--navy); margin-bottom: 0.75rem; }
 .section-desc { color: var(--muted); max-width: 580px; font-size: 1.02rem; margin-bottom: 3rem; }
 
+/* ROUTE TOOLS */
+.route-tools { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; align-items: start; margin-bottom: 3rem; }
+.route-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; }
+.summary-tile { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; min-height: 96px; }
+.summary-value { font-family: 'Playfair Display', Georgia, serif; color: var(--navy); font-size: 1.8rem; line-height: 1; margin-bottom: 0.3rem; }
+.summary-label { color: var(--muted); font-size: 0.73rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.filter-panel { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; position: sticky; top: 84px; }
+.filter-title { color: var(--navy); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 0.8rem; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
+.chip { border: 1px solid var(--border); background: var(--bg); color: var(--navy); border-radius: 999px; padding: 0.38rem 0.75rem; font: 700 0.72rem 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; }
+.chip:hover { border-color: var(--navy); }
+.chip.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.selected-stop { border-top: 1px solid var(--border); padding-top: 0.9rem; }
+.selected-kicker { color: var(--red); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.25rem; }
+.selected-title { font-family: 'Playfair Display', Georgia, serif; color: var(--navy); font-size: 1.25rem; margin-bottom: 0.25rem; }
+.selected-copy { color: var(--muted); font-size: 0.82rem; line-height: 1.6; }
+.empty-state { background: #fff; border: 1px dashed var(--border); border-radius: 8px; padding: 1.4rem; color: var(--muted); font-size: 0.9rem; text-align: center; }
+
 /* TIMELINE */
 .timeline { position: relative; }
 .timeline::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--border); transform: translateX(-50%); }
@@ -93,6 +122,8 @@ nav.scrolled { background: rgba(26,43,60,0.93); }
 /* CARD */
 .t-card { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 1.6rem; border: 1px solid var(--border); transition: transform 0.2s, box-shadow 0.2s; }
 .t-card:hover { transform: translateY(-3px); box-shadow: 0 8px 36px rgba(0,0,0,0.11); }
+.t-card.active { border-color: rgba(200,16,46,0.42); box-shadow: 0 8px 36px rgba(200,16,46,0.14); }
+.t-item.hidden { display: none; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.85rem; }
 .card-dest   { font-size: 1.35rem; font-family: 'Playfair Display', Georgia, serif; color: var(--navy); }
 .card-region { font-size: 0.82rem; color: var(--muted); margin-top: 0.1rem; }
@@ -149,6 +180,8 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
 .stat-lbl { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
 .footer-div { width: 36px; height: 1px; background: rgba(255,255,255,0.1); margin: 2rem auto; }
 .footer-txt { font-size: 0.83rem; line-height: 1.75; }
+.build-indicator { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 1rem; color: rgba(255,255,255,0.58); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.build-dot { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 3px rgba(200,16,46,0.18); }
 
 /* MAP MARKERS */
 .map-marker {
@@ -168,6 +201,9 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
+  .route-tools { grid-template-columns: 1fr; }
+  .route-summary { grid-template-columns: repeat(2, 1fr); }
+  .filter-panel { position: static; }
   .timeline::before { left: 19px; }
   .t-item { grid-template-columns: 40px 1fr; }
   .t-item:nth-child(odd)  .t-card,
@@ -181,9 +217,11 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
 }
 @media (max-width: 580px) {
   #hero { height: 85vh; }
+  nav { padding: 0 1rem; }
   .hero-overlay { padding: 1.5rem 1.5rem 3rem; }
   .hero-meta { flex-direction: column; gap: 0.35rem; }
   .hero-actions { flex-direction: column; align-items: flex-start; }
+  .route-summary { grid-template-columns: 1fr; }
   .cul-grid { grid-template-columns: 1fr; }
   .section-wrap { padding: 3rem 1.25rem; }
   .card-head { flex-direction: column; }
@@ -209,7 +247,7 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
     <p class="hero-sub">From the Øresund Bridge to the High Coast</p>
     <div class="hero-meta">
       <span>📍 21 days</span>
-      <span>🚗 2,620 km</span>
+      <span>🚗 2,830 km</span>
       <span>🏰 15 destinations</span>
       <span>🍽️ 6 food regions</span>
     </div>
@@ -225,6 +263,14 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
     <div class="section-label">Day by Day</div>
     <h2 class="section-title">The Full Route</h2>
     <p class="section-desc">21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.</p>
+    <div class="route-tools">
+      <div class="route-summary" id="route-summary"></div>
+      <aside class="filter-panel" aria-label="Route filters">
+        <div class="filter-title">Route Focus</div>
+        <div class="filter-chips" id="filter-chips"></div>
+        <div class="selected-stop" id="selected-stop"></div>
+      </aside>
+    </div>
     <div class="timeline" id="timeline"></div>
   </div>
 </section>
@@ -261,12 +307,13 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
 <footer>
   <div class="footer-stats">
     <div><div class="stat-val">21</div><div class="stat-lbl">Days</div></div>
-    <div><div class="stat-val">2,620</div><div class="stat-lbl">Kilometres</div></div>
+    <div><div class="stat-val">2,830</div><div class="stat-lbl">Kilometres</div></div>
     <div><div class="stat-val">15</div><div class="stat-lbl">Destinations</div></div>
     <div><div class="stat-val">6</div><div class="stat-lbl">Food Regions</div></div>
   </div>
   <div class="footer-div"></div>
   <p class="footer-txt">Sweden Road Trip 2026 · Aug 25 – Sep 14<br>Netherlands → Malmö → Gothenburg → Dalarna → High Coast → Stockholm → Netherlands</p>
+  <div class="build-indicator" id="build-indicator"><span class="build-dot"></span><span>Build local</span></div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -375,10 +422,101 @@ const ACCOMMODATIONS = [
 ];
 
 /* ── RENDER ──────────────────────────────────────────────────────────────── */
+let currentFilter = 'all';
+let selectedStopId = 1;
+
+function tagLabel(tag) {
+  return tag === 'offbeat' ? 'Off-beat' : tag[0].toUpperCase() + tag.slice(1);
+}
+
+function renderRouteTools() {
+  const totalNights = STOPS.reduce((sum, s) => sum + s.nights, 0);
+  const totalKm = STOPS.reduce((sum, s) => sum + s.km, 0);
+  const longestDrive = STOPS.reduce((max, s) => s.km > max.km ? s : max, STOPS[0]);
+  const overnightStops = STOPS.filter(s => s.nights > 0).length;
+
+  document.getElementById('route-summary').innerHTML = [
+    { value: `${totalNights}`, label: 'Planned nights' },
+    { value: totalKm.toLocaleString('en-US'), label: 'Road kilometres' },
+    { value: `${overnightStops}`, label: 'Overnight stops' },
+    { value: `${longestDrive.km} km`, label: `Longest drive to ${longestDrive.dest}` }
+  ].map(item => `
+    <div class="summary-tile">
+      <div class="summary-value">${item.value}</div>
+      <div class="summary-label">${item.label}</div>
+    </div>`).join('');
+
+  const tags = ['all', ...new Set(STOPS.flatMap(s => s.tags))];
+  document.getElementById('filter-chips').innerHTML = tags.map(tag => `
+    <button class="chip ${tag === currentFilter ? 'active' : ''}" data-filter="${tag}">
+      ${tag === 'all' ? 'All stops' : tagLabel(tag)}
+    </button>`).join('');
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      currentFilter = chip.dataset.filter;
+      renderRouteTools();
+      applyTimelineFilter();
+    });
+  });
+
+  renderSelectedStop();
+}
+
+function renderSelectedStop() {
+  const stop = STOPS.find(s => s.id === selectedStopId) || STOPS[0];
+  const drive = stop.km > 0 ? `${stop.km} km from ${stop.from} · ${stop.time}` : stop.from;
+  document.getElementById('selected-stop').innerHTML = `
+    <div class="selected-kicker">Selected stop</div>
+    <div class="selected-title">${stop.dest}</div>
+    <p class="selected-copy">Day ${stop.days} · ${stop.dates}<br>${drive}</p>`;
+}
+
+function selectStop(stop, options = {}) {
+  selectedStopId = stop.id;
+  renderSelectedStop();
+
+  document.querySelectorAll('.t-card').forEach(card => card.classList.remove('active'));
+  document.getElementById(`stop-${stop.id}`)?.classList.add('active');
+
+  markerEls.forEach(el => el.classList.remove('active'));
+  markerEls.get(stop.id)?.classList.add('active');
+
+  if (options.fly !== false) flyTo(stop);
+  if (options.scroll) {
+    const card = document.getElementById(`stop-${stop.id}`);
+    if (card) setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+  }
+}
+
+function applyTimelineFilter() {
+  let visible = 0;
+  document.querySelectorAll('.t-item').forEach(item => {
+    const tags = item.dataset.tags.split(',');
+    const show = currentFilter === 'all' || tags.includes(currentFilter);
+    item.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+
+  const timeline = document.getElementById('timeline');
+  let empty = document.getElementById('timeline-empty');
+  if (!visible) {
+    if (!empty) {
+      empty = document.createElement('div');
+      empty.id = 'timeline-empty';
+      empty.className = 'empty-state';
+      timeline.appendChild(empty);
+    }
+    empty.textContent = 'No stops match this focus.';
+  } else if (empty) {
+    empty.remove();
+  }
+}
+
 function renderTimeline() {
   const tl = document.getElementById('timeline');
   tl.innerHTML = STOPS.map(s => {
-    const tags   = s.tags.map(t => `<span class="tag tag-${t}">${t==='offbeat'?'Off-beat':t[0].toUpperCase()+t.slice(1)}</span>`).join('');
+    const tags   = s.tags.map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('');
     const nights = s.nights===0 ? 'Day trip' : s.nights===1 ? '1 night' : `${s.nights} nights`;
     const drive  = s.km > 0
       ? `<div class="stop-drive">🚗 from ${s.from}<br>${s.km} km · ${s.time}</div>`
@@ -401,18 +539,29 @@ function renderTimeline() {
     </div>`;
 
     const dot = `<div class="t-dot"><div class="dot">${s.id}</div></div>`;
-    return `<div class="t-item">${card}${dot}${meta}</div>`;
+    return `<div class="t-item" data-tags="${s.tags.join(',')}">${card}${dot}${meta}</div>`;
   }).join('');
 
   tl.querySelectorAll('.btn-fly').forEach(btn => {
     btn.addEventListener('click', () => {
       const stop = STOPS.find(s => s.id === +btn.dataset.id);
       if (stop) {
-        flyTo(stop);
+        selectStop(stop);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     });
   });
+
+  tl.querySelectorAll('.t-card').forEach(card => {
+    card.addEventListener('click', event => {
+      if (event.target.closest('button')) return;
+      const stop = STOPS.find(s => `stop-${s.id}` === card.id);
+      if (stop) selectStop(stop, { fly: false });
+    });
+  });
+
+  applyTimelineFilter();
+  selectStop(STOPS[0], { fly: false });
 }
 
 function renderCulinary() {
@@ -441,11 +590,33 @@ function renderAccommodation() {
     </tr>`).join('');
 }
 
+async function renderBuildIndicator() {
+  const el = document.getElementById('build-indicator');
+  if (!el) return;
+
+  try {
+    const response = await fetch('./build-info.json', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Missing build info');
+    const info = await response.json();
+    const run = info.runNumber ? `#${info.runNumber}` : 'unknown';
+    const sha = info.sha ? info.sha.slice(0, 7) : 'local';
+    el.innerHTML = `<span class="build-dot"></span><span>Build ${run} · ${sha}</span>`;
+    el.title = info.builtAt ? `Built at ${info.builtAt}` : 'Latest deployed build';
+  } catch {
+    el.innerHTML = '<span class="build-dot"></span><span>Build local</span>';
+  }
+}
+
 /* ── MAP (MapLibre GL JS — no token required) ────────────────────────────── */
 let map, flyIdx = 0, isFlying = false;
 const markerEls = new Map();
 
 function initMap() {
+  if (!window.maplibregl) {
+    showMapFallback('Interactive map assets could not load. The itinerary remains fully usable below.');
+    return;
+  }
+
   map = new maplibregl.Map({
     container: 'map',
     style: 'https://tiles.openfreemap.org/styles/liberty',
@@ -458,6 +629,7 @@ function initMap() {
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
   map.on('load', onMapLoad);
+  map.on('error', () => showMapFallback('Some map tiles are unavailable right now. Route cards and filters still work.'));
 }
 
 function onMapLoad() {
@@ -509,7 +681,6 @@ function onMapLoad() {
   addMarkers();
   animateDraw();
 
-  document.getElementById('btn-fly').addEventListener('click', toggleFlythrough);
 }
 
 function animateDraw() {
@@ -550,9 +721,7 @@ function addMarkers() {
     el.title = stop.dest;
 
     el.addEventListener('click', () => {
-      flyTo(stop);
-      const card = document.getElementById(`stop-${stop.id}`);
-      if (card) setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+      selectStop(stop, { scroll: true });
     });
 
     new maplibregl.Marker({ element: el, anchor: 'center' })
@@ -561,6 +730,17 @@ function addMarkers() {
 
     markerEls.set(stop.id, el);
   });
+}
+
+function showMapFallback(message) {
+  const mapEl = document.getElementById('map');
+  mapEl.classList.add('map-fallback');
+  if (document.querySelector('.map-message')) return;
+
+  const note = document.createElement('div');
+  note.className = 'map-message';
+  note.textContent = message;
+  document.getElementById('hero').appendChild(note);
 }
 
 function flyTo(stop) {
@@ -578,6 +758,11 @@ function flyTo(stop) {
 }
 
 function toggleFlythrough() {
+  if (!map) {
+    showMapFallback('The route flythrough needs the interactive map assets. The itinerary cards are ready below.');
+    return;
+  }
+
   if (isFlying) {
     isFlying = false;
     document.getElementById('btn-fly').textContent = '▶ Fly the Route';
@@ -603,9 +788,12 @@ function flyStep() {
 
 /* ── BOOT ────────────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+  renderRouteTools();
   renderTimeline();
   renderCulinary();
   renderAccommodation();
+  renderBuildIndicator();
+  document.getElementById('btn-fly').addEventListener('click', toggleFlythrough);
   initMap();
 
   window.addEventListener('scroll', () => {
