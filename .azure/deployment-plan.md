@@ -45,6 +45,7 @@ Publish the SwedenTravel static site to the best free Azure hosting option and c
 - Confirm workflow YAML structure.
 - Confirm Git status before committing.
 - Confirm Azure resource hostname after creation.
+- Confirm GitHub Actions dependencies and browser libraries are on supported current versions.
 
 ## Execution Log
 
@@ -57,3 +58,5 @@ Publish the SwedenTravel static site to the best free Azure hosting option and c
 - Stored the deployment token in GitHub secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
 - Pushed commit `78f014c` to `main`; GitHub Actions deployment run `26720720643` completed successfully.
 - Verified deployed `build-info.json` reports run `1`, ref `main`, and SHA `78f014c845cefb335bbe6a444faa7ad486084e9d`.
+- Updated `actions/checkout` from `v4` to `v6` to use the Node 24 action runtime.
+- Updated MapLibre GL JS from `4.7.1` to the current stable `5.24.0`.
