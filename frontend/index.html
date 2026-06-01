@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sweden Road Trip 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+
+<div class="grain"></div>
+
+<nav id="nav">
+  <a class="nav-logo" href="#hero">Sweden <em>▲</em> 2026</a>
+  <ul class="nav-links">
+    <li><a href="#itinerary">Itinerary</a></li>
+    <li><a href="#culinary-section">Food</a></li>
+    <li><a href="#accom-section">Stay</a></li>
+  </ul>
+</nav>
+
+<section id="hero">
+  <div id="map"></div>
+  <div class="hero-overlay">
+    <div class="hero-badge">Road Trip · Aug 25 – Sep 14, 2026</div>
+    <h1 class="hero-title">Sweden</h1>
+    <p class="hero-sub">From the Øresund Bridge to the High Coast</p>
+    <div class="hero-meta">
+      <span>📍 21 days</span>
+      <span>🚗 2,830 km</span>
+      <span>🏰 15 destinations</span>
+      <span>🍽️ 6 food regions</span>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-primary" id="btn-fly">▶ Fly the Route</button>
+      <a href="#itinerary" class="btn btn-secondary">View Itinerary ↓</a>
+    </div>
+  </div>
+</section>
+
+<section id="itinerary">
+  <div class="section-wrap">
+    <span class="section-num">01</span>
+    <div class="section-label" data-reveal>Day by Day</div>
+    <h2 class="section-title" data-reveal style="transition-delay:0.08s">The Full Route</h2>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s">21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.</p>
+    <div class="route-tools">
+      <div>
+        <div class="route-summary" id="route-summary"></div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+      <aside class="filter-panel" aria-label="Route filters">
+        <div class="filter-title">Route Focus</div>
+        <div class="filter-chips" id="filter-chips"></div>
+        <div class="selected-stop" id="selected-stop"></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section id="culinary-section">
+  <div class="section-wrap">
+    <span class="section-num">02</span>
+    <div class="section-label" data-reveal>Eat &amp; Drink</div>
+    <h2 class="section-title" data-reveal style="transition-delay:0.08s">Culinary Highlights</h2>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s">Six distinct food cultures — Gothenburg shellfish, Dalarna game, High Coast smoked fish, and Stockholm's new Nordic kitchen.</p>
+    <div class="cul-grid" id="cul-grid"></div>
+  </div>
+</section>
+
+<section id="accom-section">
+  <div class="section-wrap">
+    <span class="section-num">03</span>
+    <div class="section-label" data-reveal>Where to Sleep</div>
+    <h2 class="section-title" data-reveal style="transition-delay:0.08s">Accommodation Guide</h2>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s">All stops filtered for: free cancellation · private bathroom · terrace or balcony where available.</p>
+    <div class="accom-tip" data-reveal style="transition-delay:0.18s"><strong>Booking tip:</strong> Use Booking.com's "Free cancellation" filter. For lake lodges and Höga Kusten, book 2–3 months ahead — they sell out. Search <em>gäststugor</em> (guest cottages) directly for the most authentic Swedish stays.</div>
+    <div class="table-wrap" data-reveal style="transition-delay:0.22s">
+      <table>
+        <thead>
+          <tr>
+            <th>Destination</th><th>Accommodation Type</th><th>Cancellation</th>
+            <th>Private Bathroom</th><th>Terrace / Balcony</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="accom-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-stats">
+    <div><div class="stat-val">21</div><div class="stat-lbl">Days</div></div>
+    <div><div class="stat-val">2,830</div><div class="stat-lbl">Kilometres</div></div>
+    <div><div class="stat-val">15</div><div class="stat-lbl">Destinations</div></div>
+    <div><div class="stat-val">6</div><div class="stat-lbl">Food Regions</div></div>
+  </div>
+  <div class="footer-div"></div>
+  <p class="footer-txt">Sweden Road Trip 2026 · Aug 25 – Sep 14<br>Netherlands → Malmö → Gothenburg → Dalarna → High Coast → Stockholm → Netherlands</p>
+  <div class="build-indicator" id="build-indicator"><span class="build-dot"></span><span>Build local</span></div>
+</footer>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
