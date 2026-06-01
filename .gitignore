@@ -18,3 +18,12 @@ node_modules/
 *.log
 tmp/
 .cache/
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# API build output and secrets
+api/dist/
+api/node_modules/
+api/local.settings.json
