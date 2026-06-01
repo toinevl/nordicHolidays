@@ -2,5 +2,4 @@
 .vscode
 local.settings.json
 node_modules
-src
-tsconfig.json
+dist

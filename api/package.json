@@ -8,7 +8,7 @@
     "start": "npm run build && func start",
     "test": "vitest run"
   },
-  "main": "dist/src/functions/*.js",
+  "main": "dist/src/index.js",
   "dependencies": {
     "@azure/data-tables": "^13.3.0",
     "@azure/functions": "^4.5.0",
