@@ -6,214 +6,348 @@
 <title>Sweden Road Trip 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
 <style>
 :root {
-  --bg: #f7f5f0;
-  --navy: #1a2b3c;
-  --blue: #2d6a9f;
-  --red: #c8102e;
-  --nature: #4a7c59;
-  --historic: #8b6914;
-  --city: #5a6b7a;
-  --offbeat: #7c5cbf;
-  --text: #1c1c1e;
-  --muted: #5a5a5a;
-  --card: #ffffff;
-  --border: #e5e0d8;
-  --shadow: 0 2px 20px rgba(0,0,0,0.08);
-  --r: 12px;
+  --forest-deep:   #0b1610;
+  --forest-mid:    #132010;
+  --forest-card:   #1a2c18;
+  --forest-border: rgba(255,255,255,0.08);
+  --birch:         #f2ebe0;
+  --birch-card:    #ffffff;
+  --birch-border:  rgba(0,0,0,0.10);
+  --amber:         #c97d00;
+  --amber-light:   #e89820;
+  --text-on-dark:       #d4cab0;
+  --text-on-dark-muted: #748870;
+  --text-on-light:      #1a2816;
+  --text-on-light-muted:#687060;
+  --r: 3px;
 }
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
-body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
-h1,h2,h3,h4 { font-family: 'Playfair Display', Georgia, serif; line-height: 1.2; }
+body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 17px;
+  background: var(--forest-deep);
+  color: var(--text-on-dark);
+  line-height: 1.65;
+}
+h1,h2,h3,h4 { font-family: 'Cormorant Garamond', Georgia, serif; line-height: 1.1; }
+
+/* GRAIN */
+.grain {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999; opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' fill='%23888' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 400px 400px;
+}
 
 /* NAV */
 nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  padding: 0 2rem; height: 64px;
+  padding: 0 2rem; height: 56px;
   display: flex; align-items: center; justify-content: space-between;
-  background: rgba(26,43,60,0.25);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
   transition: background 0.3s;
 }
-nav.scrolled { background: rgba(26,43,60,0.93); }
-.nav-logo { font-family: 'Playfair Display', Georgia, serif; font-size: 1.1rem; color: #fff; text-decoration: none; font-weight: 700; }
-.nav-logo em { color: var(--red); font-style: normal; }
-.nav-links { display: flex; gap: 1.75rem; list-style: none; }
-.nav-links a { color: rgba(255,255,255,0.75); text-decoration: none; font-size: 0.8rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; transition: color 0.2s; }
-.nav-links a:hover { color: #fff; }
+nav.scrolled { background: rgba(11,22,16,0.96); backdrop-filter: blur(10px); }
+.nav-logo {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-weight: 700;
+  color: var(--text-on-dark); text-decoration: none;
+}
+.nav-logo em { color: var(--amber); font-style: normal; }
+.nav-links { display: flex; gap: 2rem; list-style: none; }
+.nav-links a {
+  font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 400;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(212,202,176,0.65); text-decoration: none; transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--amber); }
 
 /* HERO */
 #hero { position: relative; height: 100vh; min-height: 600px; overflow: hidden; }
 #map { position: absolute; inset: 0; }
 #map.map-fallback {
   background:
-    linear-gradient(to bottom, rgba(26,43,60,0.2), rgba(26,43,60,0.78)),
+    linear-gradient(to bottom, rgba(11,22,16,0.2), rgba(11,22,16,0.82)),
     url('https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1800&q=80') center/cover;
 }
 .map-message {
-  position: absolute; top: 84px; right: 1rem; z-index: 3;
-  max-width: 280px; padding: 0.8rem 1rem; border-radius: 8px;
-  background: rgba(15,27,40,0.84); color: rgba(255,255,255,0.82);
+  position: absolute; top: 72px; right: 1rem; z-index: 10;
+  max-width: 280px; padding: 0.75rem 1rem; border-radius: var(--r);
+  background: rgba(11,22,16,0.9); color: var(--text-on-dark-muted);
   font-size: 0.78rem; line-height: 1.5; backdrop-filter: blur(10px);
+  border: 1px solid var(--forest-border);
 }
 .hero-overlay {
-  position: absolute; inset: 0;
+  position: absolute; inset: 0; z-index: 5;
   display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
   padding: 4rem 4rem 5rem; pointer-events: none;
-  background: linear-gradient(to top, rgba(26,43,60,0.88) 0%, rgba(26,43,60,0.15) 55%, transparent 100%);
+  background: linear-gradient(to top, rgba(11,22,16,0.92) 0%, rgba(11,22,16,0.18) 58%, transparent 100%);
 }
-.hero-badge { display: inline-block; background: var(--red); color: #fff; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.3rem 0.9rem; border-radius: 2rem; margin-bottom: 1rem; }
-.hero-title { font-size: clamp(2.8rem, 7vw, 5.5rem); color: #fff; margin-bottom: 0.4rem; }
-.hero-sub { font-size: clamp(1rem, 2vw, 1.25rem); color: rgba(255,255,255,0.75); font-style: italic; margin-bottom: 0.75rem; }
-.hero-meta { display: flex; gap: 2rem; flex-wrap: wrap; color: rgba(255,255,255,0.65); font-size: 0.88rem; margin-bottom: 2rem; }
+.hero-badge {
+  display: inline-block; background: var(--amber); color: var(--forest-deep);
+  font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0.38rem 0.9rem; border-radius: var(--r); margin-bottom: 1rem;
+}
+.hero-title { font-size: clamp(3rem, 7vw, 5.5rem); font-weight: 700; color: #fff; margin-bottom: 0.4rem; }
+.hero-sub   { font-size: clamp(1rem,2vw,1.2rem); color: rgba(212,202,176,0.7); font-style: italic; margin-bottom: 0.75rem; }
+.hero-meta  {
+  display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 2rem;
+  font-family: 'DM Mono', monospace; font-size: 0.75rem; letter-spacing: 0.06em;
+  color: rgba(212,202,176,0.55);
+}
 .hero-actions { display: flex; gap: 0.85rem; flex-wrap: wrap; pointer-events: all; }
 
-.btn { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.7rem 1.4rem; border-radius: 2rem; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; font-family: 'Inter', sans-serif; }
-.btn-primary { background: var(--red); color: #fff; }
-.btn-primary:hover { background: #a50d23; transform: translateY(-2px); box-shadow: 0 4px 16px rgba(200,16,46,0.4); }
-.btn-secondary { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.28); }
-.btn-secondary:hover { background: rgba(255,255,255,0.22); transform: translateY(-2px); }
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.65rem 1.4rem; border-radius: var(--r);
+  font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 500;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  cursor: pointer; border: none; transition: all 0.2s; text-decoration: none;
+}
+.btn-primary  { background: var(--amber); color: var(--forest-deep); }
+.btn-primary:hover  { background: var(--amber-light); transform: translateY(-2px); box-shadow: 0 4px 18px rgba(201,125,0,0.4); }
+.btn-secondary { background: rgba(255,255,255,0.08); color: var(--text-on-dark); border: 1px solid rgba(255,255,255,0.18); }
+.btn-secondary:hover { background: rgba(255,255,255,0.14); border-color: var(--amber); color: var(--amber); transform: translateY(-2px); }
 
 /* SECTIONS */
-.section-wrap { max-width: 1200px; margin: 0 auto; padding: 5rem 2rem; }
-.section-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--red); margin-bottom: 0.65rem; }
-.section-title { font-size: clamp(1.75rem, 3.5vw, 2.75rem); color: var(--navy); margin-bottom: 0.75rem; }
-.section-desc { color: var(--muted); max-width: 580px; font-size: 1.02rem; margin-bottom: 3rem; }
+#itinerary { background: var(--forest-deep); }
+#culinary-section { background: #0d1a0c; }
+#accom-section { background: var(--birch); }
+
+.section-wrap { max-width: 1200px; margin: 0 auto; padding: 5rem 2rem; position: relative; }
+.section-label {
+  font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 400;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); margin-bottom: 0.6rem;
+}
+.section-title {
+  font-size: clamp(2rem, 4vw, 3rem); font-weight: 500;
+  color: var(--text-on-dark); margin-bottom: 0.75rem;
+}
+#accom-section .section-title { color: var(--text-on-light); }
+.section-desc { color: var(--text-on-dark-muted); max-width: 560px; font-size: 1rem; margin-bottom: 3rem; }
+#accom-section .section-desc { color: var(--text-on-light-muted); }
+
+/* SECTION NUMBERS */
+.section-num {
+  position: absolute; top: 2rem; right: 2rem;
+  font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 10rem;
+  line-height: 1; opacity: 0.05; color: #fff;
+  pointer-events: none; user-select: none;
+}
+#accom-section .section-num { color: var(--text-on-light); }
 
 /* ROUTE TOOLS */
-.route-tools { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; align-items: start; margin-bottom: 3rem; }
-.route-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; }
-.summary-tile { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; min-height: 96px; }
-.summary-value { font-family: 'Playfair Display', Georgia, serif; color: var(--navy); font-size: 1.8rem; line-height: 1; margin-bottom: 0.3rem; }
-.summary-label { color: var(--muted); font-size: 0.73rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.filter-panel { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; position: sticky; top: 84px; }
-.filter-title { color: var(--navy); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 0.8rem; }
+.route-tools {
+  display: grid; grid-template-columns: minmax(0,1fr) 300px;
+  gap: 1.5rem; align-items: start; margin-bottom: 3rem;
+}
+.route-summary { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.85rem; }
+.summary-tile {
+  background: var(--forest-card); border: 1px solid var(--forest-border);
+  border-radius: var(--r); padding: 1.25rem;
+}
+.summary-value {
+  font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 700;
+  color: var(--amber); line-height: 1; margin-bottom: 0.35rem;
+}
+.summary-label {
+  font-family: 'DM Mono', monospace; font-size: 0.62rem;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-on-dark-muted);
+}
+.filter-panel {
+  background: var(--forest-card); border: 1px solid var(--forest-border);
+  border-radius: var(--r); padding: 1.1rem; position: sticky; top: 68px;
+}
+.filter-title {
+  font-family: 'DM Mono', monospace; font-size: 0.65rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-on-dark-muted); margin-bottom: 0.8rem;
+}
 .filter-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
-.chip { border: 1px solid var(--border); background: var(--bg); color: var(--navy); border-radius: 999px; padding: 0.38rem 0.75rem; font: 700 0.72rem 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; }
-.chip:hover { border-color: var(--navy); }
-.chip.active { background: var(--navy); border-color: var(--navy); color: #fff; }
-.selected-stop { border-top: 1px solid var(--border); padding-top: 0.9rem; }
-.selected-kicker { color: var(--red); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.25rem; }
-.selected-title { font-family: 'Playfair Display', Georgia, serif; color: var(--navy); font-size: 1.25rem; margin-bottom: 0.25rem; }
-.selected-copy { color: var(--muted); font-size: 0.82rem; line-height: 1.6; }
-.empty-state { background: #fff; border: 1px dashed var(--border); border-radius: 8px; padding: 1.4rem; color: var(--muted); font-size: 0.9rem; text-align: center; }
+.chip {
+  font-family: 'DM Mono', monospace; font-size: 0.62rem;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  border: 1px solid var(--forest-border); background: transparent;
+  color: var(--text-on-dark-muted); border-radius: var(--r);
+  padding: 0.35rem 0.75rem; cursor: pointer; transition: all 0.2s;
+}
+.chip:hover { border-color: var(--amber); color: var(--amber); }
+.chip.active { background: var(--amber); border-color: var(--amber); color: var(--forest-deep); }
+.selected-stop {
+  border-top: 1px solid var(--forest-border); padding-top: 0.9rem; margin-top: 0.25rem;
+}
+.selected-kicker {
+  font-family: 'DM Mono', monospace; font-size: 0.62rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); margin-bottom: 0.25rem;
+}
+.selected-title { font-size: 1.3rem; font-weight: 600; color: var(--text-on-dark); margin-bottom: 0.25rem; }
+.selected-copy  { color: var(--text-on-dark-muted); font-size: 0.82rem; line-height: 1.6; }
+.empty-state {
+  background: var(--forest-card); border: 1px dashed var(--forest-border);
+  border-radius: var(--r); padding: 1.4rem; color: var(--text-on-dark-muted);
+  font-size: 0.9rem; text-align: center;
+}
 
 /* TIMELINE */
 .timeline { position: relative; }
-.timeline::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--border); transform: translateX(-50%); }
-.t-item { display: grid; grid-template-columns: 1fr 64px 1fr; margin-bottom: 2.75rem; align-items: start; }
-.t-dot { display: flex; justify-content: center; padding-top: 1.5rem; position: relative; z-index: 1; }
-.dot { width: 38px; height: 38px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; border: 3px solid var(--bg); box-shadow: 0 0 0 2px var(--navy); flex-shrink: 0; }
-.t-meta { padding: 1.75rem 1.25rem; }
-.t-item:nth-child(odd)  .t-meta { grid-column: 3; }
-.t-item:nth-child(even) .t-meta { grid-column: 1; text-align: right; }
-.t-item:nth-child(odd)  .t-card { grid-column: 1; }
-.t-item:nth-child(even) .t-card { grid-column: 3; }
-.t-item:nth-child(odd)  .t-dot,
-.t-item:nth-child(even) .t-dot { grid-column: 2; }
-.stop-date  { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--red); margin-bottom: 0.2rem; }
-.stop-drive { font-size: 0.78rem; color: var(--muted); font-style: italic; margin-top: 0.4rem; line-height: 1.5; }
+.timeline::before {
+  content: ''; position: absolute; left: 15px; top: 0; bottom: 0;
+  width: 1px; background: rgba(201,125,0,0.22);
+}
+.t-item {
+  display: grid; grid-template-columns: 32px 1fr;
+  gap: 1.25rem; margin-bottom: 2.5rem; align-items: start; position: relative;
+}
+.t-item.hidden { display: none; }
+.t-dot { display: flex; justify-content: center; padding-top: 0.5rem; position: relative; z-index: 1; }
+.dot {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--amber); color: var(--forest-deep);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-size: 0.58rem; font-weight: 500;
+  border: 2px solid var(--forest-deep); flex-shrink: 0;
+}
+.t-meta { padding: 0.25rem 0 0.85rem; }
+.stop-date {
+  font-family: 'DM Mono', monospace; font-size: 0.68rem;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--amber); margin-bottom: 0.25rem;
+}
+.stop-drive { font-family: 'DM Mono', monospace; font-size: 0.72rem; font-style: italic; color: var(--text-on-dark-muted); line-height: 1.55; }
 
 /* CARD */
-.t-card { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 1.6rem; border: 1px solid var(--border); transition: transform 0.2s, box-shadow 0.2s; }
-.t-card:hover { transform: translateY(-3px); box-shadow: 0 8px 36px rgba(0,0,0,0.11); }
-.t-card.active { border-color: rgba(200,16,46,0.42); box-shadow: 0 8px 36px rgba(200,16,46,0.14); }
-.t-item.hidden { display: none; }
+.t-card {
+  background: var(--forest-card); border-radius: var(--r);
+  border: 1px solid var(--forest-border); border-left: 2px solid transparent;
+  padding: 1.5rem; box-shadow: 0 2px 24px rgba(0,0,0,0.3);
+  transition: transform 0.2s, box-shadow 0.2s, border-left-color 0.2s;
+}
+.t-card:hover { transform: translateY(-3px); border-left-color: var(--amber); box-shadow: 0 8px 36px rgba(0,0,0,0.45); }
+.t-card.active { border-left-color: var(--amber); }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.85rem; }
-.card-dest   { font-size: 1.35rem; font-family: 'Playfair Display', Georgia, serif; color: var(--navy); }
-.card-region { font-size: 0.82rem; color: var(--muted); margin-top: 0.1rem; }
-.card-nights { background: var(--navy); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 0.22rem 0.6rem; border-radius: 2rem; white-space: nowrap; flex-shrink: 0; margin-top: 0.2rem; }
+.card-dest   { font-size: 1.35rem; font-weight: 600; color: var(--text-on-dark); }
+.card-region { font-family: 'DM Mono', monospace; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-on-dark-muted); margin-top: 0.2rem; }
+.card-nights {
+  font-family: 'DM Mono', monospace; font-size: 0.62rem; font-weight: 500;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  background: var(--amber); color: var(--forest-deep);
+  padding: 0.22rem 0.65rem; border-radius: var(--r); white-space: nowrap; flex-shrink: 0; margin-top: 0.2rem;
+}
 .tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
-.tag { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.18rem 0.6rem; border-radius: 2rem; }
-.tag-city    { background: #eef2f5; color: var(--city); }
-.tag-historic{ background: #fdf6e3; color: var(--historic); }
-.tag-nature  { background: #edf5f0; color: var(--nature); }
-.tag-offbeat { background: #f3eeff; color: var(--offbeat); }
-.card-desc { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.9rem; line-height: 1.65; }
+.tag {
+  font-family: 'DM Mono', monospace; font-size: 0.58rem; font-weight: 400;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 0.18rem 0.6rem; border-radius: var(--r);
+  background: rgba(255,255,255,0.06); color: var(--text-on-dark-muted);
+}
+.card-desc { font-size: 0.9rem; color: var(--text-on-dark-muted); margin-bottom: 0.9rem; line-height: 1.65; }
 .card-highlights { list-style: none; margin-bottom: 1.1rem; }
-.card-highlights li { font-size: 0.83rem; padding: 0.28rem 0 0.28rem 1.2rem; position: relative; border-bottom: 1px solid var(--border); }
+.card-highlights li {
+  font-size: 0.83rem; color: var(--text-on-dark-muted);
+  padding: 0.28rem 0 0.28rem 1.2rem; position: relative;
+  border-bottom: 1px solid var(--forest-border);
+}
 .card-highlights li:last-child { border-bottom: none; }
-.card-highlights li::before { content: '→'; position: absolute; left: 0; color: var(--red); font-size: 0.78rem; }
-.btn-fly { display: inline-flex; align-items: center; gap: 0.35rem; background: none; border: 1px solid var(--navy); color: var(--navy); padding: 0.45rem 0.9rem; border-radius: 2rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-.btn-fly:hover { background: var(--navy); color: #fff; }
+.card-highlights li::before { content: '→'; position: absolute; left: 0; color: var(--amber); font-size: 0.75rem; }
+.btn-fly {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.07em; text-transform: uppercase;
+  background: none; border: 1px solid rgba(201,125,0,0.35); color: var(--amber);
+  padding: 0.4rem 0.85rem; border-radius: var(--r); cursor: pointer; transition: all 0.2s;
+}
+.btn-fly:hover { background: var(--amber); color: var(--forest-deep); }
 
 /* CULINARY */
-#culinary-section { background: var(--navy); }
-.cul-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; }
-.cul-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: var(--r); padding: 1.6rem; transition: all 0.2s; }
-.cul-card:hover { background: rgba(255,255,255,0.09); transform: translateY(-2px); }
-.cul-icon   { font-size: 2.4rem; margin-bottom: 0.85rem; }
-.cul-name   { font-size: 1.2rem; font-family: 'Playfair Display', Georgia, serif; color: #fff; margin-bottom: 0.2rem; }
-.cul-region { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 0.7rem; }
-.cul-desc   { font-size: 0.86rem; color: rgba(255,255,255,0.62); margin-bottom: 1.1rem; line-height: 1.65; }
-.cul-label  { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 0.4rem; }
+.cul-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.4rem; }
+.cul-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--r); padding: 1.5rem; transition: all 0.2s;
+}
+.cul-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-3px); }
+.cul-icon   { font-size: 2.2rem; margin-bottom: 0.85rem; }
+.cul-name   { font-size: 1.2rem; font-weight: 600; color: var(--text-on-dark); margin-bottom: 0.2rem; }
+.cul-region { font-family: 'DM Mono', monospace; font-size: 0.62rem; letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 0.7rem; }
+.cul-desc   { font-size: 0.86rem; color: rgba(212,202,176,0.62); margin-bottom: 1.1rem; line-height: 1.65; }
+.cul-label  { font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(212,202,176,0.35); margin-bottom: 0.4rem; }
 .cul-list   { list-style: none; }
-.cul-list li { font-size: 0.8rem; color: rgba(255,255,255,0.72); padding: 0.18rem 0 0.18rem 1rem; position: relative; }
-.cul-list li::before { content: '·'; position: absolute; left: 0; color: var(--red); font-size: 1.1rem; line-height: 0.9; }
+.cul-list li { font-size: 0.8rem; color: rgba(212,202,176,0.68); padding: 0.18rem 0 0.18rem 1.1rem; position: relative; }
+.cul-list li::before { content: '·'; position: absolute; left: 0; color: var(--amber); font-size: 1.1rem; line-height: 0.9; }
 
 /* ACCOMMODATION */
-#accom-section { background: #fff; }
-.accom-tip { background: #fdf6e3; border-left: 3px solid var(--historic); padding: 0.9rem 1.2rem; border-radius: 0 8px 8px 0; margin-bottom: 2.25rem; font-size: 0.88rem; color: #6b4f10; line-height: 1.6; }
-.table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--border); }
+#accom-section { background: var(--birch); }
+.accom-tip {
+  background: #f9f2e6; border-left: 3px solid var(--amber);
+  padding: 0.9rem 1.2rem; border-radius: 0 var(--r) var(--r) 0; margin-bottom: 2.25rem;
+  font-size: 0.88rem; color: var(--text-on-light); line-height: 1.6;
+}
+.table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--birch-border); }
 table { width: 100%; border-collapse: collapse; }
-thead th { background: var(--navy); color: rgba(255,255,255,0.88); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.9rem 1.1rem; text-align: left; white-space: nowrap; }
-tbody td { padding: 0.9rem 1.1rem; font-size: 0.86rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+thead th {
+  background: var(--forest-deep); color: rgba(212,202,176,0.85);
+  font-family: 'DM Mono', monospace; font-size: 0.65rem; font-weight: 400;
+  letter-spacing: 0.09em; text-transform: uppercase; padding: 0.9rem 1.1rem;
+  text-align: left; white-space: nowrap;
+}
+tbody td { padding: 0.9rem 1.1rem; font-size: 0.86rem; border-bottom: 1px solid var(--birch-border); vertical-align: middle; color: var(--text-on-light); }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:nth-child(even) td { background: var(--bg); }
-tbody td:first-child { font-weight: 600; color: var(--navy); }
-.badge { display: inline-flex; align-items: center; font-size: 0.75rem; font-weight: 600; padding: 0.18rem 0.55rem; border-radius: 2rem; }
-.b-free { background: #d4edda; color: #155724; }
-.b-mod  { background: #fff3cd; color: #856404; }
-.ok { color: var(--nature); font-weight: 700; }
-.no { color: #aaa; }
-.td-note { color: var(--muted); font-size: 0.8rem; }
+tbody tr:nth-child(even) td { background: rgba(0,0,0,0.025); }
+tbody td:first-child { font-weight: 600; color: var(--text-on-light); }
+.badge { display: inline-flex; align-items: center; font-size: 0.72rem; font-weight: 500; padding: 0.18rem 0.55rem; border-radius: var(--r); font-family: 'DM Mono', monospace; }
+.b-free { background: rgba(201,125,0,0.12); color: var(--amber); }
+.b-mod  { background: rgba(0,0,0,0.07); color: var(--text-on-light-muted); }
+.ok  { color: var(--amber); font-weight: 700; }
+.no  { color: #bbb; }
+.td-note { color: var(--text-on-light-muted); font-size: 0.8rem; }
 
 /* FOOTER */
-footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center; padding: 4rem 2rem; }
+footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: center; padding: 4rem 2rem; }
 .footer-stats { display: flex; gap: 3.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2.5rem; }
-.stat-val { font-family: 'Playfair Display', Georgia, serif; font-size: 2.75rem; color: #fff; line-height: 1; margin-bottom: 0.2rem; }
-.stat-lbl { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-.footer-div { width: 36px; height: 1px; background: rgba(255,255,255,0.1); margin: 2rem auto; }
+.stat-val { font-family: 'Cormorant Garamond', serif; font-size: 3rem; font-weight: 700; color: var(--text-on-dark); line-height: 1; margin-bottom: 0.25rem; }
+.stat-lbl { font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; }
+.footer-div { width: 36px; height: 1px; background: var(--forest-border); margin: 2rem auto; }
 .footer-txt { font-size: 0.83rem; line-height: 1.75; }
-.build-indicator { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 1rem; color: rgba(255,255,255,0.58); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
-.build-dot { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 3px rgba(200,16,46,0.18); }
+.build-indicator {
+  display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 1rem;
+  font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-on-dark-muted);
+}
+.build-dot { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 3px rgba(201,125,0,0.18); }
 
 /* MAP MARKERS */
 .map-marker {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: var(--navy); color: #fff;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--forest-card); color: var(--text-on-dark);
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.68rem; font-weight: 700;
-  border: 2.5px solid #fff;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
-  cursor: pointer; transition: transform 0.15s, background 0.15s;
-  font-family: 'Inter', sans-serif;
+  font-family: 'DM Mono', monospace; font-size: 0.58rem; font-weight: 500;
+  border: 2px solid rgba(212,202,176,0.3);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  cursor: pointer; transition: transform 0.15s, background 0.15s, border-color 0.15s;
 }
-.map-marker:hover, .map-marker.active { transform: scale(1.25); background: var(--red); }
+.map-marker:hover, .map-marker.active { transform: scale(1.3); background: var(--amber); color: var(--forest-deep); border-color: var(--amber); }
 
-/* MapLibre attribution */
+/* SCROLL REVEAL */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+[data-reveal].in { opacity: 1; transform: translateY(0); }
+
+/* MapLibre */
 .maplibregl-ctrl-attrib { font-size: 0.7rem !important; }
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .route-tools { grid-template-columns: 1fr; }
-  .route-summary { grid-template-columns: repeat(2, 1fr); }
+  .route-summary { grid-template-columns: repeat(2,1fr); }
   .filter-panel { position: static; }
-  .timeline::before { left: 19px; }
-  .t-item { grid-template-columns: 40px 1fr; }
-  .t-item:nth-child(odd)  .t-card,
-  .t-item:nth-child(even) .t-card { grid-column: 2; grid-row: 1; }
-  .t-item:nth-child(odd)  .t-dot,
-  .t-item:nth-child(even) .t-dot  { grid-column: 1; grid-row: 1; }
-  .t-item:nth-child(odd)  .t-meta,
-  .t-item:nth-child(even) .t-meta { grid-column: 2; grid-row: 2; text-align: left; padding: 0.25rem 0 0; }
   .cul-grid { grid-template-columns: 1fr 1fr; }
   .nav-links { display: none; }
+  .section-num { font-size: 7rem; }
 }
 @media (max-width: 580px) {
   #hero { height: 85vh; }
@@ -224,11 +358,17 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
   .route-summary { grid-template-columns: 1fr; }
   .cul-grid { grid-template-columns: 1fr; }
   .section-wrap { padding: 3rem 1.25rem; }
+  .section-num { font-size: 4.5rem; top: 1.5rem; right: 1rem; }
   .card-head { flex-direction: column; }
+  .t-item { grid-template-columns: 24px 1fr; gap: 0.85rem; }
+  .dot { width: 22px; height: 22px; font-size: 0.5rem; }
+  .timeline::before { left: 11px; }
 }
 </style>
 </head>
 <body>
+
+<div class="grain"></div>
 
 <nav id="nav">
   <a class="nav-logo" href="#hero">Sweden <em>▲</em> 2026</a>
@@ -260,37 +400,42 @@ footer { background: #0f1b28; color: rgba(255,255,255,0.45); text-align: center;
 
 <section id="itinerary">
   <div class="section-wrap">
-    <div class="section-label">Day by Day</div>
-    <h2 class="section-title">The Full Route</h2>
-    <p class="section-desc">21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.</p>
+    <span class="section-num">01</span>
+    <div class="section-label" data-reveal>Day by Day</div>
+    <h2 class="section-title" data-reveal style="transition-delay:0.08s">The Full Route</h2>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s">21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.</p>
     <div class="route-tools">
-      <div class="route-summary" id="route-summary"></div>
+      <div>
+        <div class="route-summary" id="route-summary"></div>
+        <div class="timeline" id="timeline"></div>
+      </div>
       <aside class="filter-panel" aria-label="Route filters">
         <div class="filter-title">Route Focus</div>
         <div class="filter-chips" id="filter-chips"></div>
         <div class="selected-stop" id="selected-stop"></div>
       </aside>
     </div>
-    <div class="timeline" id="timeline"></div>
   </div>
 </section>
 
 <section id="culinary-section">
   <div class="section-wrap">
-    <div class="section-label" style="color:var(--red)">Eat &amp; Drink</div>
-    <h2 class="section-title" style="color:#fff">Culinary Highlights</h2>
-    <p class="section-desc" style="color:rgba(255,255,255,0.58)">Six distinct food cultures — Gothenburg shellfish, Dalarna game, High Coast smoked fish, and Stockholm's new Nordic kitchen.</p>
+    <span class="section-num">02</span>
+    <div class="section-label" data-reveal>Eat &amp; Drink</div>
+    <h2 class="section-title" data-reveal style="transition-delay:0.08s">Culinary Highlights</h2>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s">Six distinct food cultures — Gothenburg shellfish, Dalarna game, High Coast smoked fish, and Stockholm's new Nordic kitchen.</p>
     <div class="cul-grid" id="cul-grid"></div>
   </div>
 </section>
 
 <section id="accom-section">
   <div class="section-wrap">
-    <div class="section-label">Where to Sleep</div>
-    <h2 class="section-title">Accommodation Guide</h2>
-    <p class="section-desc">All stops filtered for: free cancellation · private bathroom · terrace or balcony where available.</p>
-    <div class="accom-tip"><strong>Booking tip:</strong> Use Booking.com's "Free cancellation" filter. For lake lodges and Höga Kusten, book 2–3 months ahead — they sell out. Search <em>gäststugor</em> (guest cottages) directly for the most authentic Swedish stays.</div>
-    <div class="table-wrap">
+    <span class="section-num">03</span>
+    <div class="section-label" data-reveal>Where to Sleep</div>
+    <h2 class="section-title" data-reveal style="transition-delay:0.08s">Accommodation Guide</h2>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s">All stops filtered for: free cancellation · private bathroom · terrace or balcony where available.</p>
+    <div class="accom-tip" data-reveal style="transition-delay:0.18s"><strong>Booking tip:</strong> Use Booking.com's "Free cancellation" filter. For lake lodges and Höga Kusten, book 2–3 months ahead — they sell out. Search <em>gäststugor</em> (guest cottages) directly for the most authentic Swedish stays.</div>
+    <div class="table-wrap" data-reveal style="transition-delay:0.22s">
       <table>
         <thead>
           <tr>
@@ -397,12 +542,12 @@ const STOPS = [
 ];
 
 const CULINARY = [
-  { name:"Fika",                 region:"Nationwide",             icon:"☕", color:"#8b6914", desc:"The sacred Swedish coffee break — a social ritual of cinnamon and cardamom buns taken twice daily. Fika is built into the working day and is a national institution, not just a coffee habit.", must:["Kanelbullar (cinnamon bun)","Kardemummabulle (cardamom bun)","Kladdkaka (sticky chocolate cake)","Semla (cream-filled cardamom bun)"] },
-  { name:"West Coast Seafood",   region:"Gothenburg & Bohuslän",  icon:"🦐", color:"#2d6a9f", desc:"Bohuslän produces some of Europe's finest shellfish. September crayfish parties (kräftskiva) are a cultural institution — bib mandatory, aquavit obligatory. Feskekörka fish market is a rite of passage.", must:["Räksmörgås (shrimp open sandwich)","Fresh oysters from the fjords","Kräftskiva (crayfish party boil)","Hummer (grilled lobster)","Gothenburg fish soup"] },
-  { name:"Skåne Smörgåsbord",   region:"Southern Sweden",         icon:"🐟", color:"#4a7c59", desc:"The south Swedish table is generous — multiple preparations of herring, gravlax, meatballs, and seasonal vegetables. Skåne is Sweden's agricultural heartland with a slightly French-influenced food culture.", must:["Inlagd sill (pickled herring, 6 ways)","Gravad lax with mustard-dill sauce","Köttbullar med lingon (meatballs)","Fläskpannkaka (bacon pancake)","Smörgåstårta (savoury sandwich cake)"] },
-  { name:"Forest & Game",        region:"Dalarna & Värmland",      icon:"🦌", color:"#7a5c3e", desc:"Central Sweden's forests yield elk, reindeer, and wild game. September is peak chanterelle season. Farm stands overflow with lingonberries, cloudberries, and blueberries — the real taste of Swedish autumn.", must:["Älgbiff (elk steak)","Rensktek (slow-cooked reindeer)","Chanterelle toast with forest cream","Cloudberries with fresh cream","Blåbärssoppa (warm blueberry soup)"] },
-  { name:"High Coast Smoked Fish",region:"Höga Kusten",            icon:"🐠", color:"#5a6b7a", desc:"Ancient preservation traditions survive on the High Coast. Surströmming — fermented herring with a legendary aroma — is consumed here in its heartland. Cold-smoked salmon is the more approachable entry point.", must:["Surströmming (fermented herring — an experience)","Kallrökt lax (cold-smoked salmon)","Rökt abborre (smoked perch)","Chanterelles on sourdough","Local herb aquavit"] },
-  { name:"Stockholm Nordic Kitchen",region:"Stockholm",            icon:"🍽️", color:"#c8102e", desc:"Stockholm leads the New Nordic movement — ancient Swedish ingredients reinterpreted with fine-dining technique. The Östermalm food hall is Scandinavia's finest market. Book tasting menus well ahead.", must:["Östermalm food hall tasting","Classic smörgåsbord at Operakällaren","Strömming (fried herring) street food","New Nordic tasting menu","Swedish craft aquavit tasting"] }
+  { name:"Fika",                 region:"Nationwide",             icon:"☕", color:"#c97d00", desc:"The sacred Swedish coffee break — a social ritual of cinnamon and cardamom buns taken twice daily. Fika is built into the working day and is a national institution, not just a coffee habit.", must:["Kanelbullar (cinnamon bun)","Kardemummabulle (cardamom bun)","Kladdkaka (sticky chocolate cake)","Semla (cream-filled cardamom bun)"] },
+  { name:"West Coast Seafood",   region:"Gothenburg & Bohuslän",  icon:"🦐", color:"#748870", desc:"Bohuslän produces some of Europe's finest shellfish. September crayfish parties (kräftskiva) are a cultural institution — bib mandatory, aquavit obligatory. Feskekörka fish market is a rite of passage.", must:["Räksmörgås (shrimp open sandwich)","Fresh oysters from the fjords","Kräftskiva (crayfish party boil)","Hummer (grilled lobster)","Gothenburg fish soup"] },
+  { name:"Skåne Smörgåsbord",   region:"Southern Sweden",         icon:"🐟", color:"#748870", desc:"The south Swedish table is generous — multiple preparations of herring, gravlax, meatballs, and seasonal vegetables. Skåne is Sweden's agricultural heartland with a slightly French-influenced food culture.", must:["Inlagd sill (pickled herring, 6 ways)","Gravad lax with mustard-dill sauce","Köttbullar med lingon (meatballs)","Fläskpannkaka (bacon pancake)","Smörgåstårta (savoury sandwich cake)"] },
+  { name:"Forest & Game",        region:"Dalarna & Värmland",      icon:"🦌", color:"#748870", desc:"Central Sweden's forests yield elk, reindeer, and wild game. September is peak chanterelle season. Farm stands overflow with lingonberries, cloudberries, and blueberries — the real taste of Swedish autumn.", must:["Älgbiff (elk steak)","Rensktek (slow-cooked reindeer)","Chanterelle toast with forest cream","Cloudberries with fresh cream","Blåbärssoppa (warm blueberry soup)"] },
+  { name:"High Coast Smoked Fish",region:"Höga Kusten",            icon:"🐠", color:"#748870", desc:"Ancient preservation traditions survive on the High Coast. Surströmming — fermented herring with a legendary aroma — is consumed here in its heartland. Cold-smoked salmon is the more approachable entry point.", must:["Surströmming (fermented herring — an experience)","Kallrökt lax (cold-smoked salmon)","Rökt abborre (smoked perch)","Chanterelles on sourdough","Local herb aquavit"] },
+  { name:"Stockholm Nordic Kitchen",region:"Stockholm",            icon:"🍽️", color:"#c97d00", desc:"Stockholm leads the New Nordic movement — ancient Swedish ingredients reinterpreted with fine-dining technique. The Östermalm food hall is Scandinavia's finest market. Book tasting menus well ahead.", must:["Östermalm food hall tasting","Classic smörgåsbord at Operakällaren","Strömming (fried herring) street food","New Nordic tasting menu","Swedish craft aquavit tasting"] }
 ];
 
 const ACCOMMODATIONS = [
@@ -430,18 +575,18 @@ function tagLabel(tag) {
 }
 
 function renderRouteTools() {
-  const totalNights = STOPS.reduce((sum, s) => sum + s.nights, 0);
-  const totalKm = STOPS.reduce((sum, s) => sum + s.km, 0);
+  const totalNights  = STOPS.reduce((sum, s) => sum + s.nights, 0);
+  const totalKm      = STOPS.reduce((sum, s) => sum + s.km, 0);
   const longestDrive = STOPS.reduce((max, s) => s.km > max.km ? s : max, STOPS[0]);
   const overnightStops = STOPS.filter(s => s.nights > 0).length;
 
   document.getElementById('route-summary').innerHTML = [
-    { value: `${totalNights}`, label: 'Planned nights' },
+    { value: `${totalNights}`,              label: 'Planned nights' },
     { value: totalKm.toLocaleString('en-US'), label: 'Road kilometres' },
-    { value: `${overnightStops}`, label: 'Overnight stops' },
-    { value: `${longestDrive.km} km`, label: `Longest drive to ${longestDrive.dest}` }
-  ].map(item => `
-    <div class="summary-tile">
+    { value: `${overnightStops}`,           label: 'Overnight stops' },
+    { value: `${longestDrive.km} km`,       label: `Longest drive to ${longestDrive.dest}` }
+  ].map((item, i) => `
+    <div class="summary-tile" data-reveal style="transition-delay:${0.05 + i * 0.06}s">
       <div class="summary-value">${item.value}</div>
       <div class="summary-label">${item.label}</div>
     </div>`).join('');
@@ -475,13 +620,10 @@ function renderSelectedStop() {
 function selectStop(stop, options = {}) {
   selectedStopId = stop.id;
   renderSelectedStop();
-
   document.querySelectorAll('.t-card').forEach(card => card.classList.remove('active'));
   document.getElementById(`stop-${stop.id}`)?.classList.add('active');
-
   markerEls.forEach(el => el.classList.remove('active'));
   markerEls.get(stop.id)?.classList.add('active');
-
   if (options.fly !== false) flyTo(stop);
   if (options.scroll) {
     const card = document.getElementById(`stop-${stop.id}`);
@@ -515,40 +657,38 @@ function applyTimelineFilter() {
 
 function renderTimeline() {
   const tl = document.getElementById('timeline');
-  tl.innerHTML = STOPS.map(s => {
+  tl.innerHTML = STOPS.map((s, idx) => {
     const tags   = s.tags.map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('');
     const nights = s.nights===0 ? 'Day trip' : s.nights===1 ? '1 night' : `${s.nights} nights`;
     const drive  = s.km > 0
       ? `<div class="stop-drive">🚗 from ${s.from}<br>${s.km} km · ${s.time}</div>`
       : `<div class="stop-drive">⛴️ ${s.from}</div>`;
 
-    const card = `<div class="t-card" id="stop-${s.id}">
-      <div class="card-head">
-        <div><div class="card-dest">${s.dest}</div><div class="card-region">${s.region}</div></div>
-        <div class="card-nights">${nights}</div>
+    return `<div class="t-item" data-tags="${s.tags.join(',')}" data-reveal style="transition-delay:${idx * 0.04}s">
+      <div class="t-dot"><div class="dot">${s.id}</div></div>
+      <div>
+        <div class="t-meta">
+          <div class="stop-date">Day ${s.days} · ${s.dates}</div>
+          ${drive}
+        </div>
+        <div class="t-card" id="stop-${s.id}">
+          <div class="card-head">
+            <div><div class="card-dest">${s.dest}</div><div class="card-region">${s.region}</div></div>
+            <div class="card-nights">${nights}</div>
+          </div>
+          <div class="tags">${tags}</div>
+          <p class="card-desc">${s.desc}</p>
+          <ul class="card-highlights">${s.highlights.map(h=>`<li>${h}</li>`).join('')}</ul>
+          <button class="btn-fly" data-id="${s.id}">🗺 Fly here</button>
+        </div>
       </div>
-      <div class="tags">${tags}</div>
-      <p class="card-desc">${s.desc}</p>
-      <ul class="card-highlights">${s.highlights.map(h=>`<li>${h}</li>`).join('')}</ul>
-      <button class="btn-fly" data-id="${s.id}">🗺 Fly here</button>
     </div>`;
-
-    const meta = `<div class="t-meta">
-      <div class="stop-date">Day ${s.days} · ${s.dates}</div>
-      ${drive}
-    </div>`;
-
-    const dot = `<div class="t-dot"><div class="dot">${s.id}</div></div>`;
-    return `<div class="t-item" data-tags="${s.tags.join(',')}">${card}${dot}${meta}</div>`;
   }).join('');
 
   tl.querySelectorAll('.btn-fly').forEach(btn => {
     btn.addEventListener('click', () => {
       const stop = STOPS.find(s => s.id === +btn.dataset.id);
-      if (stop) {
-        selectStop(stop);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      if (stop) { selectStop(stop); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     });
   });
 
@@ -565,8 +705,8 @@ function renderTimeline() {
 }
 
 function renderCulinary() {
-  document.getElementById('cul-grid').innerHTML = CULINARY.map(c => `
-    <div class="cul-card">
+  document.getElementById('cul-grid').innerHTML = CULINARY.map((c, i) => `
+    <div class="cul-card" data-reveal style="transition-delay:${i * 0.08}s">
       <div class="cul-icon">${c.icon}</div>
       <div class="cul-name">${c.name}</div>
       <div class="cul-region" style="color:${c.color}">${c.region}</div>
@@ -593,7 +733,6 @@ function renderAccommodation() {
 async function renderBuildIndicator() {
   const el = document.getElementById('build-indicator');
   if (!el) return;
-
   try {
     const response = await fetch('./build-info.json', { cache: 'no-store' });
     if (!response.ok) throw new Error('Missing build info');
@@ -607,7 +746,33 @@ async function renderBuildIndicator() {
   }
 }
 
-/* ── MAP (MapLibre GL JS — no token required) ────────────────────────────── */
+/* ── SCROLL REVEAL ───────────────────────────────────────────────────────── */
+function initReveal() {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("in");
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -50px 0px" }
+  );
+
+  document.querySelectorAll("[data-stagger]").forEach((parent) => {
+    Array.from(parent.children).forEach((child, index) => {
+      child.setAttribute("data-reveal", "");
+      child.style.transitionDelay = index * 0.08 + "s";
+    });
+  });
+
+  document.querySelectorAll("[data-reveal]").forEach((el) => {
+    observer.observe(el);
+  });
+}
+
+/* ── MAP ─────────────────────────────────────────────────────────────────── */
 let map, flyIdx = 0, isFlying = false;
 const markerEls = new Map();
 
@@ -616,100 +781,61 @@ function initMap() {
     showMapFallback('Interactive map assets could not load. The itinerary remains fully usable below.');
     return;
   }
-
   map = new maplibregl.Map({
     container: 'map',
     style: 'https://tiles.openfreemap.org/styles/liberty',
-    center: [16.5, 62.0],
-    zoom: 4.5,
-    pitch: 28,
-    bearing: 0,
-    antialias: true
+    center: [16.5, 62.0], zoom: 4.5, pitch: 28, bearing: 0, antialias: true
   });
-
   map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
   map.on('load', onMapLoad);
   map.on('error', () => showMapFallback('Some map tiles are unavailable right now. Route cards and filters still work.'));
 }
 
 function onMapLoad() {
-  /* 3D terrain via AWS open elevation tiles (Mapzen Terrarium, no key needed) */
   map.addSource('terrain', {
     type: 'raster-dem',
     tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-    encoding: 'terrarium',
-    tileSize: 256,
-    maxzoom: 14
+    encoding: 'terrarium', tileSize: 256, maxzoom: 14
   });
   map.setTerrain({ source: 'terrain', exaggeration: 2.0 });
-
-  /* Sky / atmosphere */
   map.setSky({
-    'sky-color': '#b8d4e8',
-    'sky-horizon-blend': 0.5,
-    'horizon-color': '#d4e8f4',
-    'horizon-fog-blend': 0.4,
-    'fog-color': '#c8dcea',
-    'fog-ground-blend': 0.9,
-    'atmosphere-blend': 0.4
+    'sky-color': '#b8d4e8', 'sky-horizon-blend': 0.5,
+    'horizon-color': '#d4e8f4', 'horizon-fog-blend': 0.4,
+    'fog-color': '#c8dcea', 'fog-ground-blend': 0.9, 'atmosphere-blend': 0.4
   });
-
-  /* Route source — starts empty, drawn progressively */
   map.addSource('route', {
     type: 'geojson',
     data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
   });
-
-  /* Glow layer beneath the route line */
-  map.addLayer({
-    id: 'route-glow',
-    type: 'line',
-    source: 'route',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#c8102e', 'line-width': 10, 'line-opacity': 0.18, 'line-blur': 8 }
-  });
-
-  /* Main route line */
-  map.addLayer({
-    id: 'route-line',
-    type: 'line',
-    source: 'route',
-    layout: { 'line-cap': 'butt', 'line-join': 'round' },
-    paint: { 'line-color': '#c8102e', 'line-width': 2.5, 'line-opacity': 0.95 }
-  });
-
+  map.addLayer({ id:'route-glow', type:'line', source:'route',
+    layout: { 'line-cap':'round','line-join':'round' },
+    paint: { 'line-color':'#c97d00','line-width':10,'line-opacity':0.16,'line-blur':8 } });
+  map.addLayer({ id:'route-line', type:'line', source:'route',
+    layout: { 'line-cap':'butt','line-join':'round' },
+    paint: { 'line-color':'#c97d00','line-width':2.5,'line-opacity':0.95 } });
   addMarkers();
   animateDraw();
-
 }
 
 function animateDraw() {
   const all = STOPS.map(s => s.coords);
   const STEPS = 160;
   let step = 0;
-
   function frame() {
     step++;
     const frac  = Math.min(step / STEPS, 1);
-    const eased = 1 - Math.pow(1 - frac, 3);          // cubic ease-out
+    const eased = 1 - Math.pow(1 - frac, 3);
     const ti    = eased * (all.length - 1);
     const base  = Math.floor(ti);
     const seg   = ti - base;
-
     const coords = all.slice(0, base + 1);
     if (base < all.length - 1) {
-      const [ax, ay] = all[base], [bx, by] = all[base + 1];
-      coords.push([ax + (bx - ax) * seg, ay + (by - ay) * seg]);
+      const [ax,ay] = all[base], [bx,by] = all[base+1];
+      coords.push([ax + (bx-ax)*seg, ay + (by-ay)*seg]);
     }
-
-    map.getSource('route').setData({
-      type: 'Feature',
-      geometry: { type: 'LineString', coordinates: coords }
-    });
-
+    map.getSource('route').setData({ type:'Feature', geometry:{ type:'LineString', coordinates:coords } });
     if (frac < 1) requestAnimationFrame(frame);
   }
-
   setTimeout(() => requestAnimationFrame(frame), 1000);
 }
 
@@ -719,15 +845,8 @@ function addMarkers() {
     el.className = 'map-marker';
     el.textContent = stop.id;
     el.title = stop.dest;
-
-    el.addEventListener('click', () => {
-      selectStop(stop, { scroll: true });
-    });
-
-    new maplibregl.Marker({ element: el, anchor: 'center' })
-      .setLngLat(stop.coords)
-      .addTo(map);
-
+    el.addEventListener('click', () => selectStop(stop, { scroll: true }));
+    new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(stop.coords).addTo(map);
     markerEls.set(stop.id, el);
   });
 }
@@ -736,7 +855,6 @@ function showMapFallback(message) {
   const mapEl = document.getElementById('map');
   mapEl.classList.add('map-fallback');
   if (document.querySelector('.map-message')) return;
-
   const note = document.createElement('div');
   note.className = 'map-message';
   note.textContent = message;
@@ -747,28 +865,16 @@ function flyTo(stop) {
   if (!map) return;
   markerEls.forEach(el => el.classList.remove('active'));
   markerEls.get(stop.id)?.classList.add('active');
-  map.flyTo({
-    center:   stop.coords,
-    zoom:     stop.zoom,
-    pitch:    stop.pitch,
-    bearing:  stop.bearing,
-    duration: 2800,
-    essential: true
-  });
+  map.flyTo({ center: stop.coords, zoom: stop.zoom, pitch: stop.pitch, bearing: stop.bearing, duration: 2800, essential: true });
 }
 
 function toggleFlythrough() {
-  if (!map) {
-    showMapFallback('The route flythrough needs the interactive map assets. The itinerary cards are ready below.');
-    return;
-  }
-
+  if (!map) { showMapFallback('The route flythrough needs the interactive map. The itinerary cards are ready below.'); return; }
   if (isFlying) {
     isFlying = false;
     document.getElementById('btn-fly').textContent = '▶ Fly the Route';
   } else {
-    isFlying = true;
-    flyIdx = 0;
+    isFlying = true; flyIdx = 0;
     document.getElementById('btn-fly').textContent = '⏸ Stop';
     flyStep();
   }
@@ -795,6 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderBuildIndicator();
   document.getElementById('btn-fly').addEventListener('click', toggleFlythrough);
   initMap();
+  initReveal();
 
   window.addEventListener('scroll', () => {
     document.getElementById('nav').classList.toggle('scrolled', scrollY > 60);
