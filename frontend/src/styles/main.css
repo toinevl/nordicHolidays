@@ -358,7 +358,7 @@ footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: cent
 
 /* ── STATUS BAR ─────────────────────────────────────────────────────────── */
 .status-bar {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 110;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.5rem 1rem;
   background: rgba(11, 22, 16, 0.92);
