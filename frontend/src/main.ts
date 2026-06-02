@@ -68,16 +68,17 @@ const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: strin
   toast.success(`Loaded "${name}"`)
 })
 
-const generatorPanel = new GeneratorPanel(store, async (itinerary: Itinerary) => {
-  loadingOverlay.classList.remove('hidden')
-  try {
+const generatorPanel = new GeneratorPanel(
+  store,
+  (itinerary: Itinerary) => {
     store.setState({ currentItinerary: itinerary, unsaved: true, activeTripName: null })
     applyItinerary(itinerary)
     toast.success('Itinerary generated! Save it in My Trips.')
-  } finally {
-    loadingOverlay.classList.add('hidden')
+  },
+  (msg: string) => {
+    toast.error(`Generation failed: ${msg}`)
   }
-})
+)
 
 store.subscribe(() => statusBar.syncFromStore(store))
 

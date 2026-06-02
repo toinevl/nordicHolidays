@@ -3,16 +3,19 @@ import type { Store } from '../store'
 import { apiClient } from '../api/client'
 
 export type GenerateCallback = (itinerary: Itinerary) => void
+export type GenerateErrorCallback = (message: string) => void
 
 export class GeneratorPanel {
   private overlay: HTMLElement
   private panel: HTMLElement
   private store: Store
   private onGenerate: GenerateCallback
+  private onError: GenerateErrorCallback
 
-  constructor(store: Store, onGenerate: GenerateCallback) {
+  constructor(store: Store, onGenerate: GenerateCallback, onError: GenerateErrorCallback = () => {}) {
     this.store = store
     this.onGenerate = onGenerate
+    this.onError = onError
     this.overlay = document.createElement('div')
     this.overlay.className = 'panel-overlay hidden'
     this.panel = document.createElement('div')
@@ -151,7 +154,7 @@ export class GeneratorPanel {
       this.close()
     } catch (err) {
       this.store.setState({ isGenerating: false })
-      throw err
+      this.onError(err instanceof Error ? err.message : 'Generation failed')
     } finally {
       btn.textContent = 'Generate Itinerary'
       btn.disabled = false
