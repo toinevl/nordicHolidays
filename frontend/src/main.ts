@@ -5,13 +5,22 @@ import { ItineraryView } from './components/ItineraryView'
 import { StatusBar } from './components/StatusBar'
 import { GeneratorPanel } from './components/GeneratorPanel'
 import { SavedTripsPanel } from './components/SavedTripsPanel'
+import { Toast } from './components/Toast'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
 import type { Itinerary } from './types'
 
 const store = createStore()
+const toast = new Toast()
 
-let isFlying = false
-let flyIdx = 0
+const loadingOverlay = document.createElement('div')
+loadingOverlay.className = 'loading-overlay hidden'
+loadingOverlay.innerHTML = `
+  <div class="loading-spinner">
+    <div class="spinner-ring"></div>
+    <p class="spinner-label">Generating your itinerary...</p>
+  </div>
+`
+document.body.appendChild(loadingOverlay)
 
 const itineraryView = new ItineraryView(
   (filter) => {
@@ -41,20 +50,44 @@ const statusBar = new StatusBar(
   () => savedPanel.open()
 )
 
+function applyItinerary(itinerary: Itinerary): void {
+  itineraryView.renderFromItinerary(itinerary)
+  const stopsForMap = itinerary.stops.map((s, i) => ({
+    id: i + 1, days: String(s.day), dates: '', dest: s.city, region: s.region,
+    coords: [s.lng, s.lat] as [number, number], tags: [], nights: s.nights,
+    desc: '', highlights: s.highlights, from: '', km: 0, time: '',
+    zoom: 12, pitch: 45, bearing: 0,
+  }))
+  mapView.replaceStops(stopsForMap)
+  statusBar.syncFromStore(store)
+}
+
 const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: string, _id: string) => {
   store.setState({ currentItinerary: itinerary, activeTripName: name, unsaved: false })
-  statusBar.syncFromStore(store)
+  applyItinerary(itinerary)
+  toast.success(`Loaded "${name}"`)
 })
 
-const generatorPanel = new GeneratorPanel(store, (itinerary: Itinerary) => {
-  itineraryView.renderFromItinerary(itinerary)
-  statusBar.syncFromStore(store)
+const generatorPanel = new GeneratorPanel(store, async (itinerary: Itinerary) => {
+  loadingOverlay.classList.remove('hidden')
+  try {
+    store.setState({ currentItinerary: itinerary, unsaved: true, activeTripName: null })
+    applyItinerary(itinerary)
+    toast.success('Itinerary generated! Save it in My Trips.')
+  } finally {
+    loadingOverlay.classList.add('hidden')
+  }
 })
+
+store.subscribe(() => statusBar.syncFromStore(store))
 
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
 mapView.addStops(STOPS)
 
 // Flythrough
+let isFlying = false
+let flyIdx = 0
+
 function flyStep(): void {
   if (!isFlying) return
   if (flyIdx >= STOPS.length) {

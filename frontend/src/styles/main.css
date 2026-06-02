@@ -424,4 +424,12 @@ footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: cent
 .toast--visible { opacity: 1; transform: translateY(0); }
 .toast--error { background: rgba(180, 50, 50, 0.95); color: #fff; border: 1px solid rgba(255,100,100,0.4); }
 .toast--success { background: rgba(30, 100, 50, 0.95); color: #c8f0d0; border: 1px solid rgba(100,200,120,0.4); }
+
+/* ── LOADING OVERLAY ────────────────────────────────────────────────────── */
+.loading-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(11, 22, 16, 0.85); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
+.loading-overlay.hidden { display: none; }
+.loading-spinner { text-align: center; }
+.spinner-ring { width: 48px; height: 48px; border: 3px solid var(--forest-border); border-top-color: var(--amber); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner-label { color: var(--text-on-dark); font-family: 'DM Mono', monospace; font-size: 0.875rem; }
 .toast--info { background: rgba(11, 22, 16, 0.95); color: var(--text-on-dark); border: 1px solid var(--forest-border); }
