@@ -1,4 +1,4 @@
-import type { Stop, CulinaryRegion, Accommodation } from '../types'
+import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: { fly?: boolean }) => void
@@ -30,6 +30,36 @@ export class ItineraryView {
     this.renderCulinary()
     this.renderAccommodations()
     this.initScrollReveal()
+  }
+
+  renderFromItinerary(itinerary: Itinerary): void {
+    const stops: Stop[] = itinerary.stops.map((s, i) => ({
+      id: i + 1,
+      days: String(s.day),
+      dates: '',
+      dest: s.city,
+      region: s.region,
+      coords: [s.lng, s.lat] as [number, number],
+      tags: [],
+      nights: s.nights,
+      desc: '',
+      highlights: s.highlights,
+      from: '',
+      km: 0,
+      time: '',
+      zoom: 12,
+      pitch: 45,
+      bearing: 0,
+    }))
+    this.stops = stops
+    this.selectedStopId = 1
+    this.currentFilter = 'all'
+    this.renderRouteTools()
+    this.renderTimeline()
+    this.initScrollReveal()
+
+    const titleEl = document.querySelector('.hero-title, h1, .page-title') as HTMLElement | null
+    if (titleEl) titleEl.textContent = itinerary.title
   }
 
   setFilter(filter: string): void {
