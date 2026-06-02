@@ -2,7 +2,11 @@ import './styles/main.css'
 import { createStore } from './store'
 import { MapView } from './components/MapView'
 import { ItineraryView } from './components/ItineraryView'
+import { StatusBar } from './components/StatusBar'
+import { GeneratorPanel } from './components/GeneratorPanel'
+import { SavedTripsPanel } from './components/SavedTripsPanel'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
+import type { Itinerary } from './types'
 
 const store = createStore()
 
@@ -29,6 +33,20 @@ const mapView = new MapView('map', (stop, opts) => {
   mapView.setActiveMarker(stop.id)
   mapView.flyTo(stop)
 })
+
+const statusBarEl = document.getElementById('status-bar')!
+const statusBar = new StatusBar(
+  statusBarEl,
+  () => generatorPanel.open(),
+  () => savedPanel.open()
+)
+
+const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: string, _id: string) => {
+  store.setState({ currentItinerary: itinerary, activeTripName: name, unsaved: false })
+  statusBar.syncFromStore(store)
+})
+
+const generatorPanel = new GeneratorPanel(store)
 
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
 mapView.addStops(STOPS)
@@ -61,12 +79,10 @@ document.getElementById('btn-fly')?.addEventListener('click', () => {
   }
 })
 
-// Nav scroll
 window.addEventListener('scroll', () => {
   document.getElementById('nav')?.classList.toggle('scrolled', scrollY > 60)
 })
 
-// Build indicator
 fetch('/build-info.json')
   .then(r => r.json())
   .then((info: { runNumber?: string; sha?: string }) => {

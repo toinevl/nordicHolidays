@@ -355,3 +355,65 @@ footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: cent
 }
 
 /* maplibre-gl base styles are imported via npm in main.ts */
+
+/* ── STATUS BAR ─────────────────────────────────────────────────────────── */
+.status-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: rgba(11, 22, 16, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--forest-border);
+  height: 48px;
+}
+.status-btn { background: none; border: 1px solid var(--forest-border); color: var(--text-on-dark); padding: 0.25rem 0.75rem; border-radius: var(--r); cursor: pointer; font-family: var(--font-mono, 'DM Mono', monospace); font-size: 0.75rem; }
+.status-btn:hover { border-color: var(--amber); color: var(--amber); }
+.status-center { display: flex; align-items: center; gap: 0.5rem; }
+.status-trip-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; color: var(--birch); }
+.status-badge { font-size: 0.65rem; padding: 0.125rem 0.5rem; border-radius: 999px; font-family: var(--font-mono, 'DM Mono', monospace); }
+.status-badge--saved { background: rgba(201, 125, 0, 0.2); color: var(--amber); border: 1px solid var(--amber); }
+.status-badge--unsaved { background: rgba(180, 60, 60, 0.2); color: #e07070; border: 1px solid #e07070; }
+
+/* ── PANELS ─────────────────────────────────────────────────────────────── */
+.panel-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5); display: flex; }
+.panel-overlay.hidden { display: none; }
+.panel { position: absolute; top: 0; bottom: 0; width: min(420px, 95vw); background: var(--forest-mid); overflow-y: auto; }
+.panel--right { right: 0; }
+.panel--left { left: 0; }
+.panel-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--forest-border); position: sticky; top: 0; background: var(--forest-mid); z-index: 1; }
+.panel-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: var(--birch); margin: 0; }
+.panel-close { background: none; border: none; color: var(--text-on-dark-muted); font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0.25rem; }
+.panel-close:hover { color: var(--birch); }
+.panel-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* ── FORMS ──────────────────────────────────────────────────────────────── */
+.form-group { display: flex; flex-direction: column; gap: 0.375rem; }
+.form-label { font-size: 0.75rem; color: var(--text-on-dark-muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: 'DM Mono', monospace; }
+.form-input { background: rgba(255,255,255,0.06); border: 1px solid var(--forest-border); border-radius: var(--r); color: var(--birch); padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+.form-input:focus { outline: none; border-color: var(--amber); }
+.form-hint { font-size: 0.7rem; color: var(--text-on-dark-muted); margin: 0; }
+.tag-input-wrapper { display: flex; flex-direction: column; gap: 0.5rem; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 0.375rem; min-height: 1rem; }
+.tag { display: inline-flex; align-items: center; gap: 0.25rem; background: rgba(201,125,0,0.15); border: 1px solid rgba(201,125,0,0.4); color: var(--amber-light); padding: 0.125rem 0.5rem; border-radius: 999px; font-size: 0.75rem; }
+.tag-remove { background: none; border: none; color: inherit; cursor: pointer; padding: 0; line-height: 1; font-size: 0.875rem; }
+
+/* ── BUTTONS ────────────────────────────────────────────────────────────── */
+.btn { padding: 0.5rem 1rem; border-radius: var(--r); font-size: 0.875rem; cursor: pointer; border: 1px solid transparent; font-family: 'DM Mono', monospace; transition: opacity 0.15s; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn--primary { background: var(--amber); color: #0b1610; border-color: var(--amber); font-weight: 600; }
+.btn--primary:hover:not(:disabled) { background: var(--amber-light); }
+.btn--secondary { background: none; border-color: var(--forest-border); color: var(--text-on-dark); }
+.btn--secondary:hover { border-color: var(--amber); color: var(--amber); }
+.btn--danger { background: none; border-color: rgba(200, 60, 60, 0.4); color: #e07070; }
+.btn--danger:hover { border-color: #e07070; }
+.btn--small { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+.btn--full { width: 100%; }
+
+/* ── SAVED CARDS ────────────────────────────────────────────────────────── */
+.save-form { display: flex; gap: 0.5rem; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--forest-border); }
+.saved-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.saved-card { background: var(--forest-card); border: 1px solid var(--forest-border); border-radius: var(--r); padding: 1rem; }
+.saved-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--birch); margin-bottom: 0.25rem; }
+.saved-card-meta { font-size: 0.75rem; color: var(--text-on-dark-muted); font-family: 'DM Mono', monospace; margin-bottom: 0.75rem; }
+.saved-card-actions { display: flex; gap: 0.5rem; }
+.loading-hint, .empty-hint, .error-hint { font-size: 0.875rem; color: var(--text-on-dark-muted); text-align: center; padding: 1rem 0; }
