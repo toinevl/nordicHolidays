@@ -46,6 +46,9 @@ describe('POST /api/generate', () => {
     const req = { json: async () => { throw new Error('bad json') } } as any
     const result = await generateHandler(req)
     expect(result.status).toBe(400)
+    // body is now JSON
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBeDefined()
   })
 
   it('returns 502 when Claude does not return tool_use', async () => {
@@ -58,6 +61,8 @@ describe('POST /api/generate', () => {
     const req = { json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
     const result = await generateHandler(req)
     expect(result.status).toBe(502)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBeDefined()
   })
 
   it('returns 500 on Anthropic API error', async () => {
@@ -67,5 +72,7 @@ describe('POST /api/generate', () => {
     const req = { json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
     const result = await generateHandler(req)
     expect(result.status).toBe(500)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBeDefined()
   })
 })

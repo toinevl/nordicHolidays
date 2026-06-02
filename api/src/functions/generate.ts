@@ -15,7 +15,7 @@ function buildUserMessage(prefs: Preferences): string {
   return parts.join('\n')
 }
 
-function validateItinerary(data: unknown): data is Itinerary {
+function validateItinerary(data: unknown): data is Omit<Itinerary, 'generatedAt'> {
   if (!data || typeof data !== 'object') return false
   const d = data as Record<string, unknown>
   return (
@@ -23,8 +23,7 @@ function validateItinerary(data: unknown): data is Itinerary {
     typeof d.totalDays === 'number' &&
     typeof d.startCity === 'string' &&
     typeof d.endCity === 'string' &&
-    Array.isArray(d.stops) &&
-    typeof d.generatedAt === 'string'
+    Array.isArray(d.stops)
   )
 }
 
@@ -36,7 +35,11 @@ export async function generateHandler(
   try {
     prefs = await req.json() as Preferences
   } catch {
-    return { status: 400, body: 'Invalid JSON body' }
+    return { status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }
+  }
+
+  if (!prefs || typeof prefs.tripDays !== 'number' || typeof prefs.startCity !== 'string' || typeof prefs.endCity !== 'string') {
+    return { status: 400, body: JSON.stringify({ error: 'Invalid preferences body' }), headers: { 'Content-Type': 'application/json' } }
   }
 
   try {
@@ -52,14 +55,14 @@ export async function generateHandler(
 
     const toolBlock = response.content.find(b => b.type === 'tool_use' && b.name === 'create_itinerary')
     if (!toolBlock || toolBlock.type !== 'tool_use') {
-      return { status: 502, body: 'Claude did not return a structured itinerary' }
+      return { status: 502, body: JSON.stringify({ error: 'Claude did not return a structured itinerary' }), headers: { 'Content-Type': 'application/json' } }
     }
 
-    const itinerary = { ...toolBlock.input as Itinerary, generatedAt: new Date().toISOString() }
-
-    if (!validateItinerary(itinerary)) {
-      return { status: 502, body: 'Claude returned an invalid itinerary structure' }
+    const input = toolBlock.input
+    if (!validateItinerary(input)) {
+      return { status: 502, body: JSON.stringify({ error: 'Claude returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }
     }
+    const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString() }
 
     return {
       status: 200,
@@ -68,7 +71,7 @@ export async function generateHandler(
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    return { status: 500, body: `Generation failed: ${msg}` }
+    return { status: 500, body: JSON.stringify({ error: `Generation failed: ${msg}` }), headers: { 'Content-Type': 'application/json' } }
   }
 }
 
