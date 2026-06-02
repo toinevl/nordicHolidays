@@ -1,14 +1,18 @@
-import type { Preferences } from '../types'
+import type { Preferences, Itinerary } from '../types'
 import type { Store } from '../store'
 import { apiClient } from '../api/client'
+
+export type GenerateCallback = (itinerary: Itinerary) => void
 
 export class GeneratorPanel {
   private overlay: HTMLElement
   private panel: HTMLElement
   private store: Store
+  private onGenerate: GenerateCallback
 
-  constructor(store: Store) {
+  constructor(store: Store, onGenerate: GenerateCallback) {
     this.store = store
+    this.onGenerate = onGenerate
     this.overlay = document.createElement('div')
     this.overlay.className = 'panel-overlay hidden'
     this.panel = document.createElement('div')
@@ -132,17 +136,25 @@ export class GeneratorPanel {
     const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim() || 'Amsterdam'
     const tripDays = parseInt((this.panel.querySelector('#gen-days') as HTMLInputElement)?.value ?? '21', 10)
     const prefs: Preferences = { ...this.store.getState().preferences, startCity, endCity, tripDays }
+
     this.store.setState({ preferences: prefs })
+    try { await apiClient.savePreferences(prefs) } catch { /* non-critical */ }
+
+    btn.textContent = 'Generating...'
+    btn.disabled = true
+    this.store.setState({ isGenerating: true })
 
     try {
-      await apiClient.savePreferences(prefs)
-      const hint = this.panel.querySelector('#panel-save-hint') as HTMLElement
-      hint?.classList.remove('hidden')
-      setTimeout(() => hint?.classList.add('hidden'), 2000)
-    } catch { /* non-critical */ }
-
-    btn.textContent = 'AI generation coming in R2...'
-    btn.disabled = true
-    setTimeout(() => { btn.textContent = 'Generate Itinerary'; btn.disabled = false }, 2000)
+      const itinerary = await apiClient.generateItinerary(prefs)
+      this.store.setState({ currentItinerary: itinerary, isGenerating: false, unsaved: true, activeTripName: null })
+      this.onGenerate(itinerary)
+      this.close()
+    } catch (err) {
+      this.store.setState({ isGenerating: false })
+      throw err
+    } finally {
+      btn.textContent = 'Generate Itinerary'
+      btn.disabled = false
+    }
   }
 }

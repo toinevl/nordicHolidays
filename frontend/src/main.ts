@@ -46,7 +46,10 @@ const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: strin
   statusBar.syncFromStore(store)
 })
 
-const generatorPanel = new GeneratorPanel(store)
+const generatorPanel = new GeneratorPanel(store, (itinerary: Itinerary) => {
+  itineraryView.renderFromItinerary(itinerary)
+  statusBar.syncFromStore(store)
+})
 
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
 mapView.addStops(STOPS)
