@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { getAnthropicClient } from '../lib/anthropicClient'
 import { ITINERARY_TOOL, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { withCors, corsPreflightResponse } from '../lib/cors'
 import type { Itinerary, Preferences } from '../types'
 
 function buildUserMessage(prefs: Preferences): string {
@@ -31,15 +32,18 @@ export async function generateHandler(
   req: HttpRequest,
   _ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
+  const origin = req.headers?.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
   let prefs: Preferences
   try {
     prefs = await req.json() as Preferences
   } catch {
-    return { status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }
+    return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 
   if (!prefs || typeof prefs.tripDays !== 'number' || typeof prefs.startCity !== 'string' || typeof prefs.endCity !== 'string') {
-    return { status: 400, body: JSON.stringify({ error: 'Invalid preferences body' }), headers: { 'Content-Type': 'application/json' } }
+    return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid preferences body' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 
   try {
@@ -55,28 +59,28 @@ export async function generateHandler(
 
     const toolBlock = response.content.find(b => b.type === 'tool_use' && b.name === 'create_itinerary')
     if (!toolBlock || toolBlock.type !== 'tool_use') {
-      return { status: 502, body: JSON.stringify({ error: 'Claude did not return a structured itinerary' }), headers: { 'Content-Type': 'application/json' } }
+      return withCors({ status: 502, body: JSON.stringify({ error: 'Claude did not return a structured itinerary' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     const input = toolBlock.input
     if (!validateItinerary(input)) {
-      return { status: 502, body: JSON.stringify({ error: 'Claude returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }
+      return withCors({ status: 502, body: JSON.stringify({ error: 'Claude returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
     const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString() }
 
-    return {
+    return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(itinerary),
-    }
+    }, origin)
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    return { status: 500, body: JSON.stringify({ error: `Generation failed: ${msg}` }), headers: { 'Content-Type': 'application/json' } }
+    return withCors({ status: 500, body: JSON.stringify({ error: `Generation failed: ${msg}` }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
 app.http('generate', {
-  methods: ['POST'],
+  methods: ['POST', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'generate',
   handler: generateHandler,

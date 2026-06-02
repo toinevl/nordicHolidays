@@ -2,13 +2,17 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { nanoid } from 'nanoid'
 import { getTableClient } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
+import { withCors, corsPreflightResponse } from '../lib/cors'
 
 const PARTITION_KEY = 'owner'
 
 export async function listItinerariesHandler(
-  _req?: HttpRequest,
+  req?: HttpRequest,
   _ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
+  const origin = req?.headers?.get('origin') ?? undefined
+  if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
+
   try {
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
@@ -23,13 +27,13 @@ export async function listItinerariesHandler(
       })
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    return {
+    return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(summaries),
-    }
+    }, origin)
   } catch {
-    return { status: 500, body: 'Internal error' }
+    return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }
 
@@ -37,19 +41,22 @@ export async function getItineraryHandler(
   req: HttpRequest,
   _ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
+  const origin = req.headers?.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
   const id = req.params.id
   try {
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(PARTITION_KEY, id) as Record<string, unknown>
     const itinerary = JSON.parse(entity.itineraryJson as string) as Itinerary
-    return {
+    return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(itinerary),
-    }
+    }, origin)
   } catch (err: any) {
-    if (err?.statusCode === 404) return { status: 404, body: 'Not found' }
-    return { status: 500, body: 'Internal error' }
+    if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)
+    return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }
 
@@ -57,11 +64,14 @@ export async function saveItineraryHandler(
   req: HttpRequest,
   _ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
+  const origin = req.headers?.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
   let body: { name: string; itinerary: Itinerary }
   try {
     body = await req.json() as { name: string; itinerary: Itinerary }
   } catch {
-    return { status: 400, body: 'Invalid JSON body' }
+    return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
   }
 
   try {
@@ -76,13 +86,13 @@ export async function saveItineraryHandler(
       endCity: body.itinerary.endCity,
       itineraryJson: JSON.stringify(body.itinerary),
     })
-    return {
+    return withCors({
       status: 201,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
-    }
+    }, origin)
   } catch {
-    return { status: 500, body: 'Internal error' }
+    return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }
 
@@ -90,40 +100,43 @@ export async function deleteItineraryHandler(
   req: HttpRequest,
   _ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
+  const origin = req.headers?.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
   const id = req.params.id
   try {
     const client = getTableClient('Itineraries')
     await client.deleteEntity(PARTITION_KEY, id)
-    return { status: 204 }
+    return withCors({ status: 204 }, origin)
   } catch (err: any) {
-    if (err?.statusCode === 404) return { status: 404, body: 'Not found' }
-    return { status: 500, body: 'Internal error' }
+    if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)
+    return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }
 
 app.http('listItineraries', {
-  methods: ['GET'],
+  methods: ['GET', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'itineraries',
   handler: listItinerariesHandler,
 })
 
 app.http('saveItinerary', {
-  methods: ['POST'],
+  methods: ['POST', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'itineraries',
   handler: saveItineraryHandler,
 })
 
 app.http('getItinerary', {
-  methods: ['GET'],
+  methods: ['GET', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'itineraries/{id}',
   handler: getItineraryHandler,
 })
 
 app.http('deleteItinerary', {
-  methods: ['DELETE'],
+  methods: ['DELETE', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'itineraries/{id}',
   handler: deleteItineraryHandler,

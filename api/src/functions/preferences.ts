@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { getTableClient } from '../lib/tableClient'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
+import { withCors, corsPreflightResponse } from '../lib/cors'
 
 const PARTITION_KEY = 'owner'
 const ROW_KEY = 'default'
@@ -17,38 +18,44 @@ function entityToPreferences(entity: Record<string, unknown>): Preferences {
 }
 
 export async function getPreferencesHandler(
-  _req?: HttpRequest,
+  req?: HttpRequest,
   _ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
+  const origin = req?.headers.get('origin') ?? undefined
+  if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
+
   try {
     const client = getTableClient('Preferences')
     const entity = await client.getEntity(PARTITION_KEY, ROW_KEY)
-    return {
+    return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entityToPreferences(entity as Record<string, unknown>)),
-    }
+    }, origin)
   } catch (err: any) {
     if (err?.statusCode === 404) {
-      return {
+      return withCors({
         status: 200,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(DEFAULT_PREFERENCES),
-      }
+      }, origin)
     }
-    return { status: 500, body: 'Internal error' }
+    return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }
 
 export async function putPreferencesHandler(
-  req: HttpRequest,
+  req?: HttpRequest,
   _ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
+  const origin = req?.headers?.get('origin') ?? undefined
+  if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
+
   let prefs: Preferences
   try {
-    prefs = await req.json() as Preferences
+    prefs = await req?.json() as Preferences
   } catch {
-    return { status: 400, body: 'Invalid JSON body' }
+    return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
   }
 
   try {
@@ -63,25 +70,25 @@ export async function putPreferencesHandler(
       tripDays: prefs.tripDays ?? DEFAULT_PREFERENCES.tripDays,
       updatedAt: new Date().toISOString(),
     })
-    return {
+    return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prefs),
-    }
+    }, origin)
   } catch {
-    return { status: 500, body: 'Internal error' }
+    return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }
 
 app.http('getPreferences', {
-  methods: ['GET'],
+  methods: ['GET', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'preferences',
   handler: getPreferencesHandler,
 })
 
 app.http('putPreferences', {
-  methods: ['PUT'],
+  methods: ['PUT', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'preferences',
   handler: putPreferencesHandler,
