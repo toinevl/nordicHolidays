@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { Anthropic } from '@anthropic-ai/sdk'
 
 describe('getAnthropicClient', () => {
   beforeEach(() => vi.resetModules())
+
+  afterEach(() => {
+    delete process.env.ANTHROPIC_API_KEY
+  })
 
   it('throws if ANTHROPIC_API_KEY is not set', async () => {
     delete process.env.ANTHROPIC_API_KEY
@@ -13,6 +18,6 @@ describe('getAnthropicClient', () => {
     process.env.ANTHROPIC_API_KEY = 'test-key'
     const { getAnthropicClient } = await import('./anthropicClient')
     const client = getAnthropicClient()
-    expect(client).toBeDefined()
+    expect(client).toBeInstanceOf(Anthropic)
   })
 })
