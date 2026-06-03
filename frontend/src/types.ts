@@ -79,6 +79,7 @@ export type AppState = {
   isGenerating: boolean
   unsaved: boolean
   activeTripName: string | null
+  activeTripId: string | null
   selectedStopId: number
   currentFilter: string
 }

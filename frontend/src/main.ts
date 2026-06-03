@@ -8,6 +8,7 @@ import { SavedTripsPanel } from './components/SavedTripsPanel'
 import { Toast } from './components/Toast'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
 import type { Itinerary } from './types'
+import { apiClient } from './api/client'
 
 const store = createStore()
 const toast = new Toast()
@@ -47,7 +48,11 @@ const statusBarEl = document.getElementById('status-bar')!
 const statusBar = new StatusBar(
   statusBarEl,
   () => generatorPanel.open(),
-  () => savedPanel.open()
+  () => savedPanel.open(),
+  (id: string) => {
+    const url = `${window.location.origin}${window.location.pathname}?id=${id}`
+    navigator.clipboard.writeText(url).then(() => toast.success('Share link copied!'))
+  }
 )
 
 function applyItinerary(itinerary: Itinerary): void {
@@ -62,8 +67,8 @@ function applyItinerary(itinerary: Itinerary): void {
   statusBar.syncFromStore(store)
 }
 
-const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: string, _id: string) => {
-  store.setState({ currentItinerary: itinerary, activeTripName: name, unsaved: false })
+const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: string, id: string) => {
+  store.setState({ currentItinerary: itinerary, activeTripName: name, activeTripId: id, unsaved: false })
   applyItinerary(itinerary)
   toast.success(`Loaded "${name}"`)
 })
@@ -71,7 +76,7 @@ const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: strin
 const generatorPanel = new GeneratorPanel(
   store,
   (itinerary: Itinerary) => {
-    store.setState({ currentItinerary: itinerary, unsaved: true, activeTripName: null })
+    store.setState({ currentItinerary: itinerary, unsaved: true, activeTripName: null, activeTripId: null })
     applyItinerary(itinerary)
     toast.success('Itinerary generated! Save it in My Trips.')
   },
@@ -84,6 +89,17 @@ store.subscribe(() => statusBar.syncFromStore(store))
 
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
 mapView.addStops(STOPS)
+
+const urlId = new URLSearchParams(window.location.search).get('id')
+if (urlId) {
+  apiClient.getItinerary(urlId)
+    .then(itinerary => {
+      store.setState({ currentItinerary: itinerary, activeTripId: urlId, unsaved: false })
+      applyItinerary(itinerary)
+      toast.success('Loaded shared itinerary')
+    })
+    .catch(() => toast.error('Could not load shared itinerary'))
+}
 
 // Flythrough
 let isFlying = false

@@ -15,6 +15,7 @@ const initialState: AppState = {
   isGenerating: false,
   unsaved: false,
   activeTripName: null,
+  activeTripId: null,
   selectedStopId: 1,
   currentFilter: 'all',
 }
