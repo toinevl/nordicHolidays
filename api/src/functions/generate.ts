@@ -64,6 +64,7 @@ export async function generateHandler(
 
     const input = toolBlock.input
     if (!validateItinerary(input)) {
+      console.error('validateItinerary failed. raw input:', JSON.stringify(input))
       return withCors({ status: 502, body: JSON.stringify({ error: 'Claude returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
     const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString() }
