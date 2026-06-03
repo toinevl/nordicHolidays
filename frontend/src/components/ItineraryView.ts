@@ -1,5 +1,6 @@
 import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
 import { haversineKm } from '../lib/distance'
+import { getSeasonInfo } from '../data/seasonData'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: { fly?: boolean }) => void
@@ -193,6 +194,12 @@ export class ItineraryView {
             <div class="tags">${tags}</div>
             <p class="card-desc">${s.desc}</p>
             <ul class="card-highlights">${s.highlights.map(h => `<li>${h}</li>`).join('')}</ul>
+            ${(() => {
+              const info = getSeasonInfo(s.region)
+              return info
+                ? `<div class="season-callout"><span class="season-callout__icon">${info.icon}</span><span>${info.note}</span></div>`
+                : ''
+            })()}
             <button class="btn-fly" data-id="${s.id}">🗺 Fly here</button>
           </div>
         </div>
