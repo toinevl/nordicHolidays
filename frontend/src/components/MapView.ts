@@ -49,8 +49,10 @@ export class MapView {
         id: 'route',
         type: 'line',
         source: 'route',
-        paint: { 'line-color': '#c97d00', 'line-width': 2, 'line-opacity': 0.8 },
+        paint: { 'line-color': '#e89820', 'line-width': 2.5, 'line-opacity': 0.0 },
       })
+      setTimeout(() => this.map.setPaintProperty('route', 'line-opacity', 0.9), 50)
+      this.animateRoute()
     })
   }
 
@@ -90,10 +92,29 @@ export class MapView {
       id: 'route',
       type: 'line',
       source: 'route',
-      paint: { 'line-color': '#c97d00', 'line-width': 2, 'line-opacity': 0.8 },
+      paint: { 'line-color': '#e89820', 'line-width': 2.5, 'line-opacity': 0.0 },
     })
+    setTimeout(() => this.map.setPaintProperty('route', 'line-opacity', 0.9), 50)
+    this.animateRoute()
 
     if (stops[0]) this.flyTo(stops[0])
+  }
+
+  private animateRoute(): void {
+    const FRAMES = 120
+    const MAX = 50000 // larger than any Sweden route length in dasharray units
+    let frame = 0
+    const step = () => {
+      if (frame > FRAMES) return
+      const progress = frame / FRAMES
+      this.map.setPaintProperty('route', 'line-dasharray', [
+        progress * MAX,
+        (1 - progress) * MAX,
+      ])
+      frame++
+      requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
   }
 
   flyTo(stop: Stop): void {
