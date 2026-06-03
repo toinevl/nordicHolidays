@@ -2,11 +2,18 @@ import type { Locale, LocaleKey, LocaleStrings } from './types'
 import { en } from './en'
 import { nl } from './nl'
 
-const STORAGE_KEY = 'swedentravel_locale'
+export const LOCALE_STORAGE_KEY = 'swedentravel_locale'
 
 const locales: Record<Locale, LocaleStrings> = { en, nl }
 
 let currentLocale: Locale = 'en'
+
+try {
+  const stored = localStorage.getItem(LOCALE_STORAGE_KEY)
+  if (stored === 'nl' || stored === 'en') currentLocale = stored
+} catch {
+  // localStorage unavailable
+}
 
 export function getLocale(): Locale {
   return currentLocale
@@ -15,7 +22,7 @@ export function getLocale(): Locale {
 export function setLocale(locale: Locale): void {
   currentLocale = locale
   try {
-    localStorage.setItem(STORAGE_KEY, locale)
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale)
   } catch {
     // localStorage unavailable (e.g. in tests without jsdom — ignore)
   }

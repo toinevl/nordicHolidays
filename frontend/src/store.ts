@@ -1,10 +1,9 @@
 import type { AppState, Preferences, Locale } from './types'
-
-const LOCALE_KEY = 'swedentravel_locale'
+import { setLocale, LOCALE_STORAGE_KEY } from './i18n/index'
 
 function readInitialLocale(): Locale {
   try {
-    const stored = localStorage.getItem(LOCALE_KEY)
+    const stored = localStorage.getItem(LOCALE_STORAGE_KEY)
     return stored === 'nl' ? 'nl' : 'en'
   } catch {
     return 'en'
@@ -34,7 +33,9 @@ const initialState: Omit<AppState, 'locale'> = {
 type Listener = () => void
 
 export function createStore() {
-  let state: AppState = { ...initialState, locale: readInitialLocale() }
+  const initialLocale = readInitialLocale()
+  setLocale(initialLocale)
+  let state: AppState = { ...initialState, locale: initialLocale }
   const listeners = new Set<Listener>()
 
   return {
