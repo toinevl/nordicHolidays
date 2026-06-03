@@ -89,8 +89,8 @@ export class SavedTripsPanel {
         container.innerHTML = '<p class="empty-hint">No saved itineraries yet.</p>'
         return
       }
-      container.innerHTML = list.map(item => `
-        <div class="saved-card" data-id="${item.id}">
+      container.innerHTML = list.map((item, idx) => `
+        <div class="saved-card saved-card-enter" data-id="${item.id}" style="animation-delay:${idx * 0.06}s">
           <div class="saved-card-name">${item.name}</div>
           <div class="saved-card-meta">${item.startCity} → ${item.endCity} · ${item.createdAt.slice(0, 10)}</div>
           <div class="saved-card-actions">
