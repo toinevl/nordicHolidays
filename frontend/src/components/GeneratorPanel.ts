@@ -25,11 +25,13 @@ export class GeneratorPanel {
     document.body.appendChild(this.overlay)
     this.bindEvents()
     this.loadPreferences()
+    this.store.subscribe(() => this.syncRegenerateVisibility())
   }
 
   open(): void {
     this.overlay.classList.remove('hidden')
     document.body.classList.add('panel-open')
+    this.syncRegenerateVisibility()
   }
 
   close(): void {
@@ -71,6 +73,7 @@ export class GeneratorPanel {
           </div>
         </div>
         <button id="btn-generate" class="btn btn--primary btn--full">Generate Itinerary</button>
+        <button id="btn-regenerate" class="btn btn--secondary btn--full" style="display:none">Regenerate (same preferences)</button>
         <p class="form-hint panel-save-hint hidden" id="panel-save-hint">Preferences saved.</p>
       </div>
     `
@@ -84,6 +87,7 @@ export class GeneratorPanel {
     this.bindTagInput('avoid-input', 'avoid-tags', 'avoid')
 
     this.panel.querySelector('#btn-generate')?.addEventListener('click', () => this.handleGenerate())
+    this.panel.querySelector('#btn-regenerate')?.addEventListener('click', () => this.handleGenerate())
   }
 
   private bindTagInput(inputId: string, tagsId: string, field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>): void {
@@ -134,6 +138,12 @@ export class GeneratorPanel {
       this.renderTags('must-visit-tags', 'mustVisit')
       this.renderTags('avoid-tags', 'avoid')
     } catch { /* use defaults */ }
+  }
+
+  private syncRegenerateVisibility(): void {
+    const btn = this.panel.querySelector<HTMLButtonElement>('#btn-regenerate')
+    if (!btn) return
+    btn.style.display = this.store.getState().currentItinerary ? '' : 'none'
   }
 
   private async handleGenerate(): Promise<void> {
