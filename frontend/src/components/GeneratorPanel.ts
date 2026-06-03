@@ -108,6 +108,9 @@ export class GeneratorPanel {
     container.innerHTML = tags.map(t => `
       <span class="tag">${t}<button class="tag-remove" data-val="${t}" data-field="${field}">&times;</button></span>
     `).join('')
+    // Animate the last tag (just added)
+    const spans = container.querySelectorAll<HTMLElement>('.tag')
+    spans[spans.length - 1]?.classList.add('tag--new')
     container.querySelectorAll('.tag-remove').forEach(btn => {
       btn.addEventListener('click', () => {
         const val = (btn as HTMLElement).dataset.val!
