@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { getSeasonInfo } from './seasonData'
 
 describe('getSeasonInfo', () => {
-  it('returns info for Skåne', () => {
+  it('returns info for Skåne with a noteKey', () => {
     const info = getSeasonInfo('Skåne')
     expect(info).not.toBeNull()
     expect(info!.icon).toBeTruthy()
-    expect(info!.note.length).toBeGreaterThan(10)
+    expect(info!.noteKey).toMatch(/^season\./)
   })
 
   it('is case-insensitive', () => {
@@ -21,5 +21,6 @@ describe('getSeasonInfo', () => {
   it('handles partial match for Västra Götaland', () => {
     const info = getSeasonInfo('Västra Götaland')
     expect(info).not.toBeNull()
+    expect(info!.noteKey).toBe('season.vastraGotaland')
   })
 })

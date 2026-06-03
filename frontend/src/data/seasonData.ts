@@ -1,24 +1,26 @@
-export type SeasonInfo = { icon: string; note: string }
+import type { LocaleKey } from '../i18n/types'
+
+export type SeasonInfo = { icon: string; noteKey: LocaleKey }
 
 const SEASON_MAP: [string, SeasonInfo][] = [
-  ['skåne',     { icon: '🌸', note: 'Mild climate. Warm summers, colourful autumns.' }],
-  ['blekinge',  { icon: '⛵', note: 'Coastal archipelago. Best Jun–Aug.' }],
-  ['gotland',   { icon: '☀️', note: "Sweden's sunniest island. Hot dry summers." }],
-  ['halland',   { icon: '🏖', note: 'West coast beaches. Busy Jul–Aug.' }],
-  ['bohuslän',  { icon: '🦞', note: 'Rocky coast & seafood. Best Jun–Sep.' }],
-  ['gothenburg',{ icon: '🌧', note: 'Maritime climate. Rain year-round, warm summers.' }],
-  ['västra götaland', { icon: '🌧', note: 'Maritime climate. Rain year-round, warm summers.' }],
-  ['stockholm', { icon: '🏙', note: 'Continental. Warm summers, cold winters.' }],
-  ['uppland',   { icon: '🌾', note: 'Flat farmland. Hot summers, snowy winters.' }],
-  ['östergötland', { icon: '🌾', note: 'Mild summers, good cycling terrain.' }],
-  ['småland',   { icon: '🌲', note: 'Dense forests. Cool nights even in summer.' }],
-  ['värmland',  { icon: '🫐', note: 'Lakes & berries. Best Jul–Aug for hiking.' }],
-  ['dalarna',   { icon: '🎿', note: 'Mountain climate. Snowy winters, cool summers.' }],
-  ['jämtland',  { icon: '🏔', note: 'High altitude. Snow possible Jun & Sep.' }],
-  ['härjedalen',{ icon: '🏔', note: 'Remote fells. Snow lingers into June.' }],
-  ['lapland',   { icon: '🌌', note: 'Midnight sun Jun–Jul. Aurora Sep–Mar.' }],
-  ['norrbotten',{ icon: '🌌', note: 'Arctic. Midnight sun and polar night.' }],
-  ['västernorrland', { icon: '🌲', note: 'Coastal forests. Cool and quiet.' }],
+  ['skåne',            { icon: '🌸', noteKey: 'season.skane' }],
+  ['blekinge',         { icon: '⛵', noteKey: 'season.blekinge' }],
+  ['gotland',          { icon: '☀️', noteKey: 'season.gotland' }],
+  ['halland',          { icon: '🏖', noteKey: 'season.halland' }],
+  ['bohuslän',         { icon: '🦞', noteKey: 'season.bohuslan' }],
+  ['gothenburg',       { icon: '🌧', noteKey: 'season.gothenburg' }],
+  ['västra götaland',  { icon: '🌧', noteKey: 'season.vastraGotaland' }],
+  ['stockholm',        { icon: '🏙', noteKey: 'season.stockholm' }],
+  ['uppland',          { icon: '🌾', noteKey: 'season.uppland' }],
+  ['östergötland',     { icon: '🌾', noteKey: 'season.ostergotland' }],
+  ['småland',          { icon: '🌲', noteKey: 'season.smaland' }],
+  ['värmland',         { icon: '🫐', noteKey: 'season.varmland' }],
+  ['dalarna',          { icon: '🎿', noteKey: 'season.dalarna' }],
+  ['jämtland',         { icon: '🏔', noteKey: 'season.jamtland' }],
+  ['härjedalen',       { icon: '🏔', noteKey: 'season.harjedalen' }],
+  ['lapland',          { icon: '🌌', noteKey: 'season.lapland' }],
+  ['norrbotten',       { icon: '🌌', noteKey: 'season.norrbotten' }],
+  ['västernorrland',   { icon: '🌲', noteKey: 'season.vasternorrland' }],
 ]
 
 export function getSeasonInfo(region: string): SeasonInfo | null {
