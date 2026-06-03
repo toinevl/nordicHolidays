@@ -1,8 +1,15 @@
 import type { AppState, Preferences, Locale } from './types'
 
 const LOCALE_KEY = 'swedentravel_locale'
-const storedLocale = localStorage.getItem(LOCALE_KEY) as Locale | null
-const initialLocale: Locale = storedLocale === 'nl' ? 'nl' : 'en'
+
+function readInitialLocale(): Locale {
+  try {
+    const stored = localStorage.getItem(LOCALE_KEY)
+    return stored === 'nl' ? 'nl' : 'en'
+  } catch {
+    return 'en'
+  }
+}
 
 const defaultPreferences: Preferences = {
   mustVisit: [],
@@ -12,7 +19,7 @@ const defaultPreferences: Preferences = {
   tripDays: 21,
 }
 
-const initialState: AppState = {
+const initialState: Omit<AppState, 'locale'> = {
   currentItinerary: null,
   savedItineraries: [],
   preferences: defaultPreferences,
@@ -22,13 +29,12 @@ const initialState: AppState = {
   activeTripId: null,
   selectedStopId: 1,
   currentFilter: 'all',
-  locale: initialLocale,
 }
 
 type Listener = () => void
 
 export function createStore() {
-  let state: AppState = { ...initialState }
+  let state: AppState = { ...initialState, locale: readInitialLocale() }
   const listeners = new Set<Listener>()
 
   return {
