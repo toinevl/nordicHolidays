@@ -163,7 +163,7 @@ export class ItineraryView {
             <div class="stop-date">Day ${s.days} · ${s.dates}</div>
             ${drive}
           </div>
-          <div class="t-card" id="stop-${s.id}">
+          <div class="t-card" id="stop-${s.id}" data-day="${s.id}">
             <div class="card-head">
               <div><div class="card-dest">${s.dest}</div><div class="card-region region--${regionColorKey(s.region)}">${s.region}</div></div>
               <div class="card-nights">${nights}</div>
