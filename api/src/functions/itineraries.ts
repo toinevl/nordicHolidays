@@ -114,30 +114,22 @@ export async function deleteItineraryHandler(
   }
 }
 
-app.http('listItineraries', {
-  methods: ['GET', 'OPTIONS'],
+app.http('itineraries', {
+  methods: ['GET', 'POST', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'itineraries',
-  handler: listItinerariesHandler,
+  handler: (req, ctx) => {
+    if (req.method === 'POST') return saveItineraryHandler(req, ctx)
+    return listItinerariesHandler(req, ctx)
+  },
 })
 
-app.http('saveItinerary', {
-  methods: ['POST', 'OPTIONS'],
-  authLevel: 'anonymous',
-  route: 'itineraries',
-  handler: saveItineraryHandler,
-})
-
-app.http('getItinerary', {
-  methods: ['GET', 'OPTIONS'],
+app.http('itineraryById', {
+  methods: ['GET', 'DELETE', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'itineraries/{id}',
-  handler: getItineraryHandler,
-})
-
-app.http('deleteItinerary', {
-  methods: ['DELETE', 'OPTIONS'],
-  authLevel: 'anonymous',
-  route: 'itineraries/{id}',
-  handler: deleteItineraryHandler,
+  handler: (req, ctx) => {
+    if (req.method === 'DELETE') return deleteItineraryHandler(req, ctx)
+    return getItineraryHandler(req, ctx)
+  },
 })
