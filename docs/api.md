@@ -10,6 +10,37 @@ All endpoints are prefixed with `/api`. Requests and responses use `application/
 
 ---
 
+## LLM Provider
+
+The generate endpoint uses [OpenRouter](https://openrouter.ai) as a model-routing layer, configured via two Azure App Settings:
+
+| Setting | Required | Default | Description |
+|---------|----------|---------|-------------|
+| `OPENROUTER_API_KEY` | yes | — | API key from openrouter.ai |
+| `LLM_MODEL` | no | `anthropic/claude-sonnet-4-6` | Model string passed to OpenRouter |
+
+### Switching models
+
+To swap the active model without redeploying:
+
+1. Go to **Azure Portal → Function App `sweden-travel-api` → Configuration → Application settings**
+2. Set `LLM_MODEL` to any [OpenRouter model string](https://openrouter.ai/models), e.g.:
+   - `openai/gpt-4o`
+   - `meta-llama/llama-3.1-70b-instruct`
+   - `anthropic/claude-opus-4-8`
+3. Click **Save** and restart the Function App.
+
+### Local development
+
+Add to `api/.env` (create if it doesn't exist):
+
+```
+OPENROUTER_API_KEY=sk-or-...
+LLM_MODEL=anthropic/claude-sonnet-4-6
+```
+
+---
+
 ## GET /api/health
 
 Returns service status. No authentication required.
@@ -118,6 +149,36 @@ Generates an AI-powered itinerary using Claude (forced tool use for structured o
 
 **Response 400** — invalid request body.
 **Response 502** — Anthropic API error.
+
+---
+
+## GET /api/city-search
+
+Returns optional remote city suggestions for the Start city and Finish city lookup fields. The frontend always searches its built-in curated city list first; this endpoint is a fallback for uncommon places.
+
+**Query parameters**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `q` | string | yes | City search text; fewer than 2 characters returns an empty list |
+
+**Response 200**
+```json
+[
+  {
+    "id": "amsterdam-nl",
+    "name": "Amsterdam",
+    "countryCode": "NL",
+    "countryName": "Netherlands",
+    "region": "North Holland",
+    "lat": 52.3676,
+    "lng": 4.9041,
+    "aliases": ["AMS"]
+  }
+]
+```
+
+If `CITY_SEARCH_ENDPOINT` is not configured, the endpoint returns `[]`. Public Nominatim autocomplete is intentionally not used.
 
 ---
 
