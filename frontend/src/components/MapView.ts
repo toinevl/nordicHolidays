@@ -8,6 +8,7 @@ export class MapView {
   private map: maplibregl.Map
   private markerEls = new Map<number, HTMLElement>()
   private onStopSelect: StopSelectCallback
+  private _animRafId = 0
 
   constructor(containerId: string, onStopSelect: StopSelectCallback) {
     this.onStopSelect = onStopSelect
@@ -101,6 +102,7 @@ export class MapView {
   }
 
   private animateRoute(): void {
+    cancelAnimationFrame(this._animRafId)
     const FRAMES = 120
     const MAX = 50000 // larger than any Sweden route length in dasharray units
     let frame = 0
@@ -112,9 +114,9 @@ export class MapView {
         (1 - progress) * MAX,
       ])
       frame++
-      requestAnimationFrame(step)
+      this._animRafId = requestAnimationFrame(step)
     }
-    requestAnimationFrame(step)
+    this._animRafId = requestAnimationFrame(step)
   }
 
   flyTo(stop: Stop): void {

@@ -51,7 +51,9 @@ const statusBar = new StatusBar(
   () => savedPanel.open(),
   (id: string) => {
     const url = `${window.location.origin}${window.location.pathname}?id=${id}`
-    navigator.clipboard.writeText(url).then(() => toast.success('Share link copied!'))
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success('Share link copied!'))
+      .catch(() => toast.error('Could not copy share link'))
   }
 )
 

@@ -54,7 +54,7 @@ export class ItineraryView {
     const btn = document.createElement('button')
     btn.id = 'btn-print'
     btn.className = 'btn btn--secondary btn--small'
-    btn.style.cssText = 'position:absolute;top:0;right:0;'
+    btn.style.cssText = 'position:absolute;top:0;right:0;z-index:1;'
     btn.textContent = '🖨 Print'
     btn.addEventListener('click', () => window.print())
     const wrap = document.querySelector('#itinerary .section-wrap') as HTMLElement | null

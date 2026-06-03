@@ -71,6 +71,7 @@ export class SavedTripsPanel {
     try {
       const { id } = await apiClient.saveItinerary(name, currentItinerary)
       this.store.setState({ unsaved: false, activeTripName: name, activeTripId: id })
+      history.replaceState(null, '', `?id=${id}`)
       nameInput.value = ''
       this.syncSaveForm()
       this.loadList()
