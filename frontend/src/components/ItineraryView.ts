@@ -1,4 +1,5 @@
 import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
+import { haversineKm } from '../lib/distance'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: { fly?: boolean }) => void
@@ -63,24 +64,29 @@ export class ItineraryView {
   }
 
   renderFromItinerary(itinerary: Itinerary): void {
-    const stops: Stop[] = itinerary.stops.map((s, i) => ({
-      id: i + 1,
-      days: String(s.day),
-      dates: '',
-      dest: s.city,
-      region: s.region,
-      coords: [s.lng, s.lat] as [number, number],
-      tags: [],
-      nights: s.nights,
-      desc: '',
-      highlights: s.highlights,
-      from: '',
-      km: 0,
-      time: '',
-      zoom: 12,
-      pitch: 45,
-      bearing: 0,
-    }))
+    const stops: Stop[] = itinerary.stops.map((s, i) => {
+      const prev = itinerary.stops[i - 1]
+      const km = prev ? haversineKm([prev.lng, prev.lat], [s.lng, s.lat]) : 0
+      const from = prev ? prev.city : ''
+      return {
+        id: i + 1,
+        days: String(s.day),
+        dates: '',
+        dest: s.city,
+        region: s.region,
+        coords: [s.lng, s.lat] as [number, number],
+        tags: [],
+        nights: s.nights,
+        desc: '',
+        highlights: s.highlights,
+        from,
+        km,
+        time: km > 0 ? `~${Math.round(km / 90)} h drive` : '',
+        zoom: 12,
+        pitch: 45,
+        bearing: 0,
+      }
+    })
     this.stops = stops
     this.selectedStopId = 1
     this.currentFilter = 'all'
