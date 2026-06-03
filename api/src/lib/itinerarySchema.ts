@@ -1,37 +1,40 @@
-import type Anthropic from '@anthropic-ai/sdk'
+import type OpenAI from 'openai'
 
-export const ITINERARY_TOOL: Anthropic.Tool = {
-  name: 'create_itinerary',
-  description: 'Create a structured road trip itinerary for Sweden',
-  input_schema: {
-    type: 'object',
-    properties: {
-      title: { type: 'string', description: 'A descriptive title for the itinerary' },
-      totalDays: { type: 'number', description: 'Total number of days' },
-      startCity: { type: 'string', description: 'Departure city' },
-      endCity: { type: 'string', description: 'Arrival city' },
-      stops: {
-        type: 'array',
-        description: 'Ordered list of overnight stops',
-        items: {
-          type: 'object',
-          properties: {
-            day: { type: 'number' },
-            city: { type: 'string' },
-            region: { type: 'string' },
-            lat: { type: 'number' },
-            lng: { type: 'number' },
-            nights: { type: 'number' },
-            highlights: { type: 'array', items: { type: 'string' } },
-            accommodation: { type: 'string' },
-            culinaryNotes: { type: 'string' },
+export const ITINERARY_FUNCTION: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'create_itinerary',
+    description: 'Create a structured road trip itinerary for Sweden',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'A descriptive title for the itinerary' },
+        totalDays: { type: 'number', description: 'Total number of days' },
+        startCity: { type: 'string', description: 'Departure city' },
+        endCity: { type: 'string', description: 'Arrival city' },
+        stops: {
+          type: 'array',
+          description: 'Ordered list of overnight stops',
+          items: {
+            type: 'object',
+            properties: {
+              day: { type: 'number' },
+              city: { type: 'string' },
+              region: { type: 'string' },
+              lat: { type: 'number' },
+              lng: { type: 'number' },
+              nights: { type: 'number' },
+              highlights: { type: 'array', items: { type: 'string' } },
+              accommodation: { type: 'string' },
+              culinaryNotes: { type: 'string' },
+            },
+            required: ['day', 'city', 'region', 'lat', 'lng', 'nights', 'highlights', 'accommodation', 'culinaryNotes'],
           },
-          required: ['day', 'city', 'region', 'lat', 'lng', 'nights', 'highlights', 'accommodation', 'culinaryNotes'],
         },
+        generatedAt: { type: 'string', description: 'ISO timestamp of generation' },
       },
-      generatedAt: { type: 'string', description: 'ISO timestamp of generation' },
+      required: ['title', 'totalDays', 'startCity', 'endCity', 'stops', 'generatedAt'],
     },
-    required: ['title', 'totalDays', 'startCity', 'endCity', 'stops', 'generatedAt'],
   },
 }
 

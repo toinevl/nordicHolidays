@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { getAnthropicClient } from '../lib/anthropicClient'
-import { ITINERARY_TOOL, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import type { Itinerary, Preferences } from '../types'
 
@@ -52,7 +52,7 @@ export async function generateHandler(
       model: 'claude-sonnet-4-6',
       max_tokens: 8192,
       system: SYSTEM_PROMPT,
-      tools: [ITINERARY_TOOL],
+      tools: [ITINERARY_FUNCTION],
       tool_choice: { type: 'tool', name: 'create_itinerary' },
       messages: [{ role: 'user', content: buildUserMessage(prefs) }],
     })
