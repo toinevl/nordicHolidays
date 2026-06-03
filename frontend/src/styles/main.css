@@ -399,10 +399,10 @@ footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: cent
 /* ── PANELS ─────────────────────────────────────────────────────────────── */
 .panel-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5); display: flex; }
 .panel-overlay.hidden { display: none; }
-.panel { position: absolute; top: 0; bottom: 0; width: min(420px, 95vw); background: var(--forest-mid); overflow-y: auto; }
+.panel { position: absolute; top: 0; bottom: 0; width: min(420px, 95vw); background: rgba(19, 32, 16, 0.88); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); overflow-y: auto; }
 .panel--right { right: 0; }
 .panel--left { left: 0; }
-.panel-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--forest-border); position: sticky; top: 0; background: var(--forest-mid); z-index: 1; }
+.panel-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--forest-border); position: sticky; top: 0; background: rgba(19, 32, 16, 0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); z-index: 1; }
 .panel-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: var(--birch); margin: 0; }
 .panel-close { background: none; border: none; color: var(--text-on-dark-muted); font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0.25rem; }
 .panel-close:hover { color: var(--birch); }
