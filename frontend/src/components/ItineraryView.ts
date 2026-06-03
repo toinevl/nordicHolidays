@@ -36,6 +36,7 @@ export class ItineraryView {
   }
 
   render(stops: Stop[], culinary: CulinaryRegion[], accommodations: Accommodation[]): void {
+    this.injectPrintButton()
     this.stops = stops
     this.culinary = culinary
     this.accommodations = accommodations
@@ -44,6 +45,21 @@ export class ItineraryView {
     this.renderCulinary()
     this.renderAccommodations()
     this.initScrollReveal()
+  }
+
+  private injectPrintButton(): void {
+    if (document.getElementById('btn-print')) return
+    const btn = document.createElement('button')
+    btn.id = 'btn-print'
+    btn.className = 'btn btn--secondary btn--small'
+    btn.style.cssText = 'position:absolute;top:0;right:0;'
+    btn.textContent = '🖨 Print'
+    btn.addEventListener('click', () => window.print())
+    const wrap = document.querySelector('#itinerary .section-wrap') as HTMLElement | null
+    if (wrap) {
+      wrap.style.position = 'relative'
+      wrap.appendChild(btn)
+    }
   }
 
   renderFromItinerary(itinerary: Itinerary): void {

@@ -481,3 +481,52 @@ footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: cent
 .tag--new {
   animation: tagPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+/* ── SEASON CALLOUT ─────────────────────────────────────────────────────── */
+.season-callout {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-family: 'DM Mono', monospace; font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  color: var(--text-on-dark-muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--forest-border);
+  border-radius: var(--r);
+  padding: 0.2rem 0.6rem;
+  margin-top: 0.6rem;
+}
+.season-callout__icon { font-size: 0.9rem; }
+
+/* ── PRINT ──────────────────────────────────────────────────────────────── */
+@media print {
+  nav, .status-bar, .panel-overlay, .toast-container, .loading-overlay,
+  .hero-actions, .btn-fly, .filter-panel, #btn-print, .grain { display: none !important; }
+
+  body { background: #fff; color: #111; font-size: 12pt; }
+  #hero { height: auto; min-height: 0; page-break-after: always; }
+  #map { display: none; }
+  .hero-overlay { position: static; background: none; padding: 2rem 0 1rem; }
+  .hero-title { color: #111; font-size: 28pt; }
+  .hero-sub   { color: #555; }
+  .hero-meta  { color: #555; }
+
+  #itinerary { background: #fff; }
+  .section-wrap { padding: 1.5rem 0; }
+  .section-title, .section-label { color: #111; }
+  .section-num { display: none; }
+
+  .timeline::before { background: #ccc; }
+  .dot { background: #111; color: #fff; border-color: #fff; }
+  .t-card {
+    background: #fff; border: 1px solid #ccc; border-left: 2px solid #111;
+    box-shadow: none; break-inside: avoid; margin-bottom: 1.5rem;
+  }
+  .t-card::before { display: none; }
+  .card-dest { color: #111; }
+  .card-region { color: #555; }
+  .card-nights { background: #111; color: #fff; }
+  .card-desc, .card-highlights li { color: #333; }
+  .stop-date, .stop-drive { color: #555; }
+
+  #culinary-section, #accom-section { display: none; }
+  footer { display: none; }
+}
