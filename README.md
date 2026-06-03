@@ -1,27 +1,81 @@
 # SwedenTravel
 
-Interactive 21-day Sweden road trip planner with AI itinerary generation.
+An AI-powered road trip planner for Sweden. Generate personalised multi-day itineraries, explore them on an interactive map, and save your favourite routes for later.
 
-## Local development
+**Live app:** https://wonderful-tree-0abf63d03.6.azurestaticapps.net
 
-**Frontend:**
+---
+
+## Features
+
+- **AI itinerary generation** — Claude generates structured day-by-day trips for any Swedish region and duration
+- **Interactive map** — MapLibre GL with animated route polyline and colour-coded region markers
+- **Save & load trips** — persist itineraries to Azure Table Storage and reload them in one click
+- **Share via URL** — every saved trip gets a shareable `?id=` link
+- **Print / PDF export** — print-optimised stylesheet for clean offline use
+- **Day-by-day timeline** — stop cards with drive distances, tips, and region colour tags
+- **Season & weather callouts** — packing and activity advice per trip
+- **Regenerate** — instantly produce a fresh itinerary with the same parameters
+
+---
+
+## Local Development
+
+**Frontend**
 ```bash
 cd frontend && npm install && npm run dev
 ```
 Opens at http://localhost:5173.
 
-**API:**
+**API**
 ```bash
 cd api && npm install
-# Set AzureWebJobsStorage in api/local.settings.json (Azurite or real connection string)
-npm start
+# Add AzureWebJobsStorage + ANTHROPIC_API_KEY to api/local.settings.json
+npm run start
 ```
-Runs Functions locally at http://localhost:7071.
+Runs Azure Functions locally at http://localhost:7071.
 
-## Deployment
+**Tests**
+```bash
+cd frontend && npm test
+cd api && npm test
+```
 
-Push to `main` — GitHub Actions deploys frontend to Azure SWA and API to the Flex Consumption Function App automatically. Path filters ensure only changed components redeploy.
+---
 
-## Architecture
+## Architecture Overview
 
-See `docs/superpowers/specs/2026-06-01-sweden-travel-evolution-design.md`.
+- **Frontend:** Vite + TypeScript static app deployed to Azure Static Web Apps (Free tier)
+- **API:** Azure Functions v4 TypeScript on Flex Consumption at `https://sweden-travel-api.azurewebsites.net`
+- **Storage:** Azure Table Storage — `Itineraries` and `Preferences` tables (`partitionKey="owner"`)
+- **AI:** Anthropic Claude via server-side `POST /api/generate` with forced tool use for structured output
+
+See [docs/architecture.md](docs/architecture.md) for the full topology diagram, repository structure, and data-flow walkthroughs.
+
+---
+
+## Deploy
+
+Two independent GitHub Actions workflows trigger on pushes to `main` with path filters so only the changed component redeploys.
+
+| Workflow | File | Deploys |
+|---|---|---|
+| Frontend | `.github/workflows/deploy-frontend.yml` | Azure Static Web Apps |
+| API | `.github/workflows/deploy-api.yml` | Azure Functions (Flex Consumption) |
+
+**Required secrets** (set in GitHub repository settings):
+
+| Secret | Used by |
+|---|---|
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | deploy-frontend.yml |
+| `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | deploy-api.yml |
+| `ANTHROPIC_API_KEY` | API runtime (set in Function App config) |
+| `AZURE_STORAGE_CONNECTION_STRING` | API runtime (set in Function App config) |
+
+---
+
+## Docs
+
+- [Architecture](docs/architecture.md) — topology, repo structure, data flows, state management
+- [API Reference](docs/api.md) — all 7 endpoints with request/response examples
+- [Features Guide](docs/features.md) — detailed description of every user-facing feature
