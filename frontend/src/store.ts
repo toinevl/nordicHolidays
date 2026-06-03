@@ -1,4 +1,8 @@
-import type { AppState, Preferences } from './types'
+import type { AppState, Preferences, Locale } from './types'
+
+const LOCALE_KEY = 'swedentravel_locale'
+const storedLocale = localStorage.getItem(LOCALE_KEY) as Locale | null
+const initialLocale: Locale = storedLocale === 'nl' ? 'nl' : 'en'
 
 const defaultPreferences: Preferences = {
   mustVisit: [],
@@ -18,6 +22,7 @@ const initialState: AppState = {
   activeTripId: null,
   selectedStopId: 1,
   currentFilter: 'all',
+  locale: initialLocale,
 }
 
 type Listener = () => void

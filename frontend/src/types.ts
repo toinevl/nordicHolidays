@@ -1,3 +1,5 @@
+import type { Locale } from './i18n/types'
+
 export type Stop = {
   id: number
   days: string
@@ -72,6 +74,8 @@ export type SavedItinerarySummary = {
   endCity: string
 }
 
+export type { Locale } from './i18n/types'
+
 export type AppState = {
   currentItinerary: Itinerary | null
   savedItineraries: SavedItinerarySummary[]
@@ -82,4 +86,5 @@ export type AppState = {
   activeTripId: string | null
   selectedStopId: number
   currentFilter: string
+  locale: Locale
 }
