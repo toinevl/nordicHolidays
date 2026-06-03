@@ -50,12 +50,16 @@ export async function generateHandler(
     const client = getAnthropicClient()
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       tools: [ITINERARY_TOOL],
       tool_choice: { type: 'tool', name: 'create_itinerary' },
       messages: [{ role: 'user', content: buildUserMessage(prefs) }],
     })
+
+    if (response.stop_reason === 'max_tokens') {
+      return withCors({ status: 502, body: JSON.stringify({ error: 'Itinerary too long to generate — try fewer days' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    }
 
     const toolBlock = response.content.find(b => b.type === 'tool_use' && b.name === 'create_itinerary')
     if (!toolBlock || toolBlock.type !== 'tool_use') {
