@@ -1,9 +1,25 @@
 import type { Preferences, Itinerary } from '../types'
 import type { Store } from '../store'
 import { apiClient } from '../api/client'
+import { searchLocalCities, type CitySuggestion } from '../lib/citySearch'
 
 export type GenerateCallback = (itinerary: Itinerary) => void
 export type GenerateErrorCallback = (message: string) => void
+type CityField = 'startCity' | 'endCity'
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char] ?? char))
+}
+
+function cityKey(city: CitySuggestion): string {
+  return `${city.name.toLocaleLowerCase()}-${city.countryCode.toLocaleLowerCase()}`
+}
 
 export class GeneratorPanel {
   private overlay: HTMLElement
@@ -11,6 +27,7 @@ export class GeneratorPanel {
   private store: Store
   private onGenerate: GenerateCallback
   private onError: GenerateErrorCallback
+  private cityLookupRequest = 0
 
   constructor(store: Store, onGenerate: GenerateCallback, onError: GenerateErrorCallback = () => {}) {
     this.store = store
@@ -48,11 +65,19 @@ export class GeneratorPanel {
       <div class="panel-body">
         <div class="form-group">
           <label class="form-label">Start city</label>
-          <input id="gen-start" class="form-input" type="text" placeholder="e.g. Amsterdam" />
+          <div class="city-combobox">
+            <input id="gen-start" class="form-input" type="text" placeholder="Search city..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-start-results" />
+            <div id="gen-start-results" class="city-results hidden" role="listbox"></div>
+          </div>
+          <p id="gen-start-hint" class="form-hint city-custom-hint hidden">Custom city</p>
         </div>
         <div class="form-group">
-          <label class="form-label">End city</label>
-          <input id="gen-end" class="form-input" type="text" placeholder="e.g. Amsterdam" />
+          <label class="form-label">Finish city</label>
+          <div class="city-combobox">
+            <input id="gen-end" class="form-input" type="text" placeholder="Search city..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-end-results" />
+            <div id="gen-end-results" class="city-results hidden" role="listbox"></div>
+          </div>
+          <p id="gen-end-hint" class="form-hint city-custom-hint hidden">Custom city</p>
         </div>
         <div class="form-group">
           <label class="form-label">Trip length (days)</label>
@@ -85,6 +110,8 @@ export class GeneratorPanel {
 
     this.bindTagInput('must-visit-input', 'must-visit-tags', 'mustVisit')
     this.bindTagInput('avoid-input', 'avoid-tags', 'avoid')
+    this.bindCityLookup('gen-start', 'gen-start-results', 'gen-start-hint', 'startCity')
+    this.bindCityLookup('gen-end', 'gen-end-results', 'gen-end-hint', 'endCity')
 
     this.panel.querySelector('#btn-generate')?.addEventListener('click', () => this.handleGenerate())
     this.panel.querySelector('#btn-regenerate')?.addEventListener('click', () => this.handleGenerate())
@@ -104,6 +131,120 @@ export class GeneratorPanel {
         input.value = ''
       }
     })
+  }
+
+  private bindCityLookup(inputId: string, resultsId: string, hintId: string, field: CityField): void {
+    const input = this.panel.querySelector<HTMLInputElement>(`#${inputId}`)
+    const resultsEl = this.panel.querySelector<HTMLElement>(`#${resultsId}`)
+    const hintEl = this.panel.querySelector<HTMLElement>(`#${hintId}`)
+    if (!input || !resultsEl || !hintEl) return
+
+    let activeIndex = -1
+    let suggestions: CitySuggestion[] = []
+    let timer = 0
+
+    const close = () => {
+      resultsEl.classList.add('hidden')
+      input.setAttribute('aria-expanded', 'false')
+      activeIndex = -1
+    }
+
+    const render = (items: CitySuggestion[]) => {
+      suggestions = items
+      activeIndex = items.length ? 0 : -1
+      input.setAttribute('aria-expanded', String(items.length > 0))
+      resultsEl.classList.toggle('hidden', items.length === 0)
+      resultsEl.innerHTML = items.map((city, index) => {
+        const region = city.region ? `${city.region}, ` : ''
+        const meta = `${region}${city.countryName}`
+        return `
+          <button class="city-option ${index === activeIndex ? 'active' : ''}" type="button" role="option" data-index="${index}" aria-selected="${index === activeIndex}">
+            <span class="city-option__name">${escapeHtml(city.name)}</span>
+            <span class="city-option__meta">${escapeHtml(meta)}</span>
+          </button>
+        `
+      }).join('')
+
+      resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach(btn => {
+        btn.addEventListener('mousedown', event => event.preventDefault())
+        btn.addEventListener('click', () => {
+          const city = suggestions[Number(btn.dataset.index)]
+          if (city) {
+            input.value = city.name
+            this.updateCityPreference(field, city.name)
+            hintEl.classList.add('hidden')
+            close()
+          }
+        })
+      })
+    }
+
+    const setActive = (nextIndex: number) => {
+      if (!suggestions.length) return
+      activeIndex = (nextIndex + suggestions.length) % suggestions.length
+      resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach((btn, index) => {
+        btn.classList.toggle('active', index === activeIndex)
+        btn.setAttribute('aria-selected', String(index === activeIndex))
+      })
+    }
+
+    const search = async () => {
+      const query = input.value.trim()
+      this.updateCityPreference(field, query)
+      window.clearTimeout(timer)
+
+      if (query.length < 2) {
+        hintEl.classList.add('hidden')
+        render([])
+        return
+      }
+
+      const localResults = searchLocalCities(query)
+      render(localResults)
+      hintEl.classList.toggle('hidden', localResults.some(city => city.name.toLowerCase() === query.toLowerCase()))
+
+      if (localResults.length >= 5) return
+      const requestId = ++this.cityLookupRequest
+      timer = window.setTimeout(async () => {
+        try {
+          const remoteResults = await apiClient.searchCities(query)
+          if (requestId !== this.cityLookupRequest) return
+          const seen = new Set(localResults.flatMap(city => [city.id, cityKey(city)]))
+          render([
+            ...localResults,
+            ...remoteResults.filter(city => !seen.has(city.id) && !seen.has(cityKey(city))),
+          ].slice(0, 8))
+        } catch {
+          // Local suggestions are the primary path; remote lookup is optional.
+        }
+      }, 250)
+    }
+
+    input.addEventListener('input', () => { void search() })
+    input.addEventListener('focus', () => { void search() })
+    input.addEventListener('blur', () => window.setTimeout(close, 120))
+    input.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setActive(activeIndex + 1)
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setActive(activeIndex - 1)
+      } else if (event.key === 'Enter' && activeIndex >= 0 && suggestions[activeIndex]) {
+        event.preventDefault()
+        const city = suggestions[activeIndex]
+        input.value = city.name
+        this.updateCityPreference(field, city.name)
+        hintEl.classList.add('hidden')
+        close()
+      } else if (event.key === 'Escape') {
+        close()
+      }
+    })
+  }
+
+  private updateCityPreference(field: CityField, value: string): void {
+    this.store.setState({ preferences: { ...this.store.getState().preferences, [field]: value } })
   }
 
   private renderTags(tagsId: string, field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>): void {
