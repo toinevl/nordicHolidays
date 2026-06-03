@@ -56,7 +56,7 @@ export async function generateHandler(
         { role: 'user', content: buildUserMessage(prefs) },
       ],
       tools: [ITINERARY_FUNCTION],
-      tool_choice: { type: 'function', function: { name: 'create_itinerary' } },
+      tool_choice: 'required',
     })
 
     const choice = response.choices[0]
