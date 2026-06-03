@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Itinerary } from '../types'
 
-vi.mock('../lib/anthropicClient', () => ({
-  getAnthropicClient: vi.fn(),
+vi.mock('../lib/llmClient', () => ({
+  getLlmClient: vi.fn(),
+  getModel: vi.fn(() => 'anthropic/claude-sonnet-4-6'),
 }))
 
 import { generateHandler } from './generate'
-import { getAnthropicClient } from '../lib/anthropicClient'
+import { getLlmClient } from '../lib/llmClient'
 
 function makeItinerary(): Itinerary {
   return {
@@ -21,18 +22,30 @@ function makeItinerary(): Itinerary {
   }
 }
 
+function makeOpenAIResponse(itin: Itinerary, finishReason = 'tool_calls') {
+  return {
+    choices: [{
+      finish_reason: finishReason,
+      message: {
+        tool_calls: finishReason === 'tool_calls' ? [{
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'create_itinerary', arguments: JSON.stringify(itin) },
+        }] : null,
+      },
+    }],
+  }
+}
+
 describe('POST /api/generate', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns a valid Itinerary on success', async () => {
     const itin = makeItinerary()
-    const mockCreate = vi.fn().mockResolvedValue({
-      content: [{ type: 'tool_use', name: 'create_itinerary', input: itin }],
-      stop_reason: 'tool_use',
-    })
-    ;(getAnthropicClient as ReturnType<typeof vi.fn>).mockReturnValue({ messages: { create: mockCreate } })
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
 
-    const req = { json: async () => ({ mustVisit: [], avoid: [], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 14 }) } as any
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 14 }) } as any
     const result = await generateHandler(req)
     const body = JSON.parse(result.body as string) as Itinerary
 
@@ -43,36 +56,41 @@ describe('POST /api/generate', () => {
   })
 
   it('returns 400 for invalid request body', async () => {
-    const req = { json: async () => { throw new Error('bad json') } } as any
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => { throw new Error('bad json') } } as any
     const result = await generateHandler(req)
     expect(result.status).toBe(400)
-    // body is now JSON
-    const body = JSON.parse(result.body as string)
-    expect(body.error).toBeDefined()
+    expect(JSON.parse(result.body as string).error).toBeDefined()
   })
 
-  it('returns 502 when Claude does not return tool_use', async () => {
-    const mockCreate = vi.fn().mockResolvedValue({
-      content: [{ type: 'text', text: 'Sorry I cannot do that' }],
-      stop_reason: 'end_turn',
-    })
-    ;(getAnthropicClient as ReturnType<typeof vi.fn>).mockReturnValue({ messages: { create: mockCreate } })
+  it('returns 502 when model hits token limit', async () => {
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(makeItinerary(), 'length'))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
 
-    const req = { json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
     const result = await generateHandler(req)
     expect(result.status).toBe(502)
-    const body = JSON.parse(result.body as string)
-    expect(body.error).toBeDefined()
+    expect(JSON.parse(result.body as string).error).toContain('too long')
   })
 
-  it('returns 500 on Anthropic API error', async () => {
-    const mockCreate = vi.fn().mockRejectedValue(new Error('rate limit'))
-    ;(getAnthropicClient as ReturnType<typeof vi.fn>).mockReturnValue({ messages: { create: mockCreate } })
+  it('returns 502 when model returns no tool call', async () => {
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ finish_reason: 'stop', message: { tool_calls: null } }],
+    })
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
 
-    const req = { json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
+    const result = await generateHandler(req)
+    expect(result.status).toBe(502)
+    expect(JSON.parse(result.body as string).error).toBeDefined()
+  })
+
+  it('returns 500 on API error', async () => {
+    const mockCreate = vi.fn().mockRejectedValue(new Error('rate limit'))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
     const result = await generateHandler(req)
     expect(result.status).toBe(500)
-    const body = JSON.parse(result.body as string)
-    expect(body.error).toBeDefined()
+    expect(JSON.parse(result.body as string).error).toBeDefined()
   })
 })

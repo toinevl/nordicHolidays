@@ -1,5 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getAnthropicClient } from '../lib/anthropicClient'
+import { getLlmClient, getModel } from '../lib/llmClient'
 import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import type { Itinerary, Preferences } from '../types'
@@ -47,32 +47,41 @@ export async function generateHandler(
   }
 
   try {
-    const client = getAnthropicClient()
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+    const client = getLlmClient()
+    const response = await client.chat.completions.create({
+      model: getModel(),
       max_tokens: 8192,
-      system: SYSTEM_PROMPT,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: buildUserMessage(prefs) },
+      ],
       tools: [ITINERARY_FUNCTION],
-      tool_choice: { type: 'tool', name: 'create_itinerary' },
-      messages: [{ role: 'user', content: buildUserMessage(prefs) }],
+      tool_choice: { type: 'function', function: { name: 'create_itinerary' } },
     })
 
-    if (response.stop_reason === 'max_tokens') {
+    const choice = response.choices[0]
+    if (choice.finish_reason === 'length') {
       return withCors({ status: 502, body: JSON.stringify({ error: 'Itinerary too long to generate — try fewer days' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
-    const toolBlock = response.content.find(b => b.type === 'tool_use' && b.name === 'create_itinerary')
-    if (!toolBlock || toolBlock.type !== 'tool_use') {
-      return withCors({ status: 502, body: JSON.stringify({ error: 'Claude did not return a structured itinerary' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    const toolCall = choice.message.tool_calls?.[0]
+    if (!toolCall || toolCall.function.name !== 'create_itinerary') {
+      return withCors({ status: 502, body: JSON.stringify({ error: 'Model did not return a structured itinerary' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
-    const input = toolBlock.input
+    let input: unknown
+    try {
+      input = JSON.parse(toolCall.function.arguments)
+    } catch {
+      return withCors({ status: 502, body: JSON.stringify({ error: 'Model returned unparseable itinerary arguments' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    }
+
     if (!validateItinerary(input)) {
       console.error('validateItinerary failed. raw input:', JSON.stringify(input))
-      return withCors({ status: 502, body: JSON.stringify({ error: 'Claude returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withCors({ status: 502, body: JSON.stringify({ error: 'Model returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
-    const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString() }
 
+    const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString() }
     return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
