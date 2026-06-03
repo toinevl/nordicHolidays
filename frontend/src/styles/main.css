@@ -15,6 +15,13 @@
   --r: 3px;
 }
 
+/* REGION COLOUR CLASSES — applied to .card-region */
+.region--teal   { color: #0db3a0; }
+.region--sage   { color: #6aab70; }
+.region--violet { color: #9080e0; }
+.region--frost  { color: #5ab4cc; }
+.region--amber  { color: var(--amber-light); }
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {

@@ -7,6 +7,20 @@ function tagLabel(tag: string): string {
   return tag === 'offbeat' ? 'Off-beat' : tag[0].toUpperCase() + tag.slice(1)
 }
 
+const REGION_COLOR_MAP: [string, string][] = [
+  ['skåne', 'teal'], ['blekinge', 'teal'], ['gotland', 'teal'],
+  ['bohuslän', 'teal'], ['gothenburg', 'teal'], ['halland', 'teal'],
+  ['småland', 'sage'], ['östergötland', 'sage'], ['värmland', 'sage'],
+  ['dalarna', 'violet'], ['jämtland', 'violet'], ['härjedalen', 'violet'],
+  ['lapland', 'frost'], ['norrbotten', 'frost'], ['västernorrland', 'frost'],
+]
+
+function regionColorKey(region: string): string {
+  const lower = region.toLowerCase()
+  const match = REGION_COLOR_MAP.find(([key]) => lower.includes(key))
+  return match ? match[1] : 'amber'
+}
+
 export class ItineraryView {
   private stops: Stop[] = []
   private culinary: CulinaryRegion[] = []
@@ -151,7 +165,7 @@ export class ItineraryView {
           </div>
           <div class="t-card" id="stop-${s.id}">
             <div class="card-head">
-              <div><div class="card-dest">${s.dest}</div><div class="card-region">${s.region}</div></div>
+              <div><div class="card-dest">${s.dest}</div><div class="card-region region--${regionColorKey(s.region)}">${s.region}</div></div>
               <div class="card-nights">${nights}</div>
             </div>
             <div class="tags">${tags}</div>
