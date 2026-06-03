@@ -1,9 +1,8 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 
 describe('getLlmClient', () => {
-  afterEach(() => {
-    delete process.env.OPENROUTER_API_KEY
-  })
+  beforeEach(() => { vi.resetModules() })
+  afterEach(() => { delete process.env.OPENROUTER_API_KEY })
 
   it('throws if OPENROUTER_API_KEY is not set', async () => {
     delete process.env.OPENROUTER_API_KEY
@@ -11,18 +10,23 @@ describe('getLlmClient', () => {
     expect(() => getLlmClient()).toThrow('OPENROUTER_API_KEY is not configured')
   })
 
-  it('returns an object with chat.completions.create when key is set', async () => {
+  it('throws if OPENROUTER_API_KEY is whitespace only', async () => {
+    process.env.OPENROUTER_API_KEY = '   '
+    const { getLlmClient } = await import('./llmClient')
+    expect(() => getLlmClient()).toThrow('OPENROUTER_API_KEY is not configured')
+  })
+
+  it('returns a client pointed at OpenRouter when key is set', async () => {
     process.env.OPENROUTER_API_KEY = 'test-key'
     const { getLlmClient } = await import('./llmClient')
     const client = getLlmClient()
-    expect(client.chat.completions.create).toBeDefined()
+    expect((client as any).baseURL).toContain('openrouter.ai')
   })
 })
 
 describe('getModel', () => {
-  afterEach(() => {
-    delete process.env.LLM_MODEL
-  })
+  beforeEach(() => { vi.resetModules() })
+  afterEach(() => { delete process.env.LLM_MODEL })
 
   it('defaults to anthropic/claude-sonnet-4-6', async () => {
     delete process.env.LLM_MODEL
