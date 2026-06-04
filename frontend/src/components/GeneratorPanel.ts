@@ -2,6 +2,7 @@ import type { Preferences, Itinerary } from '../types'
 import type { Store } from '../store'
 import { apiClient } from '../api/client'
 import { searchLocalCities, type CitySuggestion } from '../lib/citySearch'
+import { t } from '../i18n/index'
 
 export type GenerateCallback = (itinerary: Itinerary) => void
 export type GenerateErrorCallback = (message: string) => void
@@ -28,6 +29,7 @@ export class GeneratorPanel {
   private onGenerate: GenerateCallback
   private onError: GenerateErrorCallback
   private cityLookupRequest = 0
+  private lastLocale: string = ''
 
   constructor(store: Store, onGenerate: GenerateCallback, onError: GenerateErrorCallback = () => {}) {
     this.store = store
@@ -42,7 +44,15 @@ export class GeneratorPanel {
     document.body.appendChild(this.overlay)
     this.bindEvents()
     this.loadPreferences()
-    this.store.subscribe(() => this.syncRegenerateVisibility())
+    this.lastLocale = this.store.getState().locale
+    this.store.subscribe(() => {
+      this.syncRegenerateVisibility()
+      const currentLocale = this.store.getState().locale
+      if (currentLocale !== this.lastLocale) {
+        this.lastLocale = currentLocale
+        this.rerender()
+      }
+    })
   }
 
   open(): void {
@@ -59,49 +69,64 @@ export class GeneratorPanel {
   private template(): string {
     return `
       <div class="panel-header">
-        <h2 class="panel-title">Plan Your Trip</h2>
-        <button class="panel-close" aria-label="Close">&times;</button>
+        <h2 class="panel-title">${t('generator.panelTitle')}</h2>
+        <button class="panel-close" aria-label="${t('saved.close')}">&times;</button>
       </div>
       <div class="panel-body">
         <div class="form-group">
-          <label class="form-label">Start city</label>
+          <label class="form-label">${t('generator.startCity')}</label>
           <div class="city-combobox">
-            <input id="gen-start" class="form-input" type="text" placeholder="Search city..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-start-results" />
+            <input id="gen-start" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-start-results" />
             <div id="gen-start-results" class="city-results hidden" role="listbox"></div>
           </div>
-          <p id="gen-start-hint" class="form-hint city-custom-hint hidden">Custom city</p>
+          <p id="gen-start-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
         </div>
         <div class="form-group">
-          <label class="form-label">Finish city</label>
+          <label class="form-label">${t('generator.finishCity')}</label>
           <div class="city-combobox">
-            <input id="gen-end" class="form-input" type="text" placeholder="Search city..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-end-results" />
+            <input id="gen-end" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-end-results" />
             <div id="gen-end-results" class="city-results hidden" role="listbox"></div>
           </div>
-          <p id="gen-end-hint" class="form-hint city-custom-hint hidden">Custom city</p>
+          <p id="gen-end-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
         </div>
         <div class="form-group">
-          <label class="form-label">Trip length (days)</label>
+          <label class="form-label">${t('generator.tripLength')}</label>
           <input id="gen-days" class="form-input" type="number" min="7" max="30" value="21" />
         </div>
         <div class="form-group">
-          <label class="form-label">Must visit <span class="form-hint">(press Enter to add)</span></label>
+          <label class="form-label">${t('generator.mustVisit')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
           <div class="tag-input-wrapper">
             <div id="must-visit-tags" class="tag-list"></div>
-            <input id="must-visit-input" class="form-input" type="text" placeholder="Add a place..." />
+            <input id="must-visit-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" />
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Avoid <span class="form-hint">(press Enter to add)</span></label>
+          <label class="form-label">${t('generator.avoid')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
           <div class="tag-input-wrapper">
             <div id="avoid-tags" class="tag-list"></div>
-            <input id="avoid-input" class="form-input" type="text" placeholder="Add a place..." />
+            <input id="avoid-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" />
           </div>
         </div>
-        <button id="btn-generate" class="btn btn--primary btn--full">Generate Itinerary</button>
-        <button id="btn-regenerate" class="btn btn--secondary btn--full" style="display:none">Regenerate (same preferences)</button>
-        <p class="form-hint panel-save-hint hidden" id="panel-save-hint">Preferences saved.</p>
+        <button id="btn-generate" class="btn btn--primary btn--full">${t('generator.generateBtn')}</button>
+        <button id="btn-regenerate" class="btn btn--secondary btn--full" style="display:none">${t('generator.regenerateBtn')}</button>
+        <p class="form-hint panel-save-hint hidden" id="panel-save-hint">${t('generator.preferencesSaved')}</p>
       </div>
     `
+  }
+
+  private rerender(): void {
+    this.panel.innerHTML = this.template()
+    this.bindEvents()
+    const prefs = this.store.getState().preferences
+    const startInput = this.panel.querySelector('#gen-start') as HTMLInputElement
+    const endInput = this.panel.querySelector('#gen-end') as HTMLInputElement
+    const daysInput = this.panel.querySelector('#gen-days') as HTMLInputElement
+    if (startInput) startInput.value = prefs.startCity
+    if (endInput) endInput.value = prefs.endCity
+    if (daysInput) daysInput.value = String(prefs.tripDays)
+    this.renderTags('must-visit-tags', 'mustVisit')
+    this.renderTags('avoid-tags', 'avoid')
+    this.syncRegenerateVisibility()
   }
 
   private bindEvents(): void {
@@ -250,10 +275,9 @@ export class GeneratorPanel {
   private renderTags(tagsId: string, field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>): void {
     const container = this.panel.querySelector(`#${tagsId}`) as HTMLElement
     const tags = this.store.getState().preferences[field]
-    container.innerHTML = tags.map(t => `
-      <span class="tag">${t}<button class="tag-remove" data-val="${t}" data-field="${field}">&times;</button></span>
+    container.innerHTML = tags.map(tag => `
+      <span class="tag">${tag}<button class="tag-remove" data-val="${tag}" data-field="${field}">&times;</button></span>
     `).join('')
-    // Animate the last tag (just added)
     const spans = container.querySelectorAll<HTMLElement>('.tag')
     spans[spans.length - 1]?.classList.add('tag--new')
     container.querySelectorAll('.tag-remove').forEach(btn => {
@@ -297,12 +321,12 @@ export class GeneratorPanel {
     this.store.setState({ preferences: prefs })
     try { await apiClient.savePreferences(prefs) } catch { /* non-critical */ }
 
-    btn.textContent = 'Generating...'
+    btn.textContent = t('generator.generating')
     btn.disabled = true
     this.store.setState({ isGenerating: true })
 
     try {
-      const itinerary = await apiClient.generateItinerary(prefs)
+      const itinerary = await apiClient.generateItinerary(prefs, this.store.getState().locale)
       this.store.setState({ currentItinerary: itinerary, isGenerating: false, unsaved: true, activeTripName: null })
       this.onGenerate(itinerary)
       this.close()
@@ -310,7 +334,7 @@ export class GeneratorPanel {
       this.store.setState({ isGenerating: false })
       this.onError(err instanceof Error ? err.message : 'Generation failed')
     } finally {
-      btn.textContent = 'Generate Itinerary'
+      btn.textContent = t('generator.generateBtn')
       btn.disabled = false
     }
   }
