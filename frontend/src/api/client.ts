@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import type { Preferences, Itinerary, SavedItinerarySummary } from '../types'
+import type { Preferences, Itinerary, SavedItinerarySummary, Locale } from '../types'
 import type { CitySuggestion } from '../lib/citySearch'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net'
@@ -23,7 +23,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const apiClient = {
   getPreferences: () => request<Preferences>('/api/preferences'),
   savePreferences: (prefs: Preferences) => request<Preferences>('/api/preferences', { method: 'PUT', body: JSON.stringify(prefs) }),
-  generateItinerary: (prefs: Preferences) => request<Itinerary>('/api/generate', { method: 'POST', body: JSON.stringify(prefs) }),
+  generateItinerary: (prefs: Preferences, lang: Locale = 'en') =>
+    request<Itinerary>('/api/generate', { method: 'POST', body: JSON.stringify({ ...prefs, lang }) }),
   listItineraries: () => request<SavedItinerarySummary[]>('/api/itineraries'),
   getItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}`),
   saveItinerary: (name: string, itinerary: Itinerary) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary }) }),
