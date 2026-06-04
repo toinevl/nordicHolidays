@@ -4,7 +4,7 @@ import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import type { Itinerary, Preferences } from '../types'
 
-function buildUserMessage(prefs: Preferences): string {
+function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' = 'en'): string {
   const parts: string[] = [
     `Create a ${prefs.tripDays}-day Sweden road trip itinerary.`,
     `Start city: ${prefs.startCity}`,
@@ -13,6 +13,9 @@ function buildUserMessage(prefs: Preferences): string {
   if (prefs.mustVisit.length > 0) parts.push(`Must include: ${prefs.mustVisit.join(', ')}`)
   if (prefs.avoid.length > 0) parts.push(`Avoid: ${prefs.avoid.join(', ')}`)
   parts.push('Plan logical routing, mix of famous and off-the-beaten-track stops, with authentic local recommendations.')
+  parts.push(lang === 'nl'
+    ? 'Genereer de reisroute in het Nederlands.'
+    : 'Generate the itinerary in English.')
   return parts.join('\n')
 }
 
@@ -36,8 +39,11 @@ export async function generateHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   let prefs: Preferences
+  let lang: 'en' | 'nl' = 'en'
   try {
-    prefs = await req.json() as Preferences
+    const body = await req.json() as Preferences & { lang?: string }
+    prefs = body
+    if (body.lang === 'nl') lang = 'nl'
   } catch {
     return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
@@ -53,7 +59,7 @@ export async function generateHandler(
       max_tokens: 8192,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: buildUserMessage(prefs) },
+        { role: 'user', content: buildUserMessage(prefs, lang) },
       ],
       tools: [ITINERARY_FUNCTION],
       tool_choice: 'required',

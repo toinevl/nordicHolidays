@@ -93,4 +93,38 @@ describe('POST /api/generate', () => {
     expect(result.status).toBe(500)
     expect(JSON.parse(result.body as string).error).toBeDefined()
   })
+
+  it('appends Dutch language instruction when lang is "nl"', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 7, lang: 'nl' }),
+    } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('Genereer de reisroute in het Nederlands')
+  })
+
+  it('appends English language instruction by default (no lang field)', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 7 }),
+    } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('Generate the itinerary in English')
+  })
 })
