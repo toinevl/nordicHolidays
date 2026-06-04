@@ -390,6 +390,7 @@ footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: cent
 }
 .status-btn { background: none; border: 1px solid var(--forest-border); color: var(--text-on-dark); padding: 0.25rem 0.75rem; border-radius: var(--r); cursor: pointer; font-family: var(--font-mono, 'DM Mono', monospace); font-size: 0.75rem; }
 .status-btn:hover { border-color: var(--amber); color: var(--amber); }
+.locale-btn--active { color: var(--amber) !important; font-weight: 600; }
 .status-center { display: flex; align-items: center; gap: 0.5rem; }
 .status-trip-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; color: var(--birch); }
 .status-badge { font-size: 0.65rem; padding: 0.125rem 0.5rem; border-radius: 999px; font-family: var(--font-mono, 'DM Mono', monospace); }
