@@ -7,12 +7,18 @@ import { GeneratorPanel } from './components/GeneratorPanel'
 import { SavedTripsPanel } from './components/SavedTripsPanel'
 import { Toast } from './components/Toast'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
-import type { Itinerary } from './types'
+import type { Itinerary, Locale } from './types'
 import { apiClient } from './api/client'
-import { setLocale, LOCALE_STORAGE_KEY } from './i18n/index'
+import { setLocale } from './i18n/index'
+import { t, tpl } from './i18n/index'
 
 const store = createStore()
 const toast = new Toast()
+
+function changeLocale(lang: Locale): void {
+  setLocale(lang)
+  store.setState({ locale: lang })
+}
 
 const loadingOverlay = document.createElement('div')
 loadingOverlay.className = 'loading-overlay hidden'
@@ -53,15 +59,10 @@ const statusBar = new StatusBar(
   (id: string) => {
     const url = `${window.location.origin}${window.location.pathname}?id=${id}`
     navigator.clipboard.writeText(url)
-      .then(() => toast.success('Share link copied!'))
-      .catch(() => toast.error('Could not copy share link'))
+      .then(() => toast.success(t('toast.shareCopied')))
+      .catch(() => toast.error(t('toast.shareFailed')))
   },
-  (locale) => {
-    setLocale(locale)
-    try { localStorage.setItem(LOCALE_STORAGE_KEY, locale) } catch { /* ignore */ }
-    store.setState({ locale })
-    itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
-  }
+  (lang: Locale) => changeLocale(lang),
 )
 
 function applyItinerary(itinerary: Itinerary): void {
@@ -79,7 +80,7 @@ function applyItinerary(itinerary: Itinerary): void {
 const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: string, id: string) => {
   store.setState({ currentItinerary: itinerary, activeTripName: name, activeTripId: id, unsaved: false })
   applyItinerary(itinerary)
-  toast.success(`Loaded "${name}"`)
+  toast.success(tpl('toast.loaded', { name }))
 })
 
 const generatorPanel = new GeneratorPanel(
@@ -87,10 +88,10 @@ const generatorPanel = new GeneratorPanel(
   (itinerary: Itinerary) => {
     store.setState({ currentItinerary: itinerary, unsaved: true, activeTripName: null, activeTripId: null })
     applyItinerary(itinerary)
-    toast.success('Itinerary generated! Save it in My Trips.')
+    toast.success(t('toast.generated'))
   },
   (msg: string) => {
-    toast.error(`Generation failed: ${msg}`)
+    toast.error(tpl('toast.generationFailed', { msg }))
   }
 )
 
@@ -105,9 +106,9 @@ if (urlId) {
     .then(itinerary => {
       store.setState({ currentItinerary: itinerary, activeTripId: urlId, unsaved: false })
       applyItinerary(itinerary)
-      toast.success('Loaded shared itinerary')
+      toast.success(t('toast.sharedItineraryLoaded'))
     })
-    .catch(() => toast.error('Could not load shared itinerary'))
+    .catch(() => toast.error(t('toast.sharedItineraryFailed')))
 }
 
 // Flythrough
