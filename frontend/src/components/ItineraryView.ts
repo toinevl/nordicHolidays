@@ -1,6 +1,7 @@
 import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
 import { haversineKm } from '../lib/distance'
 import { getSeasonInfo } from '../data/seasonData'
+import { t, tpl } from '../i18n/index'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: { fly?: boolean }) => void
@@ -55,7 +56,7 @@ export class ItineraryView {
     btn.id = 'btn-print'
     btn.className = 'btn btn--secondary btn--small'
     btn.style.cssText = 'position:absolute;top:0;right:0;z-index:1;'
-    btn.textContent = '🖨 Print'
+    btn.textContent = t('itinerary.print')
     btn.addEventListener('click', () => window.print())
     const wrap = document.querySelector('#itinerary .section-wrap') as HTMLElement | null
     if (wrap) {
@@ -125,10 +126,10 @@ export class ItineraryView {
     const summaryEl = document.getElementById('route-summary')
     if (summaryEl) {
       summaryEl.innerHTML = [
-        { value: `${totalNights}`,                  label: 'Planned nights' },
-        { value: totalKm.toLocaleString('en-US'),   label: 'Road kilometres' },
-        { value: `${overnightStops}`,               label: 'Overnight stops' },
-        { value: `${longestDrive.km} km`,           label: `Longest drive to ${longestDrive.dest}` },
+        { value: `${totalNights}`,                 label: t('itinerary.plannedNights') },
+        { value: totalKm.toLocaleString('en-US'),  label: t('itinerary.roadKilometres') },
+        { value: `${overnightStops}`,              label: t('itinerary.overnightStops') },
+        { value: `${longestDrive.km} km`,          label: tpl('itinerary.longestDriveTo', { dest: longestDrive.dest }) },
       ].map((item, i) => `
         <div class="summary-tile" data-reveal style="transition-delay:${0.05 + i * 0.06}s">
           <div class="summary-value">${item.value}</div>
@@ -141,7 +142,7 @@ export class ItineraryView {
     if (chipsEl) {
       chipsEl.innerHTML = tags.map(tag => `
         <button class="chip ${tag === this.currentFilter ? 'active' : ''}" data-filter="${tag}">
-          ${tag === 'all' ? 'All stops' : tagLabel(tag)}
+          ${tag === 'all' ? t('itinerary.allStops') : tagLabel(tag)}
         </button>`).join('')
 
       chipsEl.querySelectorAll<HTMLButtonElement>('.chip').forEach(chip => {
@@ -162,9 +163,9 @@ export class ItineraryView {
     const el = document.getElementById('selected-stop')
     if (el) {
       el.innerHTML = `
-        <div class="selected-kicker">Selected stop</div>
+        <div class="selected-kicker">${t('itinerary.selectedStop')}</div>
         <div class="selected-title">${stop.dest}</div>
-        <p class="selected-copy">Day ${stop.days} · ${stop.dates}<br>${drive}</p>`
+        <p class="selected-copy">${t('itinerary.dayPrefix')} ${stop.days} · ${stop.dates}<br>${drive}</p>`
     }
   }
 
@@ -174,7 +175,7 @@ export class ItineraryView {
 
     tl.innerHTML = this.stops.map((s, idx) => {
       const tags   = s.tags.map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')
-      const nights = s.nights === 0 ? 'Day trip' : s.nights === 1 ? '1 night' : `${s.nights} nights`
+      const nights = s.nights === 0 ? t('itinerary.dayTrip') : s.nights === 1 ? t('itinerary.oneNight') : tpl('itinerary.nights', { n: String(s.nights) })
       const drive  = s.km > 0
         ? `<div class="stop-drive">🚗 from ${s.from}<br>${s.km} km · ${s.time}</div>`
         : `<div class="stop-drive">⛴️ ${s.from}</div>`
@@ -197,10 +198,10 @@ export class ItineraryView {
             ${(() => {
               const info = getSeasonInfo(s.region)
               return info
-                ? `<div class="season-callout"><span class="season-callout__icon">${info.icon}</span><span>${info.note}</span></div>`
+                ? `<div class="season-callout"><span class="season-callout__icon">${info.icon}</span><span>${t(info.noteKey)}</span></div>`
                 : ''
             })()}
-            <button class="btn-fly" data-id="${s.id}">🗺 Fly here</button>
+            <button class="btn-fly" data-id="${s.id}">${t('itinerary.flyHere')}</button>
           </div>
         </div>
       </div>`
@@ -246,7 +247,7 @@ export class ItineraryView {
         empty.className = 'empty-state'
         timeline.appendChild(empty)
       }
-      if (empty) empty.textContent = 'No stops match this focus.'
+      if (empty) empty.textContent = t('itinerary.noStopsMatch')
     } else if (empty) {
       empty.remove()
     }

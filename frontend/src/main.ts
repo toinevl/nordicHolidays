@@ -9,6 +9,7 @@ import { Toast } from './components/Toast'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
 import type { Itinerary } from './types'
 import { apiClient } from './api/client'
+import { setLocale, LOCALE_STORAGE_KEY } from './i18n/index'
 
 const store = createStore()
 const toast = new Toast()
@@ -54,6 +55,12 @@ const statusBar = new StatusBar(
     navigator.clipboard.writeText(url)
       .then(() => toast.success('Share link copied!'))
       .catch(() => toast.error('Could not copy share link'))
+  },
+  (locale) => {
+    setLocale(locale)
+    try { localStorage.setItem(LOCALE_STORAGE_KEY, locale) } catch { /* ignore */ }
+    store.setState({ locale })
+    itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
   }
 )
 
