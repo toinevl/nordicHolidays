@@ -6,6 +6,7 @@ import { StatusBar } from './components/StatusBar'
 import { GeneratorPanel } from './components/GeneratorPanel'
 import { SavedTripsPanel } from './components/SavedTripsPanel'
 import { Toast } from './components/Toast'
+import { SignInButton, loadProfile } from './components/SignInButton'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
 import type { Itinerary, Locale } from './types'
 import { apiClient } from './api/client'
@@ -14,6 +15,9 @@ import { t, tpl } from './i18n/index'
 
 const store = createStore()
 const toast = new Toast()
+
+new SignInButton(store)
+void loadProfile(store)
 
 function changeLocale(lang: Locale): void {
   setLocale(lang)
