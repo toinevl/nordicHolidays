@@ -95,7 +95,10 @@ export async function generateHandler(
     }, origin)
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    return withCors({ status: 500, body: JSON.stringify({ error: `Generation failed: ${msg}` }), headers: { 'Content-Type': 'application/json' } }, origin)
+    const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT ?? '(not set)'
+    const model = process.env.LLM_MODEL ?? 'gpt-4o'
+    console.error(`Generation error — endpoint: ${endpoint}, model: ${model}, error: ${msg}`)
+    return withCors({ status: 500, body: JSON.stringify({ error: `Generation failed: ${msg}`, endpoint, model }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
