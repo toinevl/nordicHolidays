@@ -6,14 +6,26 @@ import type { Profile } from '../api/types'
 export class SignInButton {
   private el: HTMLButtonElement
   private store: Store
+  private mounted = false
 
   constructor(store: Store) {
     this.store = store
     this.el = document.createElement('button')
     this.el.className = 'status-btn'
     this.render()
-    document.getElementById('status-right')?.appendChild(this.el)
     this.bindEvents()
+    this.mount()
+  }
+
+  mount(): void {
+    if (this.mounted) return
+    const slot = document.querySelector<HTMLElement>('.status-bar .status-right')
+    if (!slot) {
+      requestAnimationFrame(() => this.mount())
+      return
+    }
+    slot.appendChild(this.el)
+    this.mounted = true
   }
 
   render(): void {
