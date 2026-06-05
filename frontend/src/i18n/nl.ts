@@ -87,4 +87,9 @@ export const nl: LocaleStrings = {
     norrbotten: 'Arctisch. Middernachtzon en poolnacht.',
     vasternorrland: 'Kustwouden. Koel en rustig.',
   },
+  auth: {
+    signIn: 'Inloggen',
+    signOut: 'Uitloggen',
+    profileSaved: 'Profiel opgeslagen',
+  },
 }

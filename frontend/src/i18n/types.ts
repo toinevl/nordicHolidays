@@ -87,6 +87,11 @@ export interface LocaleStrings {
     norrbotten: string
     vasternorrland: string
   }
+  auth: {
+    signIn: string
+    signOut: string
+    profileSaved: string
+  }
 }
 
 export type LocaleKey =
@@ -96,3 +101,4 @@ export type LocaleKey =
   | `toast.${keyof LocaleStrings['toast']}`
   | `itinerary.${keyof LocaleStrings['itinerary']}`
   | `season.${keyof LocaleStrings['season']}`
+  | `auth.${keyof LocaleStrings['auth']}`

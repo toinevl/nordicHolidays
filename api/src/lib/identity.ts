@@ -18,12 +18,17 @@ function decodeJwt(token: string): any {
   return JSON.parse(json)
 }
 
-export function ownerFromBearer(req: HttpRequest): OwnerContext {
-  const auth = req.headers?.get('Authorization') ?? ''
-  if (!auth.startsWith('Bearer ')) {
-    throw new Error('Missing Authorization header')
+export function ownerFromBearer(reqOrToken: HttpRequest | string): OwnerContext {
+  let token: string
+  if (typeof reqOrToken === 'string') {
+    token = reqOrToken.trim()
+  } else {
+    const auth = reqOrToken.headers?.get('Authorization') ?? ''
+    if (!auth.startsWith('Bearer ')) {
+      throw new Error('Missing Authorization header')
+    }
+    token = auth.slice('Bearer '.length).trim()
   }
-  const token = auth.slice('Bearer '.length).trim()
   const claims = decodeJwt(token)
   const tid = claims.tid as string | undefined
   const sub = claims.sub as string | undefined

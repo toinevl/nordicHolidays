@@ -1,5 +1,8 @@
 import type { AppState, Preferences, Locale } from './types'
+import type { Profile } from './api/types'
 import { setLocale, LOCALE_STORAGE_KEY } from './i18n/index'
+
+type ParsedProfile = { profile: Profile | null }
 
 function readInitialLocale(): Locale {
   try {
@@ -9,6 +12,19 @@ function readInitialLocale(): Locale {
     return 'en'
   }
 }
+
+function readInitialAuthState(): ParsedProfile {
+  try {
+    const stored = localStorage.getItem('swedentravel_profile')
+    const parsed: Record<string, unknown> = stored ? JSON.parse(stored) : {}
+    const maybeProfile = parsed as Profile
+    return { profile: maybeProfile }
+  } catch {
+    return { profile: null }
+  }
+}
+
+const initialAuthPayload = readInitialAuthState()
 
 const defaultPreferences: Preferences = {
   mustVisit: [],
@@ -28,10 +44,12 @@ const initialState: Omit<AppState, 'locale'> = {
   activeTripId: null,
   selectedStopId: 1,
   currentFilter: 'all',
+  profile: initialAuthPayload.profile,
+  isAuthenticated: Boolean(initialAuthPayload.profile),
+  accessToken: null,
 }
 
 type Listener = () => void
-
 export function createStore() {
   const initialLocale = readInitialLocale()
   setLocale(initialLocale)

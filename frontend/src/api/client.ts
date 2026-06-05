@@ -1,17 +1,21 @@
 /// <reference types="vite/client" />
 import type { Preferences, Itinerary, SavedItinerarySummary, Locale } from '../types'
 import type { CitySuggestion } from '../lib/citySearch'
+import { getAccessToken } from '../lib/auth'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await getAccessToken()
   const fetchInit: RequestInit = {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
+    },
   }
-  const res = init
-    ? await fetch(`${API_BASE}${path}`, fetchInit)
-    : await fetch(`${API_BASE}${path}`)
+  const res = await fetch(`${API_BASE}${path}`, fetchInit)
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`${res.status}: ${text}`)

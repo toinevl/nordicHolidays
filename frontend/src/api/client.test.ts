@@ -12,7 +12,9 @@ describe('apiClient.getPreferences', () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 21 }) })
     const prefs = await apiClient.getPreferences()
     expect(prefs.tripDays).toBe(21)
-    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/preferences'))
+    const callUrl = mockFetch.mock.calls[0]?.[0]
+    expect(typeof callUrl).toBe('string')
+    expect(callUrl).toContain('/api/preferences')
   })
 
   it('throws on non-ok response', async () => {

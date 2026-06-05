@@ -87,4 +87,9 @@ export const en: LocaleStrings = {
     norrbotten: 'Arctic. Midnight sun and polar night.',
     vasternorrland: 'Coastal forests. Cool and quiet.',
   },
+  auth: {
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    profileSaved: 'Profile saved',
+  },
 }
