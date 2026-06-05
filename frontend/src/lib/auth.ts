@@ -1,0 +1,42 @@
+/// <reference types="vite/client" />
+import { PublicClientApplication } from '@azure/msal-browser'
+import type { Configuration } from '@azure/msal-browser'
+
+const msalConfig: Configuration = {
+  auth: {
+    clientId: import.meta.env.VITE_ENTRA_CLIENT_ID as string,
+    authority: `https://login.microsoftonline.com/${import.meta.env.VITE_ENTRA_TENANT_ID}/`,
+    knownAuthorities: [],
+    redirectUri: window.location.origin,
+  },
+  cache: { cacheLocation: 'localStorage' },
+}
+
+export const msal = new PublicClientApplication(msalConfig)
+
+export function isAuthenticated(): boolean {
+  return msal.getAllAccounts().length > 0
+}
+
+export async function getAccessToken(): Promise<string | null> {
+  const account = msal.getAllAccounts()[0]
+  if (!account) return null
+  const scopes = [`${import.meta.env.VITE_ENTRA_CLIENT_ID}/user_impersonation`]
+  try {
+    const res = await msal.acquireTokenSilent({ scopes, account })
+    return res.accessToken
+  } catch {
+    await msal.loginRedirect({ scopes })
+    return null
+  }
+}
+
+export async function signIn(): Promise<void> {
+  await msal.loginRedirect({
+    scopes: [`${import.meta.env.VITE_ENTRA_CLIENT_ID}/user_impersonation`],
+  })
+}
+
+export async function signOut(): Promise<void> {
+  msal.logoutRedirect()
+}
