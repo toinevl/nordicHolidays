@@ -56,7 +56,7 @@ export async function generateHandler(
     const client = getLlmClient()
     const response = await client.chat.completions.create({
       model: getModel(),
-      max_tokens: 8192,
+      max_completion_tokens: 8192,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: buildUserMessage(prefs, lang) },
