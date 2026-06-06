@@ -71,6 +71,13 @@ export class StatusBar {
   syncFromStore(store: Store): void {
     const { activeTripName, unsaved, activeTripId, locale } = store.getState()
     const badge = unsaved ? 'unsaved' : activeTripName ? 'saved' : null
+    const signinSlot = this.el.querySelector('#signin-slot')
     this.render(activeTripName ?? t('status.defaultTripName'), badge, activeTripId ?? null, locale)
+    if (signinSlot instanceof HTMLElement) {
+      const newSlot = this.el.querySelector('#signin-slot')
+      if (newSlot instanceof HTMLElement && newSlot !== signinSlot) {
+        signinSlot.replaceWith(newSlot)
+      }
+    }
   }
 }
