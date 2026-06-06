@@ -19,7 +19,7 @@ const toast = new Toast()
 
 new SignInButton(store)
 ;(async () => {
-  await handleRedirect()
+  await handleRedirect(store)
   await loadProfile(store)
 })()
 
