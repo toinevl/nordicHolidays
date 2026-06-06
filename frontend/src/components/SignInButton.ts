@@ -5,6 +5,7 @@ import type { Profile } from '../api/types'
 export class SignInButton {
   private el: HTMLButtonElement
   private store: Store
+  private rootObserver: MutationObserver | undefined
 
   constructor(store: Store) {
     this.store = store
@@ -13,6 +14,7 @@ export class SignInButton {
     this.render()
     this.bindEvents()
     this.mount()
+
     store.subscribe(() => {
       this.render()
       this.mount()
@@ -20,8 +22,10 @@ export class SignInButton {
   }
 
   mount(): void {
+    if (this.el.isConnected) return
     const slot = document.querySelector<HTMLElement>('#signin-slot')
     if (!slot) {
+      this.ensureRootObserver()
       requestAnimationFrame(() => this.mount())
       return
     }
@@ -33,6 +37,16 @@ export class SignInButton {
   render(): void {
     const auth = this.store.getState().isAuthenticated
     this.el.textContent = auth ? 'Sign out' : 'Sign in'
+  }
+
+  private ensureRootObserver(): void {
+    if (this.rootObserver) return
+    const root = document.getElementById('status-bar')
+    if (!root) return
+    this.rootObserver = new MutationObserver(() => {
+      if (!this.el.isConnected) this.mount()
+    })
+    this.rootObserver.observe(root, { childList: true, subtree: true })
   }
 
   private bindEvents(): void {
