@@ -79,3 +79,5 @@ Two independent GitHub Actions workflows trigger on pushes to `main` with path f
 - [Architecture](docs/architecture.md) — topology, repo structure, data flows, state management
 - [API Reference](docs/api.md) — all 7 endpoints with request/response examples
 - [Features Guide](docs/features.md) — detailed description of every user-facing feature
+
+<!-- redeploy trigger -->
