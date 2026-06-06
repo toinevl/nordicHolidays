@@ -12,13 +12,14 @@ import type { Itinerary, Locale } from './types'
 import { apiClient } from './api/client'
 import { setLocale } from './i18n/index'
 import { t, tpl } from './i18n/index'
-import { handleRedirect } from './lib/auth'
+import { initialize, handleRedirect } from './lib/auth'
 
 const store = createStore()
 const toast = new Toast()
 
 new SignInButton(store)
 ;(async () => {
+  await initialize(store)
   await handleRedirect(store)
   await loadProfile(store)
 })()

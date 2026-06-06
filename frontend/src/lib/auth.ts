@@ -43,6 +43,17 @@ export async function signOut(): Promise<void> {
   msal.logoutRedirect()
 }
 
+export async function initialize(store?: Store): Promise<void> {
+  try {
+    await msal.initialize()
+    if (store) {
+      store.setState({ isAuthenticated: msal.getAllAccounts().length > 0 })
+    }
+  } catch (err) {
+    console.error('[auth][initialize] failed:', err)
+  }
+}
+
 export async function handleRedirect(store?: Store): Promise<void> {
   try {
     const response = await msal.handleRedirectPromise()
@@ -52,7 +63,7 @@ export async function handleRedirect(store?: Store): Promise<void> {
     if (msal.getAllAccounts().length > 0 && store) {
       store.setState({ isAuthenticated: true, accessToken: store.getState().accessToken ?? null })
     }
-  } catch {
-    // ignore
+  } catch (err) {
+    console.error('[auth][handleRedirect] failed:', err)
   }
 }
