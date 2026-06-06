@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { PublicClientApplication } from '@azure/msal-browser'
 import type { Configuration } from '@azure/msal-browser'
+import type { Store } from './store'
 
 const msalConfig: Configuration = {
   auth: {
@@ -13,6 +14,7 @@ const msalConfig: Configuration = {
 }
 
 export const msal = new PublicClientApplication(msalConfig)
+export type { Store }
 
 export function isAuthenticated(): boolean {
   return msal.getAllAccounts().length > 0
@@ -41,11 +43,14 @@ export async function signOut(): Promise<void> {
   msal.logoutRedirect()
 }
 
-export async function handleRedirect(): Promise<void> {
+export async function handleRedirect(store?: Store): Promise<void> {
   try {
     const response = await msal.handleRedirectPromise()
     if (response && response.account) {
       msal.setActiveAccount(response.account)
+    }
+    if (msal.getAllAccounts().length > 0 && store) {
+      store.setState({ isAuthenticated: true, accessToken: store.getState().accessToken ?? null })
     }
   } catch {
     // ignore
