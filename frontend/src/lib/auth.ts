@@ -40,3 +40,14 @@ export async function signIn(): Promise<void> {
 export async function signOut(): Promise<void> {
   msal.logoutRedirect()
 }
+
+export async function handleRedirect(): Promise<void> {
+  try {
+    const response = await msal.handleRedirectPromise()
+    if (response && response.account) {
+      msal.setActiveAccount(response.account)
+    }
+  } catch {
+    // ignore
+  }
+}
