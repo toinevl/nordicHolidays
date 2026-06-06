@@ -22,7 +22,7 @@ export class SignInButton {
 
   mount(): void {
     if (this.mounted) return
-    const slot = document.querySelector<HTMLElement>('.status-bar .status-right')
+    const slot = document.querySelector<HTMLElement>('#signin-slot')
     if (!slot) {
       requestAnimationFrame(() => this.mount())
       return

@@ -41,6 +41,7 @@ export class StatusBar {
         ${badgeHtml}
       </div>
       <div class="status-right" style="display:flex;gap:0.5rem;align-items:center">
+        <span id="signin-slot"></span>
         ${shareHtml}
         <div class="locale-toggle">
           <button class="status-btn locale-btn${locale === 'nl' ? ' locale-btn--active' : ''}" id="btn-locale-nl">NL</button>
