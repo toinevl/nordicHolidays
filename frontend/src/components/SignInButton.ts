@@ -51,11 +51,12 @@ export class SignInButton {
 
   private bindEvents(): void {
     this.el.addEventListener('click', async () => {
-      if (this.store.getState().isAuthenticated) {
+      const auth = this.store.getState().isAuthenticated
+      if (auth) {
         try {
           await signOut()
-        } catch {
-          // ignore sign-out errors and continue clearing local state
+        } catch (err) {
+          console.error('[SignInButton] signOut failed:', err)
         }
         this.store.setState({ isAuthenticated: false, profile: null, accessToken: null })
         try {
@@ -65,7 +66,11 @@ export class SignInButton {
         return
       }
 
-      await signIn()
+      try {
+        await signIn()
+      } catch (err) {
+        console.error('[SignInButton] signIn failed:', err)
+      }
       this.render()
     })
   }
