@@ -1,4 +1,3 @@
-import { t } from '../i18n/index'
 import { signIn, signOut, getAccessToken, isAuthenticated } from '../lib/auth'
 import type { Store } from '../store'
 import type { Profile } from '../api/types'
@@ -15,6 +14,10 @@ export class SignInButton {
     this.render()
     this.bindEvents()
     this.mount()
+    store.subscribe(() => {
+      this.render()
+      this.mount()
+    })
   }
 
   mount(): void {
@@ -24,17 +27,15 @@ export class SignInButton {
       requestAnimationFrame(() => this.mount())
       return
     }
-    slot.appendChild(this.el)
+    if (!slot.contains(this.el)) {
+      slot.appendChild(this.el)
+    }
     this.mounted = true
   }
 
   render(): void {
     const auth = this.store.getState().isAuthenticated
-    this.el.textContent = auth ? t('auth.signOut') : t('auth.signIn')
-  }
-
-  sync(): void {
-    this.render()
+    this.el.textContent = auth ? 'Sign out' : 'Sign in'
   }
 
   private bindEvents(): void {
@@ -48,15 +49,12 @@ export class SignInButton {
         this.store.setState({ isAuthenticated: false, profile: null, accessToken: null })
         try {
           localStorage.removeItem('swedentravel_profile')
-        } catch {
-          // ignore local-storage errors when applying the reset
-        }
+        } catch {}
         this.render()
         return
       }
 
       await signIn()
-      // After redirect flow MSAL may set the authenticated flag; refresh the button label.
       this.render()
     })
   }
