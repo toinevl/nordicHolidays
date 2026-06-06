@@ -54,6 +54,39 @@ See [docs/architecture.md](docs/architecture.md) for the full topology diagram, 
 
 ---
 
+## Storage
+
+SwedenTravel uses **Azure Table Storage** exclusively for persistence. It stores `Itineraries`, `Preferences`, and `Profiles` tables under a unified `owner` model.
+
+![Storage architecture](docs/storage-architecture.excalidraw)
+
+Open `docs/storage-architecture.excalidraw` in [Excalidraw](https://excalidraw.com) to edit/view the diagram.
+
+### Owner model
+
+Every row is keyed by `ownerId`. Two identities are supported:
+
+- **Guest** — transient `owner-<uuid>` generated at startup and persisted in `localStorage` under `ownerId`
+- **Entra signed-in user** — stable `entra-<sub>` derived from the Microsoft identity `sub` claim
+
+Anonymous trip generation (`POST /api/generate`) remains open. Saved trips and preferences require a valid `ownerId`.
+
+### Tables
+
+| Table | Partition key | Row key | Notes |
+|------|--------------|---------|-------|
+| `Itineraries` | `owner` | `ownerId` | Saved/generated trip details |
+| `Preferences` | `owner` | `ownerId` | UI prefs and feature flags |
+| `Profiles` | `profile` | `ownerId` | Display name, email, created/updated timestamps, extensible JSON extensions |
+
+### Local state
+
+- `localStorage` keys: `ownerId`, `swedentravel_profile`
+- MSAL token cache: browser `localStorage` for the SPA session
+- Refresh tokens are held in-memory/OS chrome storage only, never persisted server-side
+
+---
+
 ## Deploy
 
 Two independent GitHub Actions workflows trigger on pushes to `main` with path filters so only the changed component redeploys.
