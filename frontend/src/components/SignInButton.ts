@@ -5,7 +5,6 @@ import type { Profile } from '../api/types'
 export class SignInButton {
   private el: HTMLButtonElement
   private store: Store
-  private mounted = false
 
   constructor(store: Store) {
     this.store = store
@@ -21,7 +20,6 @@ export class SignInButton {
   }
 
   mount(): void {
-    if (this.mounted) return
     const slot = document.querySelector<HTMLElement>('#signin-slot')
     if (!slot) {
       requestAnimationFrame(() => this.mount())
@@ -30,7 +28,6 @@ export class SignInButton {
     if (!slot.contains(this.el)) {
       slot.appendChild(this.el)
     }
-    this.mounted = true
   }
 
   render(): void {
