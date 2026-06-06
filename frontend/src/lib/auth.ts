@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { PublicClientApplication } from '@azure/msal-browser'
 import type { Configuration } from '@azure/msal-browser'
-import type { Store } from './store'
+import type { Store } from '../store'
 
 const msalConfig: Configuration = {
   auth: {
