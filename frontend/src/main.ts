@@ -18,8 +18,10 @@ const store = createStore()
 const toast = new Toast()
 
 new SignInButton(store)
-await handleRedirect()
-await loadProfile(store)
+;(async () => {
+  await handleRedirect()
+  await loadProfile(store)
+})()
 
 function changeLocale(lang: Locale): void {
   setLocale(lang)
