@@ -3,17 +3,19 @@ import { PublicClientApplication } from '@azure/msal-browser'
 import type { Configuration } from '@azure/msal-browser'
 import type { Store } from '../store'
 
+const clientId = import.meta.env.VITE_ENTRA_CLIENT_ID as string
 const msalConfig: Configuration = {
   auth: {
-    clientId: import.meta.env.VITE_ENTRA_CLIENT_ID as string,
-    authority: `https://login.microsoftonline.com/${import.meta.env.VITE_ENTRA_TENANT_ID}/`,
-    knownAuthorities: [],
+    clientId,
+    authority: 'https://login.microsoftonline.com/common',
+    knownAuthorities: ['common'],
     redirectUri: window.location.origin,
   },
   cache: { cacheLocation: 'localStorage' },
 }
 
 export const msal = new PublicClientApplication(msalConfig)
+
 export type { Store }
 
 export function isAuthenticated(): boolean {
@@ -23,24 +25,24 @@ export function isAuthenticated(): boolean {
 export async function getAccessToken(): Promise<string | null> {
   const account = msal.getAllAccounts()[0]
   if (!account) return null
-  const scopes = [`${import.meta.env.VITE_ENTRA_CLIENT_ID}/user_impersonation`]
+  const scopes = [`${clientId}/user_impersonation`]
   try {
     const res = await msal.acquireTokenSilent({ scopes, account })
     return res.accessToken
-  } catch {
-    await msal.loginRedirect({ scopes })
+  } catch (err) {
+    console.error('[auth][getAccessToken] silent token failed:', err)
     return null
   }
 }
 
 export async function signIn(): Promise<void> {
-  await msal.loginRedirect({
-    scopes: [`${import.meta.env.VITE_ENTRA_CLIENT_ID}/user_impersonation`],
+  await msal.loginPopup({
+    scopes: [`${clientId}/user_impersonation`],
   })
 }
 
 export async function signOut(): Promise<void> {
-  msal.logoutRedirect()
+  msal.logoutPopup()
 }
 
 export async function initialize(store?: Store): Promise<void> {
