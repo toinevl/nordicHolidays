@@ -2,7 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { getTableClient } from '../lib/tableClient'
 import type { Profile } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
-import { ownerFromBearer } from '../lib/identity'
+import { ownerFromBearer, authErrorResponse } from '../lib/identity'
 
 function toProfile(entity: Profile): Profile {
   return {
@@ -94,6 +94,8 @@ app.http('getProfile', {
   authLevel: 'anonymous',
   route: 'profile',
   handler: async (req, ctx) => {
+    const origin = req.headers.get('origin') ?? undefined
+    if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
     const bearer = req.headers.get('authorization')
     const token = bearer?.startsWith('Bearer ') ? bearer.slice(7) : undefined
     let owner: Profile | undefined
@@ -106,8 +108,8 @@ app.http('getProfile', {
         } catch {
           owner = undefined
         }
-      } catch {
-        /* unauthenticated */
+      } catch (err) {
+        return authErrorResponse(err, origin)
       }
     }
     return getProfileHandler(req, ctx, owner)
