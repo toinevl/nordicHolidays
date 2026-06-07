@@ -16,17 +16,23 @@ export class SignInButton {
     this.mount()
 
     store.subscribe(() => {
+      const wasInDom = this.el.isConnected
       this.render()
-      this.mount()
+      if (!wasInDom || !document.contains(this.el)) {
+        this.ensureSlot()
+      }
     })
   }
 
   mount(): void {
-    if (this.el.isConnected) return
+    this.ensureSlot()
+  }
+
+  private ensureSlot(): void {
     const slot = document.querySelector<HTMLElement>('#signin-slot')
     if (!slot) {
       this.ensureRootObserver()
-      requestAnimationFrame(() => this.mount())
+      requestAnimationFrame(() => this.ensureSlot())
       return
     }
     if (!slot.contains(this.el)) {
