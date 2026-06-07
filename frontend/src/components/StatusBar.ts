@@ -34,6 +34,8 @@ export class StatusBar {
     const shareHtml = activeTripId
       ? `<button class="status-btn" id="btn-share" title="${t('status.shareTitle')}">&#128279; ${t('status.share')}</button>`
       : ''
+    const slot = this.el.querySelector('#signin-slot')
+    const preserved = slot instanceof HTMLElement ? slot.innerHTML : ''
     this.el.innerHTML = `
       <button class="status-btn" id="btn-open-saved" title="${t('status.myTripsTitle')}">&#9776; ${t('status.myTrips')}</button>
       <div class="status-center">
@@ -41,7 +43,7 @@ export class StatusBar {
         ${badgeHtml}
       </div>
       <div class="status-right" style="display:flex;gap:0.5rem;align-items:center">
-        <span id="signin-slot"></span>
+        <span id="signin-slot">${preserved}</span>
         ${shareHtml}
         <div class="locale-toggle">
           <button class="status-btn locale-btn${locale === 'nl' ? ' locale-btn--active' : ''}" id="btn-locale-nl">NL</button>
@@ -71,13 +73,6 @@ export class StatusBar {
   syncFromStore(store: Store): void {
     const { activeTripName, unsaved, activeTripId, locale } = store.getState()
     const badge = unsaved ? 'unsaved' : activeTripName ? 'saved' : null
-    const signinSlot = this.el.querySelector('#signin-slot')
     this.render(activeTripName ?? t('status.defaultTripName'), badge, activeTripId ?? null, locale)
-    if (signinSlot instanceof HTMLElement) {
-      const newSlot = this.el.querySelector('#signin-slot')
-      if (newSlot instanceof HTMLElement && newSlot !== signinSlot) {
-        signinSlot.replaceWith(newSlot)
-      }
-    }
   }
 }
