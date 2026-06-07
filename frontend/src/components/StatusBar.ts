@@ -59,9 +59,9 @@ export class StatusBar {
 
     const rightWrap = this.el.querySelector('.status-right')
     if (rightWrap instanceof HTMLElement) {
-      let shareBtn = rightWrap.querySelector('#btn-share')
+      let shareBtn = rightWrap.querySelector('#btn-share') as HTMLButtonElement | null
       if (activeTripId && !shareBtn) {
-        shareBtn = document.createElement('button')
+        shareBtn = document.createElement('button') as HTMLButtonElement
         shareBtn.className = 'status-btn'
         shareBtn.id = 'btn-share'
         shareBtn.title = t('status.shareTitle')
