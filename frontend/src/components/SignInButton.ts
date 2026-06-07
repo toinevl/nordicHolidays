@@ -1,4 +1,5 @@
 import { signIn, signOut, getAccessToken, isAuthenticated } from '../lib/auth'
+import { apiClient } from '../api/client'
 import type { Store } from '../store'
 import type { Profile } from '../api/types'
 
@@ -74,6 +75,7 @@ export class SignInButton {
 
       try {
         await signIn()
+        await this.claimAnonymousTripIfNeeded()
       } catch (err) {
         console.error('[SignInButton] signIn failed:', err)
       }
@@ -102,4 +104,29 @@ export async function loadProfile(store: Store): Promise<void> {
   } catch {
     // profile fetch is optional; leave profile unset on failure
   }
+}
+
+async function saveCurrentItinerary(store: Store): Promise<string | null> {
+  const { currentItinerary } = store.getState()
+  if (!currentItinerary) return null
+
+  try {
+    const suggestedName = currentItinerary.title?.trim() || 'Sweden trip'
+    const { id } = await apiClient.saveItinerary(suggestedName, currentItinerary)
+    return id
+  } catch (err) {
+    console.error('[SignInButton] anonymous trip claim failed:', err)
+    return null
+  }
+}
+
+export async function claimAnonymousTripIfNeeded(store: Store): Promise<void> {
+  if (!isAuthenticated()) return
+  const token = await getAccessToken()
+  if (!token) return
+  const { currentItinerary, activeTripId, unsaved } = store.getState()
+  if (!currentItinerary || activeTripId || !unsaved) return
+  const id = await saveCurrentItinerary(store)
+  if (!id) return
+  store.setState({ activeTripId: id, activeTripName: currentItinerary.title || 'Sweden trip', unsaved: false })
 }
