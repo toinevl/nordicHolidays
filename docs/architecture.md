@@ -12,7 +12,7 @@
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  Azure Static Web Apps (Free tier)                               │
-│  https://wonderful-tree-0abf63d03.6.azurestaticapps.net         │
+│  https://zealous-forest-053645a03.7.azurestaticapps.net         │
 │  — serves /dist, handles ?id= share links                        │
 └──────────────────────────────────────────────────────────────────┘
                        │ HTTPS CORS (fetch)

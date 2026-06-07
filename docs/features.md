@@ -39,7 +39,7 @@ Generation typically takes 5–15 seconds depending on trip length.
 Every saved trip has a shareable URL in the form:
 
 ```
-https://wonderful-tree-0abf63d03.6.azurestaticapps.net/?id=<tripId>
+https://zealous-forest-053645a03.7.azurestaticapps.net/?id=<tripId>
 ```
 
 Opening the link loads the full itinerary directly. The URL is updated automatically after saving and can be copied from the browser address bar.

@@ -844,7 +844,7 @@ Read the existing `README.md`, then replace its content with:
 
 An AI-powered personal road trip planner for Sweden. Plan, generate, save, and share multi-week itineraries. Built with Vite + TypeScript, Azure Functions, and Claude AI.
 
-**Live app:** https://wonderful-tree-0abf63d03.6.azurestaticapps.net
+**Live app:** https://zealous-forest-053645a03.7.azurestaticapps.net
 
 ---
 

@@ -2,7 +2,7 @@
 
 An AI-powered road trip planner for Sweden. Generate personalised multi-day itineraries, explore them on an interactive map, and save your favourite routes for later.
 
-**Live app:** https://wonderful-tree-0abf63d03.6.azurestaticapps.net
+**Live app:** https://zealous-forest-053645a03.7.azurestaticapps.net
 
 ---
 
