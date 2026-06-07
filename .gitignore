@@ -20,10 +20,16 @@ tmp/
 .cache/
 
 # Frontend build output
-frontend/dist/
 frontend/node_modules/
 
 # API build output and secrets
-api/dist/
+node_modules/
 api/node_modules/
 api/local.settings.json
+
+# Local artifacts that must not be committed
+.hermes/
+azure_app.json
+azure_app_update.json
+azure_part.sh
+scripts/
