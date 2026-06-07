@@ -3,8 +3,8 @@ import { getTableClient } from '../lib/tableClient'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
+import { ownerFromBearer, AuthError, authErrorResponse } from '../lib/identity'
 
-const PARTITION_KEY = 'owner'
 const ROW_KEY = 'default'
 
 function entityToPreferences(entity: Record<string, unknown>): Preferences {
@@ -18,15 +18,22 @@ function entityToPreferences(entity: Record<string, unknown>): Preferences {
 }
 
 export async function getPreferencesHandler(
-  req?: HttpRequest,
-  _ctx?: InvocationContext
+  req: HttpRequest,
+  _ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const origin = req?.headers.get('origin') ?? undefined
-  if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
+  const origin = req.headers.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
+  let owner
+  try {
+    owner = await ownerFromBearer(req)
+  } catch (err) {
+    return authErrorResponse(err, origin)
+  }
 
   try {
     const client = getTableClient('Preferences')
-    const entity = await client.getEntity(PARTITION_KEY, ROW_KEY)
+    const entity = await client.getEntity(owner.ownerId, ROW_KEY)
     return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -45,15 +52,22 @@ export async function getPreferencesHandler(
 }
 
 export async function putPreferencesHandler(
-  req?: HttpRequest,
-  _ctx?: InvocationContext
+  req: HttpRequest,
+  _ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const origin = req?.headers?.get('origin') ?? undefined
-  if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
+  const origin = req.headers.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
+  let owner
+  try {
+    owner = await ownerFromBearer(req)
+  } catch (err) {
+    return authErrorResponse(err, origin)
+  }
 
   let prefs: Preferences
   try {
-    prefs = await req?.json() as Preferences
+    prefs = await req.json() as Preferences
   } catch {
     return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
   }
@@ -61,7 +75,7 @@ export async function putPreferencesHandler(
   try {
     const client = getTableClient('Preferences')
     await client.upsertEntity({
-      partitionKey: PARTITION_KEY,
+      partitionKey: owner.ownerId,
       rowKey: ROW_KEY,
       mustVisit: JSON.stringify(prefs.mustVisit ?? []),
       avoid: JSON.stringify(prefs.avoid ?? []),

@@ -99,7 +99,7 @@ app.http('getProfile', {
     let owner: Profile | undefined
     if (token) {
       try {
-        const ctx2 = ownerFromBearer(token)
+        const ctx2 = await ownerFromBearer(token)
         const client = getTableClient('Profiles')
         try {
           owner = (await client.getEntity('profile', ctx2.ownerId)) as Profile
@@ -124,7 +124,7 @@ app.http('putProfile', {
     let owner: Profile | undefined
     if (token) {
       try {
-        const ctx2 = ownerFromBearer(token)
+        const ctx2 = await ownerFromBearer(token)
         const client = getTableClient('Profiles')
         try {
           owner = (await client.getEntity('profile', ctx2.ownerId)) as Profile

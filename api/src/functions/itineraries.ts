@@ -3,28 +3,37 @@ import { nanoid } from 'nanoid'
 import { getTableClient } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
+import { ownerFromBearer, authErrorResponse } from '../lib/identity'
 
-const PARTITION_KEY = 'owner'
+function entityToSummary(e: Record<string, unknown>): SavedItinerarySummary {
+  return {
+    id: e.rowKey as string,
+    name: e.name as string,
+    createdAt: e.createdAt as string,
+    startCity: e.startCity as string,
+    endCity: e.endCity as string,
+  }
+}
 
 export async function listItinerariesHandler(
-  req?: HttpRequest,
-  _ctx?: InvocationContext
+  req: HttpRequest,
+  _ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const origin = req?.headers?.get('origin') ?? undefined
-  if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
+  const origin = req.headers.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
+  let owner
+  try {
+    owner = await ownerFromBearer(req)
+  } catch (err) {
+    return authErrorResponse(err, origin)
+  }
 
   try {
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
-    for await (const entity of client.listEntities({ queryOptions: { filter: `PartitionKey eq '${PARTITION_KEY}'` } })) {
-      const e = entity as Record<string, unknown>
-      summaries.push({
-        id: e.rowKey as string,
-        name: e.name as string,
-        createdAt: e.createdAt as string,
-        startCity: e.startCity as string,
-        endCity: e.endCity as string,
-      })
+    for await (const entity of client.listEntities({ queryOptions: { filter: `PartitionKey eq '${owner.ownerId}'` } })) {
+      summaries.push(entityToSummary(entity as Record<string, unknown>))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return withCors({
@@ -39,15 +48,22 @@ export async function listItinerariesHandler(
 
 export async function getItineraryHandler(
   req: HttpRequest,
-  _ctx?: InvocationContext
+  _ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const origin = req.headers?.get('origin') ?? undefined
+  const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
+  let owner
+  try {
+    owner = await ownerFromBearer(req)
+  } catch (err) {
+    return authErrorResponse(err, origin)
+  }
 
   const id = req.params.id
   try {
     const client = getTableClient('Itineraries')
-    const entity = await client.getEntity(PARTITION_KEY, id) as Record<string, unknown>
+    const entity = await client.getEntity(owner.ownerId, id) as Record<string, unknown>
     const itinerary = JSON.parse(entity.itineraryJson as string) as Itinerary
     return withCors({
       status: 200,
@@ -62,10 +78,17 @@ export async function getItineraryHandler(
 
 export async function saveItineraryHandler(
   req: HttpRequest,
-  _ctx?: InvocationContext
+  _ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const origin = req.headers?.get('origin') ?? undefined
+  const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
+  let owner
+  try {
+    owner = await ownerFromBearer(req)
+  } catch (err) {
+    return authErrorResponse(err, origin)
+  }
 
   let body: { name: string; itinerary: Itinerary }
   try {
@@ -78,7 +101,7 @@ export async function saveItineraryHandler(
     const id = nanoid()
     const client = getTableClient('Itineraries')
     await client.createEntity({
-      partitionKey: PARTITION_KEY,
+      partitionKey: owner.ownerId,
       rowKey: id,
       name: body.name,
       createdAt: new Date().toISOString(),
@@ -98,15 +121,22 @@ export async function saveItineraryHandler(
 
 export async function deleteItineraryHandler(
   req: HttpRequest,
-  _ctx?: InvocationContext
+  _ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const origin = req.headers?.get('origin') ?? undefined
+  const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
+  let owner
+  try {
+    owner = await ownerFromBearer(req)
+  } catch (err) {
+    return authErrorResponse(err, origin)
+  }
 
   const id = req.params.id
   try {
     const client = getTableClient('Itineraries')
-    await client.deleteEntity(PARTITION_KEY, id)
+    await client.deleteEntity(owner.ownerId, id)
     return withCors({ status: 204 }, origin)
   } catch (err: any) {
     if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)

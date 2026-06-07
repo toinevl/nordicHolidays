@@ -9,6 +9,10 @@ vi.mock('../lib/tableClient', () => ({
     deleteEntity: vi.fn(),
   })),
 }))
+vi.mock('../lib/identity', () => ({
+  ownerFromBearer: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: false, subject: 'sub-123' }),
+  authErrorResponse: vi.fn((err, origin) => ({ status: 401, body: (err as Error).message, headers: {}, } as any)),
+}))
 vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-id-123') }))
 
 import {
@@ -35,7 +39,7 @@ describe('GET /api/itineraries', () => {
   it('returns empty array when no itineraries saved', async () => {
     const client = makeClient()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const result = await listItinerariesHandler()
+    const result = await listItinerariesHandler({ method: 'GET', headers: new Map() } as any, {} as any)
     const body = JSON.parse(result.body as string) as SavedItinerarySummary[]
     expect(result.status).toBe(200)
     expect(body).toEqual([])
@@ -43,11 +47,11 @@ describe('GET /api/itineraries', () => {
 
   it('returns summary list without itineraryJson', async () => {
     const entities = [
-      { partitionKey: 'owner', rowKey: 'id1', name: 'Trip A', createdAt: '2026-06-01', startCity: 'Amsterdam', endCity: 'Amsterdam', itineraryJson: '{"stops":[]}' },
+      { partitionKey: 'owner-123', rowKey: 'id1', name: 'Trip A', createdAt: '2026-06-01', startCity: 'Amsterdam', endCity: 'Amsterdam', itineraryJson: '{"stops":[]}' },
     ]
     const client = makeClient({ listEntities: vi.fn(async function* () { yield entities[0] }) })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const result = await listItinerariesHandler()
+    const result = await listItinerariesHandler({ method: 'GET', headers: new Map() } as any, {} as any)
     const body = JSON.parse(result.body as string) as SavedItinerarySummary[]
     expect(body).toHaveLength(1)
     expect(body[0].id).toBe('id1')
@@ -60,11 +64,11 @@ describe('GET /api/itineraries/:id', () => {
 
   it('returns full itinerary for valid id', async () => {
     const itin: Itinerary = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' }
-    const entity = { partitionKey: 'owner', rowKey: 'id1', name: 'Trip A', createdAt: '2026-06-01', startCity: 'A', endCity: 'A', itineraryJson: JSON.stringify(itin) }
+    const entity = { partitionKey: 'owner-123', rowKey: 'id1', name: 'Trip A', createdAt: '2026-06-01', startCity: 'A', endCity: 'A', itineraryJson: JSON.stringify(itin) }
     const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { params: { id: 'id1' } } as any
-    const result = await getItineraryHandler(req)
+    const req = { params: { id: 'id1' }, method: 'GET', headers: new Map() } as any
+    const result = await getItineraryHandler(req, {} as any)
     const body = JSON.parse(result.body as string)
     expect(result.status).toBe(200)
     expect(body.title).toBe('T')
@@ -73,8 +77,8 @@ describe('GET /api/itineraries/:id', () => {
   it('returns 404 for unknown id', async () => {
     const client = makeClient({ getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }) })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { params: { id: 'nope' } } as any
-    const result = await getItineraryHandler(req)
+    const req = { params: { id: 'nope' }, method: 'GET', headers: new Map() } as any
+    const result = await getItineraryHandler(req, {} as any)
     expect(result.status).toBe(404)
   })
 })
@@ -86,8 +90,8 @@ describe('POST /api/itineraries', () => {
     const client = makeClient()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
     const itin: Itinerary = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' }
-    const req = { json: async () => ({ name: 'My Trip', itinerary: itin }) } as any
-    const result = await saveItineraryHandler(req)
+    const req = { json: async () => ({ name: 'My Trip', itinerary: itin }), method: 'POST', headers: new Map() } as any
+    const result = await saveItineraryHandler(req, {} as any)
     const body = JSON.parse(result.body as string)
     expect(result.status).toBe(201)
     expect(body.id).toBe('test-id-123')
@@ -101,9 +105,9 @@ describe('DELETE /api/itineraries/:id', () => {
   it('deletes itinerary and returns 204', async () => {
     const client = makeClient()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { params: { id: 'id1' } } as any
-    const result = await deleteItineraryHandler(req)
+    const req = { params: { id: 'id1' }, method: 'DELETE', headers: new Map() } as any
+    const result = await deleteItineraryHandler(req, {} as any)
     expect(result.status).toBe(204)
-    expect(client.deleteEntity).toHaveBeenCalledWith('owner', 'id1')
+    expect(client.deleteEntity).toHaveBeenCalledWith('owner-123', 'id1')
   })
 })
