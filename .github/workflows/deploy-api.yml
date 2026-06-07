@@ -26,6 +26,16 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Set API app settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: ${{ vars.SWEDEN_TRAVEL_FUNCTION_APP_NAME }}
+          resource-group: rgWebsite
+          app-settings: |
+            ENTRA_ISSUER_HOST=${{ secrets.ENTRA_ISSUER_HOST ?? 'login.microsoftonline.com' }}
+            ENTRA_API_AUDIENCE=${{ secrets.ENTRA_API_AUDIENCE }}
+            ENTRA_REQUIRED_SCOPE=${{ secrets.ENTRA_REQUIRED_SCOPE ?? 'user_impersonation' }}
+
       - name: Package and deploy
         working-directory: api
         run: |

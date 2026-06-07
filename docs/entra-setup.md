@@ -38,25 +38,35 @@ This document captures the exact app registration steps required to add Microsof
    - **Password reset** flow
 
 ## 6. Collect runtime secrets and IDs
-After registration, copy these values into `api/local.settings.json` and the frontend environment config:
+Use environment variables in both local and production deployments. Do not commit real tenant or client IDs.
 
-| Setting | Where to find it | Purpose |
+### Frontend
+| Variable | Source | Purpose |
 |---|---|---|
-| `ENTRA_TENANT_ID` | Overview > Directory (tenant) ID | Authority base for MSAL and API token validation |
-| `ENTRA_CLIENT_ID` | Overview > Application (client) ID | Frontend MSAL client id and API audience validation |
-| `ENTRA_CLIENT_SECRET` | Certificates & secrets > New client secret | Server-side token validation fallback (if not using JWKS endpoint only) |
+| `VITE_ENTRA_TENANT_ID` | Entra ID overview | MSAL authority base |
+| `VITE_ENTRA_CLIENT_ID` | Entra ID app registration | Frontend MSAL client ID |
 
-Frontend environment example:
-```bash
-VITE_ENTRA_TENANT_ID=<tenant-id>
-VITE_ENTRA_CLIENT_ID=<client-id>
-```
+### API
+| Variable | Source | Purpose |
+|---|---|---|
+| `ENTRA_ISSUER_HOST` | Entra ID discovery | Token issuer host, default `login.microsoftonline.com` |
+| `ENTRA_API_AUDIENCE` | Azure AD app intended-for | API Application (client) ID |
+| `ENTRA_REQUIRED_SCOPE` | Exposed API scope | Default: `user_impersonation` |
+
+### Azure Function App application settings
+Add the API validation settings in the Azure portal or via Function App configuration:
+
+- `ENTRA_ISSUER_HOST`
+- `ENTRA_API_AUDIENCE`
+- `ENTRA_REQUIRED_SCOPE`
 
 ## 7. Secrets handling
 - Do not commit real values.
 - In local development, store real values in `api/local.settings.json`, which is gitignored.
 - In Azure, keep real values in Key Vault or Function App Application Settings.
-- Sample placeholder file: `docs/.samples/local.settings.entra.json` with empty `ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID`.
+- Sample placeholder files:
+  - `docs/.samples/local.settings.entra.json`
+  - `frontend/.env.production`
 
 ## 8. Tokens
 - The SPA obtains ID tokens and access tokens via MSAL.js v2.

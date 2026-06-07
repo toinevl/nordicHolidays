@@ -11,7 +11,7 @@ vi.mock('jose', async () => {
 })
 
 function makeEnv() {
-  process.env.ENTRA_API_AUDIENCE = '46d45892-55e5-4bd4-ad30-bd9fb9b4950b'
+  process.env.ENTRA_API_AUDIENCE = 'api-test-audience'
   process.env.ENTRA_ISSUER_HOST = 'login.microsoftonline.com'
   process.env.ENTRA_REQUIRED_SCOPE = 'user_impersonation'
 }
@@ -21,7 +21,7 @@ const fakePayload: Record<string, unknown> = {
   sub: 'user-abc',
   scp: 'user_impersonation',
   iss: 'https://login.microsoftonline.com/common/tenant-1/v2.0',
-  aud: '46d45892-55e5-4bd4-ad30-bd9fb9b4950b',
+  aud: 'api-test-audience',
 }
 
 describe('verifyAccessToken', () => {
@@ -44,7 +44,7 @@ describe('ownerFromBearer', () => {
     fakePayload.sub = 'user-abc'
     fakePayload.scp = 'user_impersonation'
     fakePayload.iss = 'https://login.microsoftonline.com/common/tenant-1/v2.0'
-    fakePayload.aud = '46d45892-55e5-4bd4-ad30-bd9fb9b4950b'
+    fakePayload.aud = 'api-test-audience'
     ;(jwtVerify as any).mockResolvedValueOnce({ payload: fakePayload })
   })
 
