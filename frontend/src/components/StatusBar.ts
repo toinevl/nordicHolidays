@@ -26,34 +26,54 @@ export class StatusBar {
   }
 
   render(tripName: string, badge: 'saved' | 'unsaved' | null, activeTripId: string | null, locale: Locale): void {
-    const badgeHtml = badge === 'saved'
-      ? `<span class="status-badge status-badge--saved">${t('status.saved')}</span>`
-      : badge === 'unsaved'
-      ? `<span class="status-badge status-badge--unsaved">${t('status.unsaved')}</span>`
-      : ''
-    const shareHtml = activeTripId
-      ? `<button class="status-btn" id="btn-share" title="${t('status.shareTitle')}">&#128279; ${t('status.share')}</button>`
-      : ''
-    const slot = this.el.querySelector('#signin-slot')
-    const preserved = slot instanceof HTMLElement ? slot.innerHTML : ''
-    this.el.innerHTML = `
-      <button class="status-btn" id="btn-open-saved" title="${t('status.myTripsTitle')}">&#9776; ${t('status.myTrips')}</button>
-      <div class="status-center">
-        <span class="status-trip-name">${tripName}</span>
-        ${badgeHtml}
-      </div>
-      <div class="status-right" style="display:flex;gap:0.5rem;align-items:center">
-        <span id="signin-slot">${preserved}</span>
-        ${shareHtml}
-        <div class="locale-toggle">
-          <button class="status-btn locale-btn${locale === 'nl' ? ' locale-btn--active' : ''}" id="btn-locale-nl">NL</button>
-          <span style="opacity:0.4">·</span>
-          <button class="status-btn locale-btn${locale === 'en' ? ' locale-btn--active' : ''}" id="btn-locale-en">EN</button>
-        </div>
-        <button class="status-btn" id="btn-open-generator" title="${t('status.generateTitle')}">&#9881; ${t('status.generate')}</button>
-      </div>
-    `
-    this.bindButtons(activeTripId, locale)
+    const nameEl = this.el.querySelector('.status-trip-name')
+    if (nameEl instanceof HTMLElement) nameEl.textContent = tripName
+
+    const centerWrap = this.el.querySelector('.status-center')
+    if (centerWrap instanceof HTMLElement) {
+      const badgeEl = centerWrap.querySelector('.status-badge')
+      if (badge === 'saved') {
+        if (!badgeEl) {
+          const span = document.createElement('span')
+          span.className = 'status-badge status-badge--saved'
+          span.textContent = t('status.saved')
+          centerWrap.appendChild(span)
+        } else {
+          badgeEl.className = 'status-badge status-badge--saved'
+          badgeEl.textContent = t('status.saved')
+        }
+      } else if (badge === 'unsaved') {
+        if (!badgeEl) {
+          const span = document.createElement('span')
+          span.className = 'status-badge status-badge--unsaved'
+          span.textContent = t('status.unsaved')
+          centerWrap.appendChild(span)
+        } else {
+          badgeEl.className = 'status-badge status-badge--unsaved'
+          badgeEl.textContent = t('status.unsaved')
+        }
+      } else if (badgeEl) {
+        badgeEl.remove()
+      }
+    }
+
+    const rightWrap = this.el.querySelector('.status-right')
+    if (rightWrap instanceof HTMLElement) {
+      let shareBtn = rightWrap.querySelector('#btn-share')
+      if (activeTripId && !shareBtn) {
+        shareBtn = document.createElement('button')
+        shareBtn.className = 'status-btn'
+        shareBtn.id = 'btn-share'
+        shareBtn.title = t('status.shareTitle')
+        shareBtn.innerHTML = `&#128279; ${t('status.share')}`
+        rightWrap.insertBefore(shareBtn, rightWrap.querySelector('.locale-toggle'))
+      } else if (!activeTripId && shareBtn) {
+        shareBtn.remove()
+      }
+
+      this.el.querySelector('#btn-locale-nl')?.classList.toggle('locale-btn--active', locale === 'nl')
+      this.el.querySelector('#btn-locale-en')?.classList.toggle('locale-btn--active', locale === 'en')
+    }
   }
 
   private bindButtons(activeTripId: string | null, locale: Locale): void {
