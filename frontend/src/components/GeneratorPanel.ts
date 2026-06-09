@@ -1,7 +1,7 @@
 import type { Preferences, Itinerary } from '../types'
 import type { Store } from '../store'
 import { apiClient } from '../api/client'
-import { searchLocalCities, type CitySuggestion } from '../lib/citySearch'
+import { searchLocalCities, searchNominatim, type CitySuggestion } from '../lib/citySearch'
 import { t } from '../i18n/index'
 
 export type GenerateCallback = (itinerary: Itinerary) => void
@@ -232,12 +232,12 @@ export class GeneratorPanel {
       const requestId = ++this.cityLookupRequest
       timer = window.setTimeout(async () => {
         try {
-          const remoteResults = await apiClient.searchCities(query)
+          const remoteResults = await searchNominatim(query)
           if (requestId !== this.cityLookupRequest) return
           const seen = new Set(localResults.flatMap(city => [city.id, cityKey(city)]))
           render([
             ...localResults,
-            ...remoteResults.filter(city => !seen.has(city.id) && !seen.has(cityKey(city))),
+            ...remoteResults.filter((city: CitySuggestion) => !seen.has(city.id) && !seen.has(cityKey(city))),
           ].slice(0, 8))
         } catch {
           // Local suggestions are the primary path; remote lookup is optional.
