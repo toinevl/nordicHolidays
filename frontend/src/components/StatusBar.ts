@@ -21,7 +21,18 @@ export class StatusBar {
     this.onOpenSaved = onOpenSaved
     this.onShare = onShare
     this.onLocaleChange = onLocaleChange
-    this.render(t('status.defaultTripName'), null, null, 'en')
+
+    this.el.innerHTML = `
+      <span class="status-trip-name">${t('status.defaultTripName')}</span>
+      <span class="status-center"></span>
+      <span class="status-right">
+        <button class="status-btn" id="btn-open-saved">${t('status.myTrips')}</button>
+        <button class="status-btn" id="btn-open-generator">${t('status.generate')}</button>
+        <button class="status-btn locale-btn" id="btn-locale-nl">NL</button>
+        <button class="status-btn locale-btn" id="btn-locale-en">EN</button>
+      </span>
+    `
+
     this.bindButtons(null, 'en')
   }
 
@@ -65,8 +76,8 @@ export class StatusBar {
         shareBtn.className = 'status-btn'
         shareBtn.id = 'btn-share'
         shareBtn.title = t('status.shareTitle')
-        shareBtn.innerHTML = `&#128279; ${t('status.share')}`
-        rightWrap.insertBefore(shareBtn, rightWrap.querySelector('.locale-toggle'))
+        shareBtn.innerHTML = `🔗 ${t('status.share')}`
+        rightWrap.insertBefore(shareBtn, rightWrap.querySelector('.locale-btn'))
       } else if (!activeTripId && shareBtn) {
         shareBtn.remove()
       }
