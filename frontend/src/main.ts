@@ -17,11 +17,11 @@ import { initialize, handleRedirect } from './lib/auth'
 const store = createStore()
 const toast = new Toast()
 
-new SignInButton(store)
+new SignInButton()
 ;(async () => {
-  await initialize(store)
-  await handleRedirect(store)
-  await loadProfile(store)
+  await initialize()
+  await handleRedirect()
+  await loadProfile()
 })()
 
 function changeLocale(lang: Locale): void {
