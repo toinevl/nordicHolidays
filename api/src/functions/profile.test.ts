@@ -38,7 +38,6 @@ describe('PUT /api/profile', () => {
     const result = await putProfileHandler(
       { method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => { throw new Error('bad') } } as any,
       {} as any,
-      owner,
     )
     expect(result.status).toBe(400)
   })
