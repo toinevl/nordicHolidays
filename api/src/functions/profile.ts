@@ -2,115 +2,112 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { getTableClient } from '../lib/tableClient'
 import type { Profile } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
+import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 
-function toProfile(entity: Profile): Profile {
-  return {
-    partitionKey: entity.partitionKey,
-    rowKey: entity.rowKey,
-    ownerId: entity.ownerId,
-    displayName: entity.displayName,
-    email: entity.email,
-    createdAt: entity.createdAt,
-    updatedAt: entity.updatedAt,
-    extensions: entity.extensions,
-  }
-}
+const ROW_KEY = 'profile'
 
-function defaultProfile(): Profile {
+function entityToProfile(entity: Record<string, unknown>): Profile {
+  const raw = entity as Record<string, unknown>
   return {
-    partitionKey: 'profile',
-    rowKey: 'default',
-    ownerId: 'default',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    partitionKey: (raw.partitionKey as string) || '',
+    rowKey: (raw.rowKey as string) || '',
+    ownerId: (raw.ownerId as string) || '',
+    displayName: (raw.displayName as string) || '',
+    email: (raw.email as string) || '',
+    createdAt: (raw.createdAt as string) || new Date().toISOString(),
+    updatedAt: (raw.updatedAt as string) || new Date().toISOString(),
+    extensions: (raw.extensions as Record<string, unknown>) || {},
   }
 }
 
 export async function getProfileHandler(
   req: HttpRequest,
-  ctx: InvocationContext,
-  owner: Profile | undefined,
+  _ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  return withCors(
-    {
+  try {
+    const owner = await resolveOwnerId(req)
+    const client = getTableClient('Profiles')
+    const entity = await client.getEntity(owner.ownerId, ROW_KEY)
+    return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(toProfile(owner ?? defaultProfile())),
-    },
-    origin,
-  )
+      body: JSON.stringify(entityToProfile(entity as Record<string, unknown>)),
+    }, origin)
+  } catch (err: any) {
+    if (err instanceof Error && err.name === 'AuthError') {
+      return authErrorResponse(err, origin)
+    }
+    if (err?.statusCode === 404) {
+      return withCors({ status: 404, body: 'Profile not found' }, origin)
+    }
+    return withCors({ status: 500, body: 'Internal error' }, origin)
+  }
 }
 
 export async function putProfileHandler(
   req: HttpRequest,
-  ctx: InvocationContext,
+  _ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  let updates: Partial<Pick<Profile, 'displayName' | 'email' | 'extensions'>>
   try {
-    updates = (await req.json()) as Partial<Pick<Profile, 'displayName' | 'email' | 'extensions'>>
-  } catch {
-    return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
-  }
+    const owner = await resolveOwnerId(req)
 
-  const rowKey = 'default'
-  const existing = (await getTableClient('Profiles').getEntity('profile', rowKey)) as Partial<Profile> | undefined
+    let updates: Partial<Pick<Profile, 'displayName' | 'email' | 'extensions'>>
+    try {
+      updates = (await req.json()) as Partial<Pick<Profile, 'displayName' | 'email' | 'extensions'>>
+    } catch {
+      return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
+    }
 
-  const entity: Profile = {
-    partitionKey: 'profile',
-    rowKey,
-    ownerId: 'default',
-    displayName: updates.displayName ?? existing?.displayName ?? '',
-    email: updates.email ?? existing?.email ?? '',
-    createdAt: existing?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    extensions: updates.extensions ?? existing?.extensions ?? {},
-  }
+    const client = getTableClient('Profiles')
+    let existing: Partial<Profile> | undefined
+    try {
+      existing = (await client.getEntity(owner.ownerId, ROW_KEY)) as Partial<Profile> | undefined
+    } catch {
+      existing = undefined
+    }
 
-  const client = getTableClient('Profiles')
-  await client.upsertEntity(entity)
+    const entity: Profile = {
+      partitionKey: owner.ownerId,
+      rowKey: ROW_KEY,
+      ownerId: owner.ownerId,
+      displayName: updates.displayName ?? existing?.displayName ?? '',
+      email: updates.email ?? existing?.email ?? '',
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      extensions: updates.extensions ?? existing?.extensions ?? {},
+    }
 
-  return withCors(
-    {
+    await client.upsertEntity(entity)
+
+    return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(toProfile(entity)),
-    },
-    origin,
-  )
+      body: JSON.stringify(entity),
+    }, origin)
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AuthError') {
+      return authErrorResponse(err, origin)
+    }
+    return withCors({ status: 500, body: 'Internal error' }, origin)
+  }
 }
 
 app.http('getProfile', {
   methods: ['GET', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'profile',
-  handler: async (req, ctx) => {
-    const origin = req.headers.get('origin') ?? undefined
-    if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
-
-    const client = getTableClient('Profiles')
-    let owner: Profile | undefined
-    try {
-      owner = (await client.getEntity('profile', 'default')) as Profile
-    } catch {
-      owner = undefined
-    }
-    return getProfileHandler(req, ctx, owner)
-  },
+  handler: getProfileHandler,
 })
 
 app.http('putProfile', {
   methods: ['PUT', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'profile',
-  handler: async (req, ctx) => {
-    const origin = req.headers.get('origin') ?? undefined
-    if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
-    return putProfileHandler(req, ctx)
-  },
+  handler: putProfileHandler,
 })
