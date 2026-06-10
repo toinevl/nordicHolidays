@@ -5,14 +5,44 @@ import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { ownerFromBearer, authErrorResponse } from '../lib/identity'
 
-function entityToSummary(e: Record<string, unknown>): SavedItinerarySummary {
+function normalizeSummary(values: {
+  id?: string | null
+  name?: string | null
+  createdAt?: string | null
+  startCity?: string | null
+  endCity?: string | null
+  thumbnail?: string | null
+}): SavedItinerarySummary {
   return {
-    id: e.rowKey as string,
-    name: e.name as string,
-    createdAt: e.createdAt as string,
-    startCity: e.startCity as string,
-    endCity: e.endCity as string,
+    id: values.id ?? '',
+    name: values.name ?? '',
+    createdAt: values.createdAt ?? '',
+    startCity: values.startCity ?? '',
+    endCity: values.endCity ?? '',
+    thumbnail: values.thumbnail ?? undefined,
   }
+}
+
+function entityToSummary(e: Record<string, unknown>): SavedItinerarySummary {
+  return normalizeSummary({
+    id: e.rowKey as string | null,
+    name: e.name as string | null,
+    createdAt: e.createdAt as string | null,
+    startCity: e.startCity as string | null,
+    endCity: e.endCity as string | null,
+    thumbnail: (e.thumbnail as string | undefined) ?? null,
+  })
+}
+
+function successResponse(origin: string | undefined, data: unknown, status = 200): HttpResponseInit {
+  return withCors(
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    },
+    origin,
+  )
 }
 
 export async function listItinerariesHandler(
@@ -36,11 +66,7 @@ export async function listItinerariesHandler(
       summaries.push(entityToSummary(entity as Record<string, unknown>))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    return withCors({
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(summaries),
-    }, origin)
+    return successResponse(origin, summaries)
   } catch {
     return withCors({ status: 500, body: 'Internal error' }, origin)
   }
@@ -65,11 +91,16 @@ export async function getItineraryHandler(
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(owner.ownerId, id) as Record<string, unknown>
     const itinerary = JSON.parse(entity.itineraryJson as string) as Itinerary
-    return withCors({
+    const summary = entityToSummary(entity)
+    const response: HttpResponseInit = {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Itinerary-Summary': JSON.stringify(summary),
+      },
       body: JSON.stringify(itinerary),
-    }, origin)
+    }
+    return withCors(response, origin)
   } catch (err: any) {
     if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)
     return withCors({ status: 500, body: 'Internal error' }, origin)
@@ -90,9 +121,10 @@ export async function saveItineraryHandler(
     return authErrorResponse(err, origin)
   }
 
-  let body: { name: string; itinerary: Itinerary }
+  type SaveBody = { name: string; itinerary: Itinerary } & Partial<Record<'thumbnail', string | undefined>>
+  let body: SaveBody
   try {
-    body = await req.json() as { name: string; itinerary: Itinerary }
+    body = (await req.json()) as SaveBody
   } catch {
     return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
   }
@@ -100,6 +132,7 @@ export async function saveItineraryHandler(
   try {
     const id = nanoid()
     const client = getTableClient('Itineraries')
+    const thumb = typeof body.thumbnail === 'string' ? body.thumbnail.trim() : ''
     await client.createEntity({
       partitionKey: owner.ownerId,
       rowKey: id,
@@ -108,12 +141,9 @@ export async function saveItineraryHandler(
       startCity: body.itinerary.startCity,
       endCity: body.itinerary.endCity,
       itineraryJson: JSON.stringify(body.itinerary),
+      thumbnail: thumb || undefined,
     })
-    return withCors({
-      status: 201,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    }, origin)
+    return successResponse(origin, { id }, 201)
   } catch {
     return withCors({ status: 500, body: 'Internal error' }, origin)
   }

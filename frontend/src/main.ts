@@ -6,22 +6,17 @@ import { StatusBar } from './components/StatusBar'
 import { GeneratorPanel } from './components/GeneratorPanel'
 import { SavedTripsPanel } from './components/SavedTripsPanel'
 import { Toast } from './components/Toast'
-import { SignInButton, loadProfile } from './components/SignInButton'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
 import type { Itinerary, Locale } from './types'
 import { apiClient } from './api/client'
 import { setLocale } from './i18n/index'
 import { t, tpl } from './i18n/index'
 import { initialize, handleRedirect } from './lib/auth'
-
 const store = createStore()
 const toast = new Toast()
-
-new SignInButton()
 ;(async () => {
   await initialize()
   await handleRedirect()
-  await loadProfile()
 })()
 
 function changeLocale(lang: Locale): void {
@@ -90,7 +85,7 @@ const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: strin
   store.setState({ currentItinerary: itinerary, activeTripName: name, activeTripId: id, unsaved: false })
   applyItinerary(itinerary)
   toast.success(tpl('toast.loaded', { name }))
-})
+}, () => mapView.captureThumbnail().catch(() => undefined))
 
 const generatorPanel = new GeneratorPanel(
   store,

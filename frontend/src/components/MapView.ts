@@ -9,6 +9,7 @@ export class MapView {
   private markerEls = new Map<number, HTMLElement>()
   private onStopSelect: StopSelectCallback
   private _animRafId = 0
+  private thumbnailCanvas: HTMLCanvasElement | null = null
 
   constructor(containerId: string, onStopSelect: StopSelectCallback) {
     this.onStopSelect = onStopSelect
@@ -18,6 +19,47 @@ export class MapView {
       center: [15, 62],
       zoom: 5,
       pitch: 30,
+    })
+  }
+
+  captureThumbnail(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const canvas = this.thumbnailCanvas ?? document.createElement('canvas')
+      if (!canvas) return reject(new Error('Canvas unavailable'))
+      canvas.width = 320
+      canvas.height = 220
+      this.thumbnailCanvas = canvas
+
+      const onIdle = () => {
+        this.map.off('idle', onIdle)
+        try {
+          const ctx = canvas.getContext('2d')
+          if (!ctx) return reject(new Error('Canvas context unavailable'))
+          ctx.fillStyle = '#0f172a'
+          ctx.fillRect(0, 0, 320, 220)
+          ctx.drawImage(this.map.getCanvas(), 0, 0, 320, 220)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.6)
+          resolve(dataUrl)
+        } catch (err) {
+          reject(err)
+        }
+      }
+      this.map.on('idle', onIdle)
+      // Fallback timeout in case idle doesn't fire within 1s
+      setTimeout(() => {
+        this.map.off('idle', onIdle)
+        try {
+          const ctx = canvas.getContext('2d')
+          if (!ctx) return reject(new Error('Canvas context unavailable'))
+          ctx.fillStyle = '#0f172a'
+          ctx.fillRect(0, 0, 320, 220)
+          ctx.drawImage(this.map.getCanvas(), 0, 0, 320, 220)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.6)
+          resolve(dataUrl)
+        } catch (err) {
+          reject(err)
+        }
+      }, 1000)
     })
   }
 

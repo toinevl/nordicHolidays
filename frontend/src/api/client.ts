@@ -31,7 +31,7 @@ export const apiClient = {
     request<Itinerary>('/api/generate', { method: 'POST', body: JSON.stringify({ ...prefs, lang }) }),
   listItineraries: () => request<SavedItinerarySummary[]>('/api/itineraries'),
   getItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}`),
-  saveItinerary: (name: string, itinerary: Itinerary) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary }) }),
+  saveItinerary: (name: string, itinerary: Itinerary, thumbnail?: string) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) }),
   deleteItinerary: (id: string) => request<void>(`/api/itineraries/${id}`, { method: 'DELETE' }),
   searchCities: (query: string) => request<CitySuggestion[]>(`/api/city-search?q=${encodeURIComponent(query)}`),
 }

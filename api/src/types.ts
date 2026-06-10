@@ -26,6 +26,7 @@ export type Itinerary = {
   endCity: string
   stops: ItineraryStop[]
   generatedAt: string
+  thumbnail?: string
 }
 
 export type SavedItinerarySummary = {
@@ -34,6 +35,7 @@ export type SavedItinerarySummary = {
   createdAt: string
   startCity: string
   endCity: string
+  thumbnail?: string
 }
 
 export type CitySuggestion = {
@@ -53,6 +55,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   startCity: 'Amsterdam',
   endCity: 'Amsterdam',
   tripDays: 21,
+  country: 'SE',
 }
 
 export type Profile = {

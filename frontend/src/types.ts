@@ -66,6 +66,7 @@ export type Itinerary = {
   endCity: string
   stops: ItineraryStop[]
   generatedAt: string
+  thumbnail?: string
 }
 
 export type SavedItinerarySummary = {
@@ -74,6 +75,7 @@ export type SavedItinerarySummary = {
   createdAt: string
   startCity: string
   endCity: string
+  thumbnail?: string
 }
 
 export type { Locale } from './i18n/types'

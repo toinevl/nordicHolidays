@@ -46,7 +46,7 @@ describe('PUT /api/preferences', () => {
   it('saves preferences and returns them', async () => {
     const client = { getEntity: vi.fn(), upsertEntity: vi.fn().mockResolvedValue(undefined) }
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const prefs: Preferences = { mustVisit: ['Stockholm'], avoid: ['Gothenburg'], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 14 }
+    const prefs: Preferences = { mustVisit: ['Stockholm'], avoid: ['Gothenburg'], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 14, country: 'SE' }
     const req = { json: async () => prefs, method: 'PUT', headers: new Map() } as any
     const result = await putPreferencesHandler(req, {} as any)
     const body = JSON.parse(result.body as string) as Preferences

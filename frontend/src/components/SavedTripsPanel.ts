@@ -4,17 +4,20 @@ import { apiClient } from '../api/client'
 import { t } from '../i18n/index'
 
 export type LoadItineraryCallback = (itinerary: Itinerary, name: string, id: string) => void
+export type ThumbnailProvider = () => Promise<string | undefined>
 
 export class SavedTripsPanel {
   private overlay: HTMLElement
   private panel: HTMLElement
   private store: Store
   private onLoad: LoadItineraryCallback
+  private getThumbnail: ThumbnailProvider
   private lastLocale: string = ''
 
-  constructor(store: Store, onLoad: LoadItineraryCallback) {
+  constructor(store: Store, onLoad: LoadItineraryCallback, getThumbnail: ThumbnailProvider) {
     this.store = store
     this.onLoad = onLoad
+    this.getThumbnail = getThumbnail
     this.overlay = document.createElement('div')
     this.overlay.className = 'panel-overlay hidden'
     this.panel = document.createElement('div')
@@ -84,7 +87,8 @@ export class SavedTripsPanel {
     if (!currentItinerary) return
 
     try {
-      const { id } = await apiClient.saveItinerary(name, currentItinerary)
+      const thumbnail = await this.getThumbnail()
+      const { id } = await apiClient.saveItinerary(name, currentItinerary, thumbnail)
       this.store.setState({ unsaved: false, activeTripName: name, activeTripId: id })
       history.replaceState(null, '', `?id=${id}`)
       nameInput.value = ''
@@ -107,6 +111,7 @@ export class SavedTripsPanel {
       }
       container.innerHTML = list.map((item, idx) => `
         <div class="saved-card saved-card-enter" data-id="${item.id}" style="animation-delay:${idx * 0.06}s">
+          ${item.thumbnail ? `<img class="saved-thumb" src="${item.thumbnail}" alt="" />` : ''}
           <div class="saved-card-name">${item.name}</div>
           <div class="saved-card-meta">${item.startCity} → ${item.endCity} · ${item.createdAt.slice(0, 10)}</div>
           <div class="saved-card-actions">
@@ -140,6 +145,14 @@ export class SavedTripsPanel {
           } catch (err) {
             alert(`${t('saved.deleteFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
           }
+        })
+      })
+
+      container.querySelectorAll('.saved-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+          if ((e.target as HTMLElement).closest('button')) return
+          const btn = card.querySelector('.btn-load') as HTMLElement | null
+          btn?.click()
         })
       })
     } catch {
