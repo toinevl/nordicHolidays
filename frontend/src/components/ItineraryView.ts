@@ -8,7 +8,8 @@ export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: { fly?: boolean }) => void
 
 function tagLabel(tag: string): string {
-  return tag === 'offbeat' ? 'Off-beat' : tag[0].toUpperCase() + tag.slice(1)
+  const label = tag === 'offbeat' ? 'Off-beat' : tag[0].toUpperCase() + tag.slice(1)
+  return escapeHtml(label)
 }
 
 const REGION_COLOR_MAP: [string, string][] = [
@@ -23,6 +24,14 @@ function regionColorKey(region: string): string {
   const lower = region.toLowerCase()
   const match = REGION_COLOR_MAP.find(([key]) => lower.includes(key))
   return match ? match[1] : 'amber'
+}
+
+/**
+ * Sanitize a tag string to be used as a CSS class token.
+ * Only allows lowercase letters, digits, and hyphens to prevent attribute breakout.
+ */
+function sanitizeTagForClass(tag: string): string {
+  return tag.toLowerCase().replace(/[^a-z0-9-]/g, '')
 }
 
 export class ItineraryView {
@@ -142,7 +151,7 @@ export class ItineraryView {
     const chipsEl = document.getElementById('filter-chips')
     if (chipsEl) {
       chipsEl.innerHTML = tags.map(tag => `
-        <button class="chip ${tag === this.currentFilter ? 'active' : ''}" data-filter="${tag}">
+        <button class="chip ${tag === this.currentFilter ? 'active' : ''}" data-filter="${escapeHtml(tag)}">
           ${tag === 'all' ? t('itinerary.allStops') : tagLabel(tag)}
         </button>`).join('')
 
@@ -175,13 +184,13 @@ export class ItineraryView {
     if (!tl) return
 
     tl.innerHTML = this.stops.map((s, idx) => {
-      const tags   = s.tags.map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')
+      const tags   = s.tags.map(t => `<span class="tag tag-${sanitizeTagForClass(t)}">${tagLabel(t)}</span>`).join('')
       const nights = s.nights === 0 ? t('itinerary.dayTrip') : s.nights === 1 ? t('itinerary.oneNight') : tpl('itinerary.nights', { n: String(s.nights) })
       const drive  = s.km > 0
         ? `<div class="stop-drive">🚗 from ${escapeHtml(s.from)}<br>${s.km} km · ${s.time}</div>`
         : `<div class="stop-drive">⛴️ ${escapeHtml(s.from)}</div>`
 
-      return `<div class="t-item" data-tags="${s.tags.join(',')}" data-reveal style="transition-delay:${idx * 0.04}s">
+      return `<div class="t-item" data-tags="${escapeHtml(s.tags.join(','))}" data-reveal style="transition-delay:${idx * 0.04}s">
         <div class="t-dot"><div class="dot">${s.id}</div></div>
         <div>
           <div class="t-meta">

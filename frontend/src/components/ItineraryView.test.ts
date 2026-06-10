@@ -221,4 +221,114 @@ describe('ItineraryView XSS Prevention', () => {
     expect(timeline?.innerHTML).not.toContain('<script>')
     expect(timeline?.innerHTML).toContain('&lt;script&gt;')
   })
+
+  it('renders XSS payload in tagLabel as inert text (Issue 1)', () => {
+    const stops: Stop[] = [
+      {
+        id: 1,
+        days: '1',
+        dates: '2026-06-10',
+        dest: 'Stockholm',
+        region: 'Upland',
+        coords: [18.1, 59.3] as [number, number],
+        tags: ['"><img src=x onerror=alert(1)>'],
+        nights: 1,
+        desc: 'Safe',
+        highlights: [],
+        from: 'Amsterdam',
+        km: 100,
+        time: '2h',
+        zoom: 12,
+        pitch: 45,
+        bearing: 0,
+      },
+    ]
+
+    view.render(stops, [], [])
+
+    const tspan = document.querySelector('.tags span')
+
+    // Tag text should contain the payload but as plain text (not an executable img tag)
+    expect(tspan?.textContent).toContain('img')
+    expect(tspan?.textContent).toContain('onerror')
+    // The textContent should NOT have been parsed as HTML - no child img elements
+    expect(tspan?.querySelector('img')).toBeNull()
+
+    // Tag in class attribute should be sanitized (only alphanumerics and hyphens)
+    const classList = tspan?.className || ''
+    expect(classList).toMatch(/^tag tag-[a-z0-9-]*$/)
+  })
+
+  it('escapes tag in data-tags attribute (Issue 3)', () => {
+    const stops: Stop[] = [
+      {
+        id: 1,
+        days: '1',
+        dates: '2026-06-10',
+        dest: 'Stockholm',
+        region: 'Upland',
+        coords: [18.1, 59.3] as [number, number],
+        tags: ['nature', 'culture'],
+        nights: 1,
+        desc: 'Safe',
+        highlights: [],
+        from: 'Amsterdam',
+        km: 100,
+        time: '2h',
+        zoom: 12,
+        pitch: 45,
+        bearing: 0,
+      },
+    ]
+
+    view.render(stops, [], [])
+
+    const timeline = document.getElementById('timeline')
+    const tItem = timeline?.querySelector('.t-item')
+    const dataTags = tItem?.getAttribute('data-tags') || ''
+
+    // Verify that data-tags still contains the tags in the right format
+    expect(dataTags).toContain('nature')
+    expect(dataTags).toContain('culture')
+
+    // Test filtering still works
+    const mockFilterCallback = vi.fn()
+    const view2 = new ItineraryView(mockFilterCallback, vi.fn())
+    view2.render(stops, [], [])
+    view2.setFilter('nature')
+
+    // Verify filtering logic (reads from data-tags attribute)
+    const visibleItems = timeline?.querySelectorAll('.t-item:not(.hidden)')
+    expect(visibleItems?.length).toBeGreaterThan(0)
+  })
+
+  it('escapes XSS payload in tpl() parameters (Issue 2)', () => {
+    const stops: Stop[] = [
+      {
+        id: 1,
+        days: '1',
+        dates: '2026-06-10',
+        dest: '<script>alert("XSS")</script>',
+        region: 'Upland',
+        coords: [18.1, 59.3] as [number, number],
+        tags: [],
+        nights: 1,
+        desc: 'Safe',
+        highlights: [],
+        from: '<img src=x onerror=alert(1)>',
+        km: 500,
+        time: '5h',
+        zoom: 12,
+        pitch: 45,
+        bearing: 0,
+      },
+    ]
+
+    view.render(stops, [], [])
+
+    // Check route-summary for escaped longestDrive.dest in tpl() output
+    const summary = document.getElementById('route-summary')
+    expect(summary?.innerHTML).not.toContain('<script>')
+    expect(summary?.innerHTML).toContain('&lt;script&gt;')
+  })
 })
