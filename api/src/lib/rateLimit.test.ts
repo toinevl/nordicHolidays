@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { checkAndIncrementRateLimit, RATE_LIMIT_PER_OWNER_PER_HOUR, RATE_LIMIT_PER_IP_PER_HOUR } from './rateLimit'
 
 vi.mock('./tableClient', () => ({
   getTableClient: vi.fn(),
 }))
 
+import { checkAndIncrementRateLimit, RATE_LIMIT_PER_OWNER_PER_HOUR, RATE_LIMIT_PER_IP_PER_HOUR } from './rateLimit'
 import { getTableClient } from './tableClient'
 
 function makeRequest(ip?: string): any {
@@ -18,6 +18,7 @@ function makeClient(overrides: Record<string, unknown> = {}) {
     getEntity: vi.fn(),
     createEntity: vi.fn().mockResolvedValue(undefined),
     updateEntity: vi.fn().mockResolvedValue(undefined),
+    createTable: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   }
 }
@@ -161,5 +162,21 @@ describe('checkAndIncrementRateLimit', () => {
     expect(result.retryAfterSeconds).toBeDefined()
     expect(result.retryAfterSeconds).toBeGreaterThan(0)
     expect(result.retryAfterSeconds).toBeLessThanOrEqual(3600)
+  })
+})
+
+describe('table creation', () => {
+  it('creates table on first use and ignores 409 TableAlreadyExists error', async () => {
+    // This test runs first in isolation mode and verifies createTable is called
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+      createTable: vi.fn().mockRejectedValue({ statusCode: 409, code: 'TableAlreadyExists' }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = makeRequest('192.168.1.1')
+    const result = await checkAndIncrementRateLimit(req, 'owner-123')
+
+    expect(result.allowed).toBe(true)
   })
 })

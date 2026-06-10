@@ -6,6 +6,9 @@ export const RATE_LIMIT_PER_OWNER_PER_HOUR = 5
 export const RATE_LIMIT_PER_IP_PER_HOUR = 20
 export const RATE_LIMIT_TABLE_NAME = 'RateLimits'
 
+// Lazy initialization for table creation
+let ensureTablePromise: Promise<void> | null = null
+
 export interface RateLimitResult {
   allowed: boolean
   retryAfterSeconds?: number
@@ -48,6 +51,35 @@ function getSecondsUntilHourEnd(): number {
 }
 
 /**
+ * Lazily ensure the RateLimits table exists.
+ * Caches the promise so createTable is called only once per process.
+ * Ignores 409 (TableAlreadyExists) errors; other errors are logged and ignored.
+ */
+async function ensureTableExists(logger?: any): Promise<void> {
+  if (ensureTablePromise) {
+    return ensureTablePromise
+  }
+
+  ensureTablePromise = (async () => {
+    try {
+      const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+      await client.createTable()
+    } catch (err: any) {
+      // 409 means table already exists; that's fine
+      if (err?.statusCode === 409 || err?.code === 'TableAlreadyExists') {
+        return
+      }
+      // Log other errors but continue (fail open)
+      logger?.log.error(
+        `Failed to ensure rate limit table exists: ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
+  })()
+
+  return ensureTablePromise
+}
+
+/**
  * Check and increment rate limit for a given owner and IP.
  * Returns { allowed: true } if both owner and IP are under their limits.
  * Returns { allowed: false, retryAfterSeconds: N } if either limit is exceeded.
@@ -59,6 +91,9 @@ export async function checkAndIncrementRateLimit(
   logger?: any
 ): Promise<RateLimitResult> {
   try {
+    // Ensure the table exists on first use
+    await ensureTableExists(logger)
+
     const client = getTableClient(RATE_LIMIT_TABLE_NAME)
     const now = new Date()
     const hourWindow = getCurrentHourWindow()
