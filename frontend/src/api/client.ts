@@ -2,16 +2,19 @@
 import type { Preferences, Itinerary, SavedItinerarySummary, Locale } from '../types'
 import type { CitySuggestion } from '../lib/citySearch'
 import { getAccessToken } from '../lib/auth'
+import { getOwnerId } from '../lib/identity'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken()
+  const ownerId = getOwnerId()
   const fetchInit: RequestInit = {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Owner-Id': ownerId,
       ...(init?.headers ?? {}),
     },
   }

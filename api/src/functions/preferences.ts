@@ -3,7 +3,7 @@ import { getTableClient } from '../lib/tableClient'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
-import { resolveOwnerFromHttpRequest } from '../lib/anonymousOwner'
+import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 
 const ROW_KEY = 'default'
 
@@ -26,17 +26,19 @@ export async function getPreferencesHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  const ownerId = await resolveOwnerFromHttpRequest(req)
-
   try {
+    const owner = await resolveOwnerId(req)
     const client = getTableClient('Preferences')
-    const entity = await client.getEntity(ownerId, ROW_KEY)
+    const entity = await client.getEntity(owner.ownerId, ROW_KEY)
     return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entityToPreferences(entity as Record<string, unknown>)),
     }, origin)
   } catch (err: any) {
+    if (err instanceof Error && err.name === 'AuthError') {
+      return authErrorResponse(err, origin)
+    }
     if (err?.statusCode === 404) {
       return withCors({
         status: 200,
@@ -55,19 +57,19 @@ export async function putPreferencesHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  const ownerId = await resolveOwnerFromHttpRequest(req)
-
-  let prefs: Preferences
   try {
-    prefs = await req.json() as Preferences
-  } catch {
-    return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
-  }
+    const owner = await resolveOwnerId(req)
 
-  try {
+    let prefs: Preferences
+    try {
+      prefs = await req.json() as Preferences
+    } catch {
+      return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
+    }
+
     const client = getTableClient('Preferences')
     await client.upsertEntity({
-      partitionKey: ownerId,
+      partitionKey: owner.ownerId,
       rowKey: ROW_KEY,
       mustVisit: JSON.stringify(prefs.mustVisit ?? []),
       avoid: JSON.stringify(prefs.avoid ?? []),
@@ -82,7 +84,10 @@ export async function putPreferencesHandler(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prefs),
     }, origin)
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AuthError') {
+      return authErrorResponse(err, origin)
+    }
     return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }

@@ -13,14 +13,6 @@
     "version": "[4.*, 5.0.0)"
   },
   "extensions": {
-    "http": {
-      "cors": {
-        "allowedOrigins": [
-          "https://zealous-forest-053645a03.7.azurestaticapps.net",
-          "http://localhost:5173"
-        ],
-        "supportCredentials": false
-      }
-    }
+    "http": {}
   }
 }

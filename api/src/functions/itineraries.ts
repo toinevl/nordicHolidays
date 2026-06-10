@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid'
 import { getTableClient } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
-import { resolveOwnerFromHttpRequest } from '../lib/anonymousOwner'
+import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 
 function normalizeSummary(values: {
   id?: string | null
@@ -52,17 +52,19 @@ export async function listItinerariesHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  const ownerId = await resolveOwnerFromHttpRequest(req)
-
   try {
+    const owner = await resolveOwnerId(req)
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
-    for await (const entity of client.listEntities({ queryOptions: { filter: `PartitionKey eq '${ownerId}'` } })) {
+    for await (const entity of client.listEntities({ queryOptions: { filter: `PartitionKey eq '${owner.ownerId}'` } })) {
       summaries.push(entityToSummary(entity as Record<string, unknown>))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return successResponse(origin, summaries)
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AuthError') {
+      return authErrorResponse(err, origin)
+    }
     return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }
@@ -74,12 +76,11 @@ export async function getItineraryHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  const ownerId = await resolveOwnerFromHttpRequest(req)
-
-  const id = req.params.id
   try {
+    const owner = await resolveOwnerId(req)
+    const id = req.params.id
     const client = getTableClient('Itineraries')
-    const entity = await client.getEntity(ownerId, id) as Record<string, unknown>
+    const entity = await client.getEntity(owner.ownerId, id) as Record<string, unknown>
     const itinerary = JSON.parse(entity.itineraryJson as string) as Itinerary
     const summary = entityToSummary(entity)
     const response: HttpResponseInit = {
@@ -92,6 +93,9 @@ export async function getItineraryHandler(
     }
     return withCors(response, origin)
   } catch (err: any) {
+    if (err instanceof Error && err.name === 'AuthError') {
+      return authErrorResponse(err, origin)
+    }
     if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)
     return withCors({ status: 500, body: 'Internal error' }, origin)
   }
@@ -104,22 +108,22 @@ export async function saveItineraryHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  const ownerId = await resolveOwnerFromHttpRequest(req)
-
-  type SaveBody = { name: string; itinerary: Itinerary } & Partial<Record<'thumbnail', string | undefined>>
-  let body: SaveBody
   try {
-    body = (await req.json()) as SaveBody
-  } catch {
-    return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
-  }
+    const owner = await resolveOwnerId(req)
 
-  try {
+    type SaveBody = { name: string; itinerary: Itinerary } & Partial<Record<'thumbnail', string | undefined>>
+    let body: SaveBody
+    try {
+      body = (await req.json()) as SaveBody
+    } catch {
+      return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
+    }
+
     const id = nanoid()
     const client = getTableClient('Itineraries')
     const thumb = typeof body.thumbnail === 'string' ? body.thumbnail.trim() : ''
     await client.createEntity({
-      partitionKey: ownerId,
+      partitionKey: owner.ownerId,
       rowKey: id,
       name: body.name,
       createdAt: new Date().toISOString(),
@@ -129,7 +133,10 @@ export async function saveItineraryHandler(
       thumbnail: thumb || undefined,
     })
     return successResponse(origin, { id }, 201)
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AuthError') {
+      return authErrorResponse(err, origin)
+    }
     return withCors({ status: 500, body: 'Internal error' }, origin)
   }
 }
@@ -141,14 +148,16 @@ export async function deleteItineraryHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  const ownerId = await resolveOwnerFromHttpRequest(req)
-
-  const id = req.params.id
   try {
+    const owner = await resolveOwnerId(req)
+    const id = req.params.id
     const client = getTableClient('Itineraries')
-    await client.deleteEntity(ownerId, id)
+    await client.deleteEntity(owner.ownerId, id)
     return withCors({ status: 204 }, origin)
   } catch (err: any) {
+    if (err instanceof Error && err.name === 'AuthError') {
+      return authErrorResponse(err, origin)
+    }
     if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)
     return withCors({ status: 500, body: 'Internal error' }, origin)
   }

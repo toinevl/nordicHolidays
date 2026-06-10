@@ -10,8 +10,9 @@ vi.mock('../lib/tableClient', () => ({
   })),
 }))
 vi.mock('../lib/identity', () => ({
+  resolveOwnerId: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: true, subject: '' }),
   ownerFromBearer: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: false, subject: 'sub-123' }),
-  authErrorResponse: vi.fn((err, origin) => ({ status: 401, body: (err as Error).message, headers: {}, } as any)),
+  authErrorResponse: vi.fn((err, origin) => ({ status: 400, body: JSON.stringify({ error: (err as Error).message }), headers: {}, } as any)),
 }))
 vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-id-123') }))
 
