@@ -98,6 +98,56 @@ describe('POST /api/itineraries', () => {
     expect(body.id).toBe('test-id-123')
     expect(client.createEntity).toHaveBeenCalledOnce()
   })
+
+  it('validates and includes valid JPEG data URI thumbnail', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const itin: Itinerary = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' }
+    const validThumb = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...'
+    const req = { json: async () => ({ name: 'My Trip', itinerary: itin, thumbnail: validThumb }), method: 'POST', headers: new Map() } as any
+    const result = await saveItineraryHandler(req, {} as any)
+    const body = JSON.parse(result.body as string)
+    expect(result.status).toBe(201)
+    expect(client.createEntity).toHaveBeenCalledOnce()
+    const call = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call?.thumbnail).toBe(validThumb)
+  })
+
+  it('strips invalid thumbnail URLs', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const itin: Itinerary = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' }
+    const req = { json: async () => ({ name: 'My Trip', itinerary: itin, thumbnail: 'https://example.com/image.jpg' }), method: 'POST', headers: new Map() } as any
+    const result = await saveItineraryHandler(req, {} as any)
+    expect(result.status).toBe(201)
+    const call = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call?.thumbnail).toBeUndefined()
+  })
+
+  it('strips oversized thumbnails', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const itin: Itinerary = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' }
+    // Create a thumbnail that exceeds 48KB
+    const oversizedThumb = 'data:image/jpeg;base64,' + 'A'.repeat(50 * 1024)
+    const req = { json: async () => ({ name: 'My Trip', itinerary: itin, thumbnail: oversizedThumb }), method: 'POST', headers: new Map() } as any
+    const result = await saveItineraryHandler(req, {} as any)
+    expect(result.status).toBe(201)
+    const call = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call?.thumbnail).toBeUndefined()
+  })
+
+  it('accepts valid PNG data URI thumbnail', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const itin: Itinerary = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' }
+    const validThumb = 'data:image/png;base64,iVBORw0KGgoAAAANS...'
+    const req = { json: async () => ({ name: 'My Trip', itinerary: itin, thumbnail: validThumb }), method: 'POST', headers: new Map() } as any
+    const result = await saveItineraryHandler(req, {} as any)
+    expect(result.status).toBe(201)
+    const call = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call?.thumbnail).toBe(validThumb)
+  })
 })
 
 describe('DELETE /api/itineraries/:id', () => {

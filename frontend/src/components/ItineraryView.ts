@@ -2,6 +2,7 @@ import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
 import { haversineKm } from '../lib/distance'
 import { getSeasonInfo } from '../data/seasonData'
 import { t, tpl } from '../i18n/index'
+import { escapeHtml } from '../lib/escape'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: { fly?: boolean }) => void
@@ -159,12 +160,12 @@ export class ItineraryView {
   private renderSelectedStop(): void {
     const stop = this.stops.find(s => s.id === this.selectedStopId) || this.stops[0]
     if (!stop) return
-    const drive = stop.km > 0 ? `${stop.km} km from ${stop.from} · ${stop.time}` : stop.from
+    const drive = stop.km > 0 ? `${stop.km} km from ${escapeHtml(stop.from)} · ${stop.time}` : escapeHtml(stop.from)
     const el = document.getElementById('selected-stop')
     if (el) {
       el.innerHTML = `
         <div class="selected-kicker">${t('itinerary.selectedStop')}</div>
-        <div class="selected-title">${stop.dest}</div>
+        <div class="selected-title">${escapeHtml(stop.dest)}</div>
         <p class="selected-copy">${t('itinerary.dayPrefix')} ${stop.days} · ${stop.dates}<br>${drive}</p>`
     }
   }
@@ -177,8 +178,8 @@ export class ItineraryView {
       const tags   = s.tags.map(t => `<span class="tag tag-${t}">${tagLabel(t)}</span>`).join('')
       const nights = s.nights === 0 ? t('itinerary.dayTrip') : s.nights === 1 ? t('itinerary.oneNight') : tpl('itinerary.nights', { n: String(s.nights) })
       const drive  = s.km > 0
-        ? `<div class="stop-drive">🚗 from ${s.from}<br>${s.km} km · ${s.time}</div>`
-        : `<div class="stop-drive">⛴️ ${s.from}</div>`
+        ? `<div class="stop-drive">🚗 from ${escapeHtml(s.from)}<br>${s.km} km · ${s.time}</div>`
+        : `<div class="stop-drive">⛴️ ${escapeHtml(s.from)}</div>`
 
       return `<div class="t-item" data-tags="${s.tags.join(',')}" data-reveal style="transition-delay:${idx * 0.04}s">
         <div class="t-dot"><div class="dot">${s.id}</div></div>
@@ -189,12 +190,12 @@ export class ItineraryView {
           </div>
           <div class="t-card" id="stop-${s.id}" data-day="${s.id}">
             <div class="card-head">
-              <div><div class="card-dest">${s.dest}</div><div class="card-region region--${regionColorKey(s.region)}">${s.region}</div></div>
+              <div><div class="card-dest">${escapeHtml(s.dest)}</div><div class="card-region region--${regionColorKey(s.region)}">${escapeHtml(s.region)}</div></div>
               <div class="card-nights">${nights}</div>
             </div>
             <div class="tags">${tags}</div>
-            <p class="card-desc">${s.desc}</p>
-            <ul class="card-highlights">${s.highlights.map(h => `<li>${h}</li>`).join('')}</ul>
+            <p class="card-desc">${escapeHtml(s.desc)}</p>
+            <ul class="card-highlights">${s.highlights.map(h => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
             ${(() => {
               const info = getSeasonInfo(s.region)
               return info
@@ -259,11 +260,11 @@ export class ItineraryView {
     el.innerHTML = this.culinary.map((c, i) => `
       <div class="cul-card" data-reveal style="transition-delay:${i * 0.08}s">
         <div class="cul-icon">${c.icon}</div>
-        <div class="cul-name">${c.name}</div>
-        <div class="cul-region" style="color:${c.color}">${c.region}</div>
-        <p class="cul-desc">${c.desc}</p>
+        <div class="cul-name">${escapeHtml(c.name)}</div>
+        <div class="cul-region" style="color:${c.color}">${escapeHtml(c.region)}</div>
+        <p class="cul-desc">${escapeHtml(c.desc)}</p>
         <div class="cul-label">Must try</div>
-        <ul class="cul-list">${c.must.map(m => `<li>${m}</li>`).join('')}</ul>
+        <ul class="cul-list">${c.must.map(m => `<li>${escapeHtml(m)}</li>`).join('')}</ul>
       </div>`).join('')
   }
 
@@ -274,12 +275,12 @@ export class ItineraryView {
     const pc: Record<string, string> = { free: 'b-free', cond: 'b-mod', mod: 'b-mod' }
     el.innerHTML = this.accommodations.map(a => `
       <tr>
-        <td>${a.dest}</td>
-        <td>${a.type}</td>
-        <td><span class="badge ${pc[a.policy] ?? 'b-mod'}">${pl[a.policy] ?? a.policy}</span></td>
+        <td>${escapeHtml(a.dest)}</td>
+        <td>${escapeHtml(a.type)}</td>
+        <td><span class="badge ${pc[a.policy] ?? 'b-mod'}">${pl[a.policy] ?? escapeHtml(a.policy)}</span></td>
         <td class="${a.bath ? 'ok' : 'no'}">${a.bath ? '✓' : '✗'}</td>
         <td class="${a.terrace ? 'ok' : 'no'}">${a.terrace ? '✓' : '–'}</td>
-        <td class="td-note">${a.note}</td>
+        <td class="td-note">${escapeHtml(a.note)}</td>
       </tr>`).join('')
   }
 

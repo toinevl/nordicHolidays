@@ -5,6 +5,30 @@ import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 
+/**
+ * Validate and sanitize a thumbnail URL.
+ * Only allows data: URLs with valid image MIME types to prevent XSS via src attributes.
+ * Also enforces a 48KB size limit (Table Storage property limit is 64KB).
+ * Returns the URL if valid, undefined if invalid or over size limit.
+ */
+function validateThumbnail(thumbnail: string | undefined | null): string | undefined {
+  if (!thumbnail) return undefined
+  const trimmed = thumbnail.trim()
+
+  // Only allow data: URLs with JPEG or PNG MIME types
+  if (!trimmed.startsWith('data:image/jpeg;base64,') && !trimmed.startsWith('data:image/png;base64,')) {
+    return undefined
+  }
+
+  // Enforce 48KB size limit to stay well under Table Storage's 64KB property limit
+  const MAX_THUMBNAIL_BYTES = 48 * 1024
+  if (trimmed.length > MAX_THUMBNAIL_BYTES) {
+    return undefined
+  }
+
+  return trimmed
+}
+
 function normalizeSummary(values: {
   id?: string | null
   name?: string | null
@@ -121,7 +145,8 @@ export async function saveItineraryHandler(
 
     const id = nanoid()
     const client = getTableClient('Itineraries')
-    const thumb = typeof body.thumbnail === 'string' ? body.thumbnail.trim() : ''
+    // Validate thumbnail: if provided, must be a valid data: URL with correct size. Invalid thumbnails are stripped.
+    const thumb = validateThumbnail(body.thumbnail)
     await client.createEntity({
       partitionKey: owner.ownerId,
       rowKey: id,
@@ -130,7 +155,7 @@ export async function saveItineraryHandler(
       startCity: body.itinerary.startCity,
       endCity: body.itinerary.endCity,
       itineraryJson: JSON.stringify(body.itinerary),
-      thumbnail: thumb || undefined,
+      thumbnail: thumb,
     })
     return successResponse(origin, { id }, 201)
   } catch (err) {
