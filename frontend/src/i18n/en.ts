@@ -16,6 +16,7 @@ export const en: LocaleStrings = {
     regenerateBtn: 'Regenerate',
     preferencesSaved: 'Preferences saved',
     generating: 'Generating...',
+    country: 'Country',
   },
   saved: {
     title: 'Saved Trips',
@@ -91,5 +92,11 @@ export const en: LocaleStrings = {
     signIn: 'Sign in',
     signOut: 'Sign out',
     profileSaved: 'Profile saved',
+  },
+  country: {
+    se: 'Sweden',
+    no: 'Norway',
+    dk: 'Denmark',
+    fi: 'Finland',
   },
 }

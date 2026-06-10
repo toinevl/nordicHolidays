@@ -36,14 +36,16 @@ function getRank(city: CitySuggestion, normalizedQuery: string): number | null {
   return null
 }
 
-export function searchLocalCities(query: string, limit = DEFAULT_LIMIT): CitySuggestion[] {
+export function searchLocalCities(query: string, countryCode = '', limit = DEFAULT_LIMIT): CitySuggestion[] {
   const normalizedQuery = normalize(query)
 
   if (normalizedQuery.length < MIN_QUERY_LENGTH || limit <= 0) {
     return []
   }
 
-  return CITIES.reduce<RankedCity[]>((matches, city, index) => {
+  const base = countryCode ? CITIES.filter(city => city.countryCode === countryCode) : CITIES
+
+  return base.reduce<RankedCity[]>((matches, city, index) => {
     const rank = getRank(city, normalizedQuery)
 
     if (rank !== null) {

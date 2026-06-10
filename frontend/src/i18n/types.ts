@@ -16,6 +16,7 @@ export interface LocaleStrings {
     regenerateBtn: string
     preferencesSaved: string
     generating: string
+    country: string
   }
   saved: {
     title: string
@@ -92,6 +93,12 @@ export interface LocaleStrings {
     signOut: string
     profileSaved: string
   }
+  country: {
+    se: string
+    no: string
+    dk: string
+    fi: string
+  }
 }
 
 export type LocaleKey =
@@ -102,3 +109,4 @@ export type LocaleKey =
   | `itinerary.${keyof LocaleStrings['itinerary']}`
   | `season.${keyof LocaleStrings['season']}`
   | `auth.${keyof LocaleStrings['auth']}`
+  | `country.${keyof LocaleStrings['country']}`

@@ -4,6 +4,7 @@ export type Preferences = {
   startCity: string
   endCity: string
   tripDays: number
+  country: string
 }
 
 export type ItineraryStop = {

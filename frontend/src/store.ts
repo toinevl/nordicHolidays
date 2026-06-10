@@ -32,6 +32,7 @@ const defaultPreferences: Preferences = {
   startCity: '',
   endCity: '',
   tripDays: 21,
+  country: 'SE',
 }
 
 const initialState: Omit<AppState, 'locale'> = {

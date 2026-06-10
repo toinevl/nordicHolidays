@@ -16,6 +16,7 @@ export const nl: LocaleStrings = {
     regenerateBtn: 'Opnieuw genereren',
     preferencesSaved: 'Voorkeuren opgeslagen',
     generating: 'Genereren...',
+    country: 'Land',
   },
   saved: {
     title: 'Opgeslagen Reizen',
@@ -91,5 +92,11 @@ export const nl: LocaleStrings = {
     signIn: 'Inloggen',
     signOut: 'Uitloggen',
     profileSaved: 'Profiel opgeslagen',
+  },
+  country: {
+    se: 'Zweden',
+    no: 'Noorwegen',
+    dk: 'Denemarken',
+    fi: 'Finland',
   },
 }

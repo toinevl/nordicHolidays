@@ -8,12 +8,15 @@ import { ownerFromBearer, AuthError, authErrorResponse } from '../lib/identity'
 const ROW_KEY = 'default'
 
 function entityToPreferences(entity: Record<string, unknown>): Preferences {
+  const raw = entity as Record<string, unknown>
+
   return {
-    mustVisit: JSON.parse(entity.mustVisit as string || '[]'),
-    avoid: JSON.parse(entity.avoid as string || '[]'),
-    startCity: entity.startCity as string || DEFAULT_PREFERENCES.startCity,
-    endCity: entity.endCity as string || DEFAULT_PREFERENCES.endCity,
-    tripDays: entity.tripDays as number || DEFAULT_PREFERENCES.tripDays,
+    mustVisit: raw.mustVisit ? JSON.parse(raw.mustVisit as string) : [],
+    avoid: raw.avoid ? JSON.parse(raw.avoid as string) : [],
+    startCity: (raw.startCity as string) || DEFAULT_PREFERENCES.startCity,
+    endCity: (raw.endCity as string) || DEFAULT_PREFERENCES.endCity,
+    tripDays: typeof raw.tripDays === 'number' ? (raw.tripDays as number) : DEFAULT_PREFERENCES.tripDays,
+    country: (raw.country as string) || DEFAULT_PREFERENCES.country || 'SE',
   }
 }
 

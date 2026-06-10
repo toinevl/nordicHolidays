@@ -8,6 +8,13 @@ export type GenerateCallback = (itinerary: Itinerary) => void
 export type GenerateErrorCallback = (message: string) => void
 type CityField = 'startCity' | 'endCity'
 
+const ALLOWED_COUNTRIES = [
+  { code: 'SE', label: t('country.se') },
+  { code: 'NO', label: t('country.no') },
+  { code: 'DK', label: t('country.dk') },
+  { code: 'FI', label: t('country.fi') },
+]
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -74,6 +81,12 @@ export class GeneratorPanel {
       </div>
       <div class="panel-body">
         <div class="form-group">
+          <label class="form-label" for="gen-country">${t('generator.country')}</label>
+          <select id="gen-country" class="form-input">
+            ${ALLOWED_COUNTRIES.map(country => `<option value="${country.code}">${country.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
           <label class="form-label">${t('generator.startCity')}</label>
           <div class="city-combobox">
             <input id="gen-start" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-start-results" />
@@ -121,9 +134,11 @@ export class GeneratorPanel {
     const startInput = this.panel.querySelector('#gen-start') as HTMLInputElement
     const endInput = this.panel.querySelector('#gen-end') as HTMLInputElement
     const daysInput = this.panel.querySelector('#gen-days') as HTMLInputElement
+    const countryInput = this.panel.querySelector('#gen-country') as HTMLSelectElement
     if (startInput) startInput.value = prefs.startCity
     if (endInput) endInput.value = prefs.endCity
     if (daysInput) daysInput.value = String(prefs.tripDays)
+    if (countryInput) countryInput.value = prefs.country
     this.renderTags('must-visit-tags', 'mustVisit')
     this.renderTags('avoid-tags', 'avoid')
     this.syncRegenerateVisibility()
@@ -137,6 +152,10 @@ export class GeneratorPanel {
     this.bindTagInput('avoid-input', 'avoid-tags', 'avoid')
     this.bindCityLookup('gen-start', 'gen-start-results', 'gen-start-hint', 'startCity')
     this.bindCityLookup('gen-end', 'gen-end-results', 'gen-end-hint', 'endCity')
+    this.panel.querySelector('#gen-country')?.addEventListener('change', (event) => {
+      const value = (event.target as HTMLSelectElement).value
+      this.store.setState({ preferences: { ...this.store.getState().preferences, country: value } })
+    })
 
     this.panel.querySelector('#btn-generate')?.addEventListener('click', () => this.handleGenerate())
     this.panel.querySelector('#btn-regenerate')?.addEventListener('click', () => this.handleGenerate())
