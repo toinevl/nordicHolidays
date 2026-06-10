@@ -2,6 +2,8 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { getLlmClient, getModel } from '../lib/llmClient'
 import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 import { withCors, corsPreflightResponse } from '../lib/cors'
+import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { checkAndIncrementRateLimit } from '../lib/rateLimit'
 import type { Itinerary, Preferences } from '../types'
 
 function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' = 'en'): string {
@@ -33,10 +35,19 @@ function validateItinerary(data: unknown): data is Omit<Itinerary, 'generatedAt'
 
 export async function generateHandler(
   req: HttpRequest,
-  _ctx?: InvocationContext
+  ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
   const origin = req.headers?.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+
+  // Resolve identity first (required for rate limiting)
+  let ownerId: string
+  try {
+    const owner = await resolveOwnerId(req)
+    ownerId = owner.ownerId
+  } catch (err) {
+    return authErrorResponse(err, origin)
+  }
 
   let prefs: Preferences
   let lang: 'en' | 'nl' = 'en'
@@ -50,6 +61,29 @@ export async function generateHandler(
 
   if (!prefs || typeof prefs.tripDays !== 'number' || typeof prefs.startCity !== 'string' || typeof prefs.endCity !== 'string') {
     return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid preferences body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  }
+
+  // Clamp tripDays to 7-30 range
+  prefs.tripDays = Math.max(7, Math.min(30, prefs.tripDays))
+
+  // Check rate limits
+  const rateLimitResult = await checkAndIncrementRateLimit(req, ownerId, ctx)
+  if (!rateLimitResult.allowed) {
+    const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
+    return withCors(
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(retryAfter),
+        },
+        body: JSON.stringify({
+          error: 'Rate limit exceeded',
+          retryAfterSeconds: retryAfter,
+        }),
+      },
+      origin
+    )
   }
 
   try {

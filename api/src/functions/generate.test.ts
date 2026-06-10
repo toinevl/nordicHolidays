@@ -6,8 +6,23 @@ vi.mock('../lib/llmClient', () => ({
   getModel: vi.fn(() => 'anthropic/claude-sonnet-4-6'),
 }))
 
+vi.mock('../lib/identity', () => ({
+  resolveOwnerId: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: true, subject: '' }),
+  authErrorResponse: vi.fn((err, origin) => ({
+    status: 401,
+    body: JSON.stringify({ error: (err as Error).message }),
+    headers: {},
+  })),
+}))
+
+vi.mock('../lib/rateLimit', () => ({
+  checkAndIncrementRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
+}))
+
 import { generateHandler } from './generate'
 import { getLlmClient } from '../lib/llmClient'
+import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { checkAndIncrementRateLimit } from '../lib/rateLimit'
 
 function makeItinerary(): Itinerary {
   return {
@@ -126,5 +141,94 @@ describe('POST /api/generate', () => {
     const callArgs = mockCreate.mock.calls[0][0]
     const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
     expect(userMessage).toContain('Generate the itinerary in English')
+  })
+
+  it('rejects request without identity', async () => {
+    ;(resolveOwnerId as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Missing or invalid identity'))
+    ;(authErrorResponse as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      status: 401,
+      body: JSON.stringify({ error: 'Missing or invalid identity' }),
+    })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(401)
+  })
+
+  it('returns 429 when rate limit exceeded for owner', async () => {
+    ;(resolveOwnerId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ownerId: 'owner-123', isGuest: true, subject: '' })
+    ;(checkAndIncrementRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 1234,
+    })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(429)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toContain('Rate limit')
+    expect(body.retryAfterSeconds).toBe(1234)
+    expect((result.headers as any)?.['Retry-After']).toBe('1234')
+  })
+
+  it('clamps tripDays 99 to 30', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+    ;(resolveOwnerId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ownerId: 'owner-123', isGuest: true, subject: '' })
+    ;(checkAndIncrementRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: true })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 99 }) } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('30-day')
+  })
+
+  it('clamps tripDays 1 to 7', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+    ;(resolveOwnerId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ownerId: 'owner-123', isGuest: true, subject: '' })
+    ;(checkAndIncrementRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: true })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 1 }) } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('7-day')
+  })
+
+  it('calls checkAndIncrementRateLimit with resolved owner', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+    ;(resolveOwnerId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ownerId: 'entra-abc123', isGuest: false, subject: 'abc123' })
+    ;(checkAndIncrementRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: true })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) } as any
+    const ctx = { log: { error: vi.fn() } } as any
+    await generateHandler(req, ctx)
+
+    expect(checkAndIncrementRateLimit).toHaveBeenCalledWith(req, 'entra-abc123', ctx)
+  })
+
+  it('keeps tripDays unchanged when in valid range (7-30)', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+    ;(resolveOwnerId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ownerId: 'owner-123', isGuest: true, subject: '' })
+    ;(checkAndIncrementRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: true })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 14 }) } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('14-day')
   })
 })
