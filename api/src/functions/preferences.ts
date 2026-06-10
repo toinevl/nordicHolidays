@@ -3,13 +3,12 @@ import { getTableClient } from '../lib/tableClient'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
-import { ownerFromBearer, AuthError, authErrorResponse } from '../lib/identity'
+import { resolveOwnerFromHttpRequest } from '../lib/anonymousOwner'
 
 const ROW_KEY = 'default'
 
 function entityToPreferences(entity: Record<string, unknown>): Preferences {
   const raw = entity as Record<string, unknown>
-
   return {
     mustVisit: raw.mustVisit ? JSON.parse(raw.mustVisit as string) : [],
     avoid: raw.avoid ? JSON.parse(raw.avoid as string) : [],
@@ -27,16 +26,11 @@ export async function getPreferencesHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  let owner
-  try {
-    owner = await ownerFromBearer(req)
-  } catch (err) {
-    return authErrorResponse(err, origin)
-  }
+  const ownerId = await resolveOwnerFromHttpRequest(req)
 
   try {
     const client = getTableClient('Preferences')
-    const entity = await client.getEntity(owner.ownerId, ROW_KEY)
+    const entity = await client.getEntity(ownerId, ROW_KEY)
     return withCors({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -61,12 +55,7 @@ export async function putPreferencesHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  let owner
-  try {
-    owner = await ownerFromBearer(req)
-  } catch (err) {
-    return authErrorResponse(err, origin)
-  }
+  const ownerId = await resolveOwnerFromHttpRequest(req)
 
   let prefs: Preferences
   try {
@@ -78,13 +67,14 @@ export async function putPreferencesHandler(
   try {
     const client = getTableClient('Preferences')
     await client.upsertEntity({
-      partitionKey: owner.ownerId,
+      partitionKey: ownerId,
       rowKey: ROW_KEY,
       mustVisit: JSON.stringify(prefs.mustVisit ?? []),
       avoid: JSON.stringify(prefs.avoid ?? []),
       startCity: prefs.startCity ?? DEFAULT_PREFERENCES.startCity,
       endCity: prefs.endCity ?? DEFAULT_PREFERENCES.endCity,
       tripDays: prefs.tripDays ?? DEFAULT_PREFERENCES.tripDays,
+      country: prefs.country ?? DEFAULT_PREFERENCES.country ?? 'SE',
       updatedAt: new Date().toISOString(),
     })
     return withCors({

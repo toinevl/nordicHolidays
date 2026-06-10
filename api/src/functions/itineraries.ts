@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid'
 import { getTableClient } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
-import { ownerFromBearer, authErrorResponse } from '../lib/identity'
+import { resolveOwnerFromHttpRequest } from '../lib/anonymousOwner'
 
 function normalizeSummary(values: {
   id?: string | null
@@ -52,17 +52,12 @@ export async function listItinerariesHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  let owner
-  try {
-    owner = await ownerFromBearer(req)
-  } catch (err) {
-    return authErrorResponse(err, origin)
-  }
+  const ownerId = await resolveOwnerFromHttpRequest(req)
 
   try {
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
-    for await (const entity of client.listEntities({ queryOptions: { filter: `PartitionKey eq '${owner.ownerId}'` } })) {
+    for await (const entity of client.listEntities({ queryOptions: { filter: `PartitionKey eq '${ownerId}'` } })) {
       summaries.push(entityToSummary(entity as Record<string, unknown>))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -79,17 +74,12 @@ export async function getItineraryHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  let owner
-  try {
-    owner = await ownerFromBearer(req)
-  } catch (err) {
-    return authErrorResponse(err, origin)
-  }
+  const ownerId = await resolveOwnerFromHttpRequest(req)
 
   const id = req.params.id
   try {
     const client = getTableClient('Itineraries')
-    const entity = await client.getEntity(owner.ownerId, id) as Record<string, unknown>
+    const entity = await client.getEntity(ownerId, id) as Record<string, unknown>
     const itinerary = JSON.parse(entity.itineraryJson as string) as Itinerary
     const summary = entityToSummary(entity)
     const response: HttpResponseInit = {
@@ -114,12 +104,7 @@ export async function saveItineraryHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  let owner
-  try {
-    owner = await ownerFromBearer(req)
-  } catch (err) {
-    return authErrorResponse(err, origin)
-  }
+  const ownerId = await resolveOwnerFromHttpRequest(req)
 
   type SaveBody = { name: string; itinerary: Itinerary } & Partial<Record<'thumbnail', string | undefined>>
   let body: SaveBody
@@ -134,7 +119,7 @@ export async function saveItineraryHandler(
     const client = getTableClient('Itineraries')
     const thumb = typeof body.thumbnail === 'string' ? body.thumbnail.trim() : ''
     await client.createEntity({
-      partitionKey: owner.ownerId,
+      partitionKey: ownerId,
       rowKey: id,
       name: body.name,
       createdAt: new Date().toISOString(),
@@ -156,17 +141,12 @@ export async function deleteItineraryHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  let owner
-  try {
-    owner = await ownerFromBearer(req)
-  } catch (err) {
-    return authErrorResponse(err, origin)
-  }
+  const ownerId = await resolveOwnerFromHttpRequest(req)
 
   const id = req.params.id
   try {
     const client = getTableClient('Itineraries')
-    await client.deleteEntity(owner.ownerId, id)
+    await client.deleteEntity(ownerId, id)
     return withCors({ status: 204 }, origin)
   } catch (err: any) {
     if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)
