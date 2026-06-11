@@ -9,6 +9,7 @@ const nanoid_1 = require("nanoid");
 const tableClient_1 = require("../lib/tableClient");
 const cors_1 = require("../lib/cors");
 const identity_1 = require("../lib/identity");
+const schemas_1 = require("../lib/schemas");
 /**
  * Validate and sanitize a thumbnail URL.
  * Only allows data: URLs with valid image MIME types to prevent XSS via src attributes.
@@ -57,7 +58,7 @@ function successResponse(origin, data, status = 200) {
         body: JSON.stringify(data),
     }, origin);
 }
-async function listItinerariesHandler(req, _ctx) {
+async function listItinerariesHandler(req, ctx) {
     const origin = req.headers.get('origin') ?? undefined;
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
@@ -75,10 +76,11 @@ async function listItinerariesHandler(req, _ctx) {
         if (err instanceof Error && err.name === 'AuthError') {
             return (0, identity_1.authErrorResponse)(err, origin);
         }
-        return (0, cors_1.withCors)({ status: 500, body: 'Internal error' }, origin);
+        (0, schemas_1.logError)(ctx, 'listItinerariesHandler: internal error', err);
+        return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
 }
-async function getItineraryHandler(req, _ctx) {
+async function getItineraryHandler(req, ctx) {
     const origin = req.headers.get('origin') ?? undefined;
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
@@ -104,23 +106,37 @@ async function getItineraryHandler(req, _ctx) {
             return (0, identity_1.authErrorResponse)(err, origin);
         }
         if (err?.statusCode === 404)
-            return (0, cors_1.withCors)({ status: 404, body: 'Not found' }, origin);
-        return (0, cors_1.withCors)({ status: 500, body: 'Internal error' }, origin);
+            return (0, cors_1.withCors)({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin);
+        (0, schemas_1.logError)(ctx, 'getItineraryHandler: internal error', err);
+        return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
 }
-async function saveItineraryHandler(req, _ctx) {
+async function saveItineraryHandler(req, ctx) {
     const origin = req.headers.get('origin') ?? undefined;
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
     try {
         const owner = await (0, identity_1.resolveOwnerId)(req);
-        let body;
+        let rawBody;
         try {
-            body = (await req.json());
+            rawBody = await req.json();
         }
-        catch {
-            return (0, cors_1.withCors)({ status: 400, body: 'Invalid JSON body' }, origin);
+        catch (err) {
+            (0, schemas_1.logError)(ctx, 'saveItineraryHandler: invalid JSON body', err);
+            return (0, cors_1.withCors)({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin);
         }
+        // Validate and parse body with zod; on failure, return 400 with details
+        const parseResult = schemas_1.SaveItineraryBodySchema.safeParse(rawBody);
+        if (!parseResult.success) {
+            const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ');
+            (0, schemas_1.logError)(ctx, `saveItineraryHandler: validation failed - ${errors}`, parseResult.error);
+            return (0, cors_1.withCors)({
+                status: 400,
+                body: JSON.stringify({ error: 'Invalid request body', details: errors }),
+                headers: { 'Content-Type': 'application/json' }
+            }, origin);
+        }
+        const body = parseResult.data;
         const id = (0, nanoid_1.nanoid)();
         const client = (0, tableClient_1.getTableClient)('Itineraries');
         // Validate thumbnail: if provided, must be a valid data: URL with correct size. Invalid thumbnails are stripped.
@@ -141,10 +157,11 @@ async function saveItineraryHandler(req, _ctx) {
         if (err instanceof Error && err.name === 'AuthError') {
             return (0, identity_1.authErrorResponse)(err, origin);
         }
-        return (0, cors_1.withCors)({ status: 500, body: 'Internal error' }, origin);
+        (0, schemas_1.logError)(ctx, 'saveItineraryHandler: internal error', err);
+        return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
 }
-async function deleteItineraryHandler(req, _ctx) {
+async function deleteItineraryHandler(req, ctx) {
     const origin = req.headers.get('origin') ?? undefined;
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
@@ -160,8 +177,9 @@ async function deleteItineraryHandler(req, _ctx) {
             return (0, identity_1.authErrorResponse)(err, origin);
         }
         if (err?.statusCode === 404)
-            return (0, cors_1.withCors)({ status: 404, body: 'Not found' }, origin);
-        return (0, cors_1.withCors)({ status: 500, body: 'Internal error' }, origin);
+            return (0, cors_1.withCors)({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin);
+        (0, schemas_1.logError)(ctx, 'deleteItineraryHandler: internal error', err);
+        return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
 }
 functions_1.app.http('itineraries', {

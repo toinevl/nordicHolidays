@@ -28,7 +28,7 @@ export const ItineraryStopSchema = z.object({
 }).strict()
 
 /**
- * Schema for a complete itinerary (without generatedAt, which is added server-side).
+ * Schema for a complete itinerary (includes optional generatedAt which is added server-side on generation).
  * Strips unknown fields via .strict().
  * Allows 0+ stops (front-end validation may be stricter).
  * Thumbnail validation (size/format) is deferred to validateThumbnail() in handler.
@@ -39,6 +39,7 @@ export const ItinerarySchema = z.object({
   startCity: z.string().max(200),
   endCity: z.string().max(200),
   stops: z.array(ItineraryStopSchema).max(365),
+  generatedAt: z.string().optional(),
   thumbnail: z.string().max(1 * 1024 * 1024).optional(), // 1MB max at schema level; validateThumbnail enforces 48KB
 }).strict()
 

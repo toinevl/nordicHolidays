@@ -6,6 +6,7 @@ const functions_1 = require("@azure/functions");
 const tableClient_1 = require("../lib/tableClient");
 const cors_1 = require("../lib/cors");
 const identity_1 = require("../lib/identity");
+const schemas_1 = require("../lib/schemas");
 const ROW_KEY = 'profile';
 function entityToProfile(entity) {
     const raw = entity;
@@ -20,7 +21,7 @@ function entityToProfile(entity) {
         extensions: raw.extensions || {},
     };
 }
-async function getProfileHandler(req, _ctx) {
+async function getProfileHandler(req, ctx) {
     const origin = req.headers.get('origin') ?? undefined;
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
@@ -39,24 +40,38 @@ async function getProfileHandler(req, _ctx) {
             return (0, identity_1.authErrorResponse)(err, origin);
         }
         if (err?.statusCode === 404) {
-            return (0, cors_1.withCors)({ status: 404, body: 'Profile not found' }, origin);
+            return (0, cors_1.withCors)({ status: 404, body: JSON.stringify({ error: 'Profile not found' }), headers: { 'Content-Type': 'application/json' } }, origin);
         }
-        return (0, cors_1.withCors)({ status: 500, body: 'Internal error' }, origin);
+        (0, schemas_1.logError)(ctx, 'getProfileHandler: internal error', err);
+        return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
 }
-async function putProfileHandler(req, _ctx) {
+async function putProfileHandler(req, ctx) {
     const origin = req.headers.get('origin') ?? undefined;
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
     try {
         const owner = await (0, identity_1.resolveOwnerId)(req);
-        let updates;
+        let rawBody;
         try {
-            updates = (await req.json());
+            rawBody = await req.json();
         }
-        catch {
-            return (0, cors_1.withCors)({ status: 400, body: 'Invalid JSON body' }, origin);
+        catch (err) {
+            (0, schemas_1.logError)(ctx, 'putProfileHandler: invalid JSON body', err);
+            return (0, cors_1.withCors)({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin);
         }
+        // Validate and parse body with zod; on failure, return 400 with details
+        const parseResult = schemas_1.ProfilePutBodySchema.safeParse(rawBody);
+        if (!parseResult.success) {
+            const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ');
+            (0, schemas_1.logError)(ctx, `putProfileHandler: validation failed - ${errors}`, parseResult.error);
+            return (0, cors_1.withCors)({
+                status: 400,
+                body: JSON.stringify({ error: 'Invalid request body', details: errors }),
+                headers: { 'Content-Type': 'application/json' }
+            }, origin);
+        }
+        const updates = parseResult.data;
         const client = (0, tableClient_1.getTableClient)('Profiles');
         let existing;
         try {
@@ -86,7 +101,8 @@ async function putProfileHandler(req, _ctx) {
         if (err instanceof Error && err.name === 'AuthError') {
             return (0, identity_1.authErrorResponse)(err, origin);
         }
-        return (0, cors_1.withCors)({ status: 500, body: 'Internal error' }, origin);
+        (0, schemas_1.logError)(ctx, 'putProfileHandler: internal error', err);
+        return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
 }
 functions_1.app.http('getProfile', {

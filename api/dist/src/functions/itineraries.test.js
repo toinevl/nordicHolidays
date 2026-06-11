@@ -26,12 +26,22 @@ function makeClient(overrides = {}) {
     };
     return { ...base, ...overrides };
 }
+function makeContext() {
+    return {
+        log: {
+            error: vitest_1.vi.fn(),
+            info: vitest_1.vi.fn(),
+            debug: vitest_1.vi.fn(),
+            warn: vitest_1.vi.fn(),
+        },
+    };
+}
 (0, vitest_1.describe)('GET /api/itineraries', () => {
     (0, vitest_1.beforeEach)(() => vitest_1.vi.clearAllMocks());
     (0, vitest_1.it)('returns empty array when no itineraries saved', async () => {
         const client = makeClient();
         tableClient_1.getTableClient.mockReturnValue(client);
-        const result = await (0, itineraries_1.listItinerariesHandler)({ method: 'GET', headers: new Map() }, {});
+        const result = await (0, itineraries_1.listItinerariesHandler)({ method: 'GET', headers: new Map() }, makeContext());
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(result.status).toBe(200);
         (0, vitest_1.expect)(body).toEqual([]);
@@ -42,7 +52,7 @@ function makeClient(overrides = {}) {
         ];
         const client = makeClient({ listEntities: vitest_1.vi.fn(async function* () { yield entities[0]; }) });
         tableClient_1.getTableClient.mockReturnValue(client);
-        const result = await (0, itineraries_1.listItinerariesHandler)({ method: 'GET', headers: new Map() }, {});
+        const result = await (0, itineraries_1.listItinerariesHandler)({ method: 'GET', headers: new Map() }, makeContext());
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(body).toHaveLength(1);
         (0, vitest_1.expect)(body[0].id).toBe('id1');
@@ -52,12 +62,12 @@ function makeClient(overrides = {}) {
 (0, vitest_1.describe)('GET /api/itineraries/:id', () => {
     (0, vitest_1.beforeEach)(() => vitest_1.vi.clearAllMocks());
     (0, vitest_1.it)('returns full itinerary for valid id', async () => {
-        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' };
+        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] };
         const entity = { partitionKey: 'owner-123', rowKey: 'id1', name: 'Trip A', createdAt: '2026-06-01', startCity: 'A', endCity: 'A', itineraryJson: JSON.stringify(itin) };
         const client = makeClient({ getEntity: vitest_1.vi.fn().mockResolvedValue(entity) });
         tableClient_1.getTableClient.mockReturnValue(client);
         const req = { params: { id: 'id1' }, method: 'GET', headers: new Map() };
-        const result = await (0, itineraries_1.getItineraryHandler)(req, {});
+        const result = await (0, itineraries_1.getItineraryHandler)(req, makeContext());
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(result.status).toBe(200);
         (0, vitest_1.expect)(body.title).toBe('T');
@@ -66,7 +76,7 @@ function makeClient(overrides = {}) {
         const client = makeClient({ getEntity: vitest_1.vi.fn().mockRejectedValue({ statusCode: 404 }) });
         tableClient_1.getTableClient.mockReturnValue(client);
         const req = { params: { id: 'nope' }, method: 'GET', headers: new Map() };
-        const result = await (0, itineraries_1.getItineraryHandler)(req, {});
+        const result = await (0, itineraries_1.getItineraryHandler)(req, makeContext());
         (0, vitest_1.expect)(result.status).toBe(404);
     });
 });
@@ -75,9 +85,39 @@ function makeClient(overrides = {}) {
     (0, vitest_1.it)('saves itinerary and returns id', async () => {
         const client = makeClient();
         tableClient_1.getTableClient.mockReturnValue(client);
-        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' };
+        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] };
         const req = { json: async () => ({ name: 'My Trip', itinerary: itin }), method: 'POST', headers: new Map() };
-        const result = await (0, itineraries_1.saveItineraryHandler)(req, {});
+        const result = await (0, itineraries_1.saveItineraryHandler)(req, makeContext());
+        const body = JSON.parse(result.body);
+        (0, vitest_1.expect)(result.status).toBe(201);
+        (0, vitest_1.expect)(body.id).toBe('test-id-123');
+        (0, vitest_1.expect)(client.createEntity).toHaveBeenCalledOnce();
+    });
+    (0, vitest_1.it)('saves itinerary with generatedAt field (regression test for frontend-generated itineraries)', async () => {
+        const client = makeClient();
+        tableClient_1.getTableClient.mockReturnValue(client);
+        const itin = {
+            title: 'Generated Trip',
+            totalDays: 7,
+            startCity: 'Stockholm',
+            endCity: 'Gothenburg',
+            stops: [
+                {
+                    day: 1,
+                    city: 'Stockholm',
+                    region: 'Uppland',
+                    lat: 59.3293,
+                    lng: 18.0686,
+                    nights: 2,
+                    highlights: ['City Hall', 'Old Town'],
+                    accommodation: 'Hotel A',
+                    culinaryNotes: 'Try meatballs',
+                },
+            ],
+            generatedAt: '2026-06-11T10:30:00.000Z',
+        };
+        const req = { json: async () => ({ name: 'Generated Trip', itinerary: itin }), method: 'POST', headers: new Map() };
+        const result = await (0, itineraries_1.saveItineraryHandler)(req, makeContext());
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(result.status).toBe(201);
         (0, vitest_1.expect)(body.id).toBe('test-id-123');
@@ -86,10 +126,10 @@ function makeClient(overrides = {}) {
     (0, vitest_1.it)('validates and includes valid JPEG data URI thumbnail', async () => {
         const client = makeClient();
         tableClient_1.getTableClient.mockReturnValue(client);
-        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' };
+        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] };
         const validThumb = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABA...';
         const req = { json: async () => ({ name: 'My Trip', itinerary: itin, thumbnail: validThumb }), method: 'POST', headers: new Map() };
-        const result = await (0, itineraries_1.saveItineraryHandler)(req, {});
+        const result = await (0, itineraries_1.saveItineraryHandler)(req, makeContext());
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(result.status).toBe(201);
         (0, vitest_1.expect)(client.createEntity).toHaveBeenCalledOnce();
@@ -99,9 +139,9 @@ function makeClient(overrides = {}) {
     (0, vitest_1.it)('strips invalid thumbnail URLs', async () => {
         const client = makeClient();
         tableClient_1.getTableClient.mockReturnValue(client);
-        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' };
+        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] };
         const req = { json: async () => ({ name: 'My Trip', itinerary: itin, thumbnail: 'https://example.com/image.jpg' }), method: 'POST', headers: new Map() };
-        const result = await (0, itineraries_1.saveItineraryHandler)(req, {});
+        const result = await (0, itineraries_1.saveItineraryHandler)(req, makeContext());
         (0, vitest_1.expect)(result.status).toBe(201);
         const call = client.createEntity.mock.calls[0]?.[0];
         (0, vitest_1.expect)(call?.thumbnail).toBeUndefined();
@@ -109,11 +149,11 @@ function makeClient(overrides = {}) {
     (0, vitest_1.it)('strips oversized thumbnails', async () => {
         const client = makeClient();
         tableClient_1.getTableClient.mockReturnValue(client);
-        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' };
+        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] };
         // Create a thumbnail that exceeds 48KB
         const oversizedThumb = 'data:image/jpeg;base64,' + 'A'.repeat(50 * 1024);
         const req = { json: async () => ({ name: 'My Trip', itinerary: itin, thumbnail: oversizedThumb }), method: 'POST', headers: new Map() };
-        const result = await (0, itineraries_1.saveItineraryHandler)(req, {});
+        const result = await (0, itineraries_1.saveItineraryHandler)(req, makeContext());
         (0, vitest_1.expect)(result.status).toBe(201);
         const call = client.createEntity.mock.calls[0]?.[0];
         (0, vitest_1.expect)(call?.thumbnail).toBeUndefined();
@@ -121,13 +161,35 @@ function makeClient(overrides = {}) {
     (0, vitest_1.it)('accepts valid PNG data URI thumbnail', async () => {
         const client = makeClient();
         tableClient_1.getTableClient.mockReturnValue(client);
-        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [], generatedAt: '2026-06-01' };
+        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] };
         const validThumb = 'data:image/png;base64,iVBORw0KGgoAAAANS...';
         const req = { json: async () => ({ name: 'My Trip', itinerary: itin, thumbnail: validThumb }), method: 'POST', headers: new Map() };
-        const result = await (0, itineraries_1.saveItineraryHandler)(req, {});
+        const result = await (0, itineraries_1.saveItineraryHandler)(req, makeContext());
         (0, vitest_1.expect)(result.status).toBe(201);
         const call = client.createEntity.mock.calls[0]?.[0];
         (0, vitest_1.expect)(call?.thumbnail).toBe(validThumb);
+    });
+    (0, vitest_1.it)('returns 400 for invalid body with extra giant field', async () => {
+        const client = makeClient();
+        tableClient_1.getTableClient.mockReturnValue(client);
+        const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] };
+        const giantField = 'x'.repeat(100 * 1024); // 100KB extra field
+        const req = { json: async () => ({ name: 'My Trip', itinerary: itin, extraGiantField: giantField }), method: 'POST', headers: new Map() };
+        const result = await (0, itineraries_1.saveItineraryHandler)(req, makeContext());
+        (0, vitest_1.expect)(result.status).toBe(400);
+        const body = JSON.parse(result.body);
+        (0, vitest_1.expect)(body.error).toBe('Invalid request body');
+        // Verify that createEntity was NOT called (entity not stored)
+        (0, vitest_1.expect)(client.createEntity).not.toHaveBeenCalled();
+    });
+    (0, vitest_1.it)('returns 400 for malformed body', async () => {
+        const client = makeClient();
+        tableClient_1.getTableClient.mockReturnValue(client);
+        const req = { json: async () => { throw new Error('Invalid JSON'); }, method: 'POST', headers: new Map() };
+        const result = await (0, itineraries_1.saveItineraryHandler)(req, makeContext());
+        (0, vitest_1.expect)(result.status).toBe(400);
+        const body = JSON.parse(result.body);
+        (0, vitest_1.expect)(body.error).toBe('Invalid JSON body');
     });
 });
 (0, vitest_1.describe)('DELETE /api/itineraries/:id', () => {
@@ -136,7 +198,7 @@ function makeClient(overrides = {}) {
         const client = makeClient();
         tableClient_1.getTableClient.mockReturnValue(client);
         const req = { params: { id: 'id1' }, method: 'DELETE', headers: new Map() };
-        const result = await (0, itineraries_1.deleteItineraryHandler)(req, {});
+        const result = await (0, itineraries_1.deleteItineraryHandler)(req, makeContext());
         (0, vitest_1.expect)(result.status).toBe(204);
         (0, vitest_1.expect)(client.deleteEntity).toHaveBeenCalledWith('owner-123', 'id1');
     });

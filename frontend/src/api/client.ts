@@ -21,7 +21,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, fetchInit)
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`${res.status}: ${text}`)
+    let errorMessage = `${res.status}: ${text}`
+    try {
+      const json = JSON.parse(text)
+      if (json.error && typeof json.error === 'string') {
+        errorMessage = `${res.status}: ${json.error}`
+      }
+    } catch {
+      // If JSON parsing fails, use the raw text as fallback (already set above)
+    }
+    throw new Error(errorMessage)
   }
   if (res.status === 204) return undefined as unknown as T
   return res.json() as Promise<T>

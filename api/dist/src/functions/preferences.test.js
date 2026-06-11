@@ -14,13 +14,23 @@ vitest_1.vi.mock('../lib/identity', () => ({
 }));
 const preferences_1 = require("./preferences");
 const tableClient_1 = require("../lib/tableClient");
+function makeContext() {
+    return {
+        log: {
+            error: vitest_1.vi.fn(),
+            info: vitest_1.vi.fn(),
+            debug: vitest_1.vi.fn(),
+            warn: vitest_1.vi.fn(),
+        },
+    };
+}
 (0, vitest_1.describe)('GET /api/preferences', () => {
     (0, vitest_1.beforeEach)(() => vitest_1.vi.clearAllMocks());
     (0, vitest_1.it)('returns default preferences when no entity exists', async () => {
         const client = { getEntity: vitest_1.vi.fn().mockRejectedValue({ statusCode: 404 }), upsertEntity: vitest_1.vi.fn() };
         tableClient_1.getTableClient.mockReturnValue(client);
         const req = { method: 'GET', headers: new Map() };
-        const result = await (0, preferences_1.getPreferencesHandler)(req, {});
+        const result = await (0, preferences_1.getPreferencesHandler)(req, makeContext());
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(result.status).toBe(200);
         (0, vitest_1.expect)(body.mustVisit).toEqual([]);
@@ -31,7 +41,7 @@ const tableClient_1 = require("../lib/tableClient");
         const client = { getEntity: vitest_1.vi.fn().mockResolvedValue(stored), upsertEntity: vitest_1.vi.fn() };
         tableClient_1.getTableClient.mockReturnValue(client);
         const req = { method: 'GET', headers: new Map() };
-        const result = await (0, preferences_1.getPreferencesHandler)(req, {});
+        const result = await (0, preferences_1.getPreferencesHandler)(req, makeContext());
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(body.mustVisit).toEqual(['Abisko']);
     });
@@ -43,7 +53,7 @@ const tableClient_1 = require("../lib/tableClient");
         tableClient_1.getTableClient.mockReturnValue(client);
         const prefs = { mustVisit: ['Stockholm'], avoid: ['Gothenburg'], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 14, country: 'SE' };
         const req = { json: async () => prefs, method: 'PUT', headers: new Map() };
-        const result = await (0, preferences_1.putPreferencesHandler)(req, {});
+        const result = await (0, preferences_1.putPreferencesHandler)(req, makeContext());
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(result.status).toBe(200);
         (0, vitest_1.expect)(body.mustVisit).toEqual(['Stockholm']);
@@ -51,7 +61,16 @@ const tableClient_1 = require("../lib/tableClient");
     });
     (0, vitest_1.it)('returns 400 for invalid body', async () => {
         const req = { json: async () => { throw new Error('bad json'); }, method: 'PUT', headers: new Map() };
-        const result = await (0, preferences_1.putPreferencesHandler)(req, {});
+        const result = await (0, preferences_1.putPreferencesHandler)(req, makeContext());
         (0, vitest_1.expect)(result.status).toBe(400);
+    });
+    (0, vitest_1.it)('returns 400 for missing required field', async () => {
+        const client = { getEntity: vitest_1.vi.fn(), upsertEntity: vitest_1.vi.fn() };
+        tableClient_1.getTableClient.mockReturnValue(client);
+        const req = { json: async () => ({ mustVisit: ['Stockholm'], avoid: [] }), method: 'PUT', headers: new Map() };
+        const result = await (0, preferences_1.putPreferencesHandler)(req, makeContext());
+        (0, vitest_1.expect)(result.status).toBe(400);
+        const body = JSON.parse(result.body);
+        (0, vitest_1.expect)(body.error).toBe('Invalid request body');
     });
 });

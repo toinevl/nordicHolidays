@@ -110,6 +110,37 @@ describe('POST /api/itineraries', () => {
     expect(client.createEntity).toHaveBeenCalledOnce()
   })
 
+  it('saves itinerary with generatedAt field (regression test for frontend-generated itineraries)', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const itin: Itinerary = {
+      title: 'Generated Trip',
+      totalDays: 7,
+      startCity: 'Stockholm',
+      endCity: 'Gothenburg',
+      stops: [
+        {
+          day: 1,
+          city: 'Stockholm',
+          region: 'Uppland',
+          lat: 59.3293,
+          lng: 18.0686,
+          nights: 2,
+          highlights: ['City Hall', 'Old Town'],
+          accommodation: 'Hotel A',
+          culinaryNotes: 'Try meatballs',
+        },
+      ],
+      generatedAt: '2026-06-11T10:30:00.000Z',
+    }
+    const req = { json: async () => ({ name: 'Generated Trip', itinerary: itin }), method: 'POST', headers: new Map() } as any
+    const result = await saveItineraryHandler(req, makeContext())
+    const body = JSON.parse(result.body as string)
+    expect(result.status).toBe(201)
+    expect(body.id).toBe('test-id-123')
+    expect(client.createEntity).toHaveBeenCalledOnce()
+  })
+
   it('validates and includes valid JPEG data URI thumbnail', async () => {
     const client = makeClient()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)

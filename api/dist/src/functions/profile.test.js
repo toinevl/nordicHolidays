@@ -16,6 +16,16 @@ const profile_1 = require("../functions/profile");
 const identity_1 = require("../lib/identity");
 const mockResolveOwnerId = identity_1.resolveOwnerId;
 const mockGetTableClient = tableClient_1.getTableClient;
+function makeContext() {
+    return {
+        log: {
+            error: vitest_1.vi.fn(),
+            info: vitest_1.vi.fn(),
+            debug: vitest_1.vi.fn(),
+            warn: vitest_1.vi.fn(),
+        },
+    };
+}
 const ownerA = { ownerId: 'entra-sub-1', isGuest: false, subject: 'sub-1' };
 const ownerB = { ownerId: 'entra-sub-2', isGuest: false, subject: 'sub-2' };
 const profileA = {
@@ -50,7 +60,7 @@ const profileB = {
         mockResolveOwnerId.mockImplementation(() => {
             throw err;
         });
-        const result = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, {});
+        const result = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, makeContext());
         (0, vitest_1.expect)(result.status).toBe(401);
     });
     (0, vitest_1.it)('returns 404 when profile does not exist', async () => {
@@ -59,7 +69,7 @@ const profileB = {
             getEntity: vitest_1.vi.fn().mockRejectedValue({ statusCode: 404 }),
             upsertEntity: vitest_1.vi.fn()
         });
-        const result = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, {});
+        const result = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, makeContext());
         (0, vitest_1.expect)(result.status).toBe(404);
     });
     (0, vitest_1.it)('returns profile when it exists for owner', async () => {
@@ -68,7 +78,7 @@ const profileB = {
             getEntity: vitest_1.vi.fn().mockResolvedValue(profileA),
             upsertEntity: vitest_1.vi.fn()
         });
-        const result = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, {});
+        const result = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, makeContext());
         (0, vitest_1.expect)(result.status).toBe(200);
         const body = JSON.parse(result.body);
         (0, vitest_1.expect)(body.ownerId).toBe('entra-sub-1');
@@ -80,7 +90,7 @@ const profileB = {
             getEntity: vitest_1.vi.fn().mockRejectedValue({ statusCode: 404 }),
             upsertEntity: vitest_1.vi.fn()
         });
-        const result = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, {});
+        const result = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, makeContext());
         (0, vitest_1.expect)(result.status).toBe(404);
     });
 });
@@ -98,12 +108,12 @@ const profileB = {
         mockResolveOwnerId.mockImplementation(() => {
             throw err;
         });
-        const result = await (0, profile_1.putProfileHandler)({ method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => ({ displayName: 'Test' }) }, {});
+        const result = await (0, profile_1.putProfileHandler)({ method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => ({ displayName: 'Test' }) }, makeContext());
         (0, vitest_1.expect)(result.status).toBe(401);
     });
     (0, vitest_1.it)('returns 400 for invalid body', async () => {
         mockResolveOwnerId.mockResolvedValue(ownerA);
-        const result = await (0, profile_1.putProfileHandler)({ method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => { throw new Error('bad'); } }, {});
+        const result = await (0, profile_1.putProfileHandler)({ method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => { throw new Error('bad'); } }, makeContext());
         (0, vitest_1.expect)(result.status).toBe(400);
     });
     (0, vitest_1.it)('PUT then GET round-trip works for same owner', async () => {
@@ -120,14 +130,14 @@ const profileB = {
             method: 'PUT',
             headers: new Map([['origin', 'http://localhost']]),
             json: async () => ({ displayName: 'Alice', email: 'alice@example.com' })
-        }, {});
+        }, makeContext());
         (0, vitest_1.expect)(putResult.status).toBe(200);
         const putBody = JSON.parse(putResult.body);
         (0, vitest_1.expect)(putBody.displayName).toBe('Alice');
         (0, vitest_1.expect)(putBody.ownerId).toBe('entra-sub-1');
         // GET the profile back
         getEntityMock.mockResolvedValueOnce(profileA);
-        const getResult = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, {});
+        const getResult = await (0, profile_1.getProfileHandler)({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) }, makeContext());
         (0, vitest_1.expect)(getResult.status).toBe(200);
         const getBody = JSON.parse(getResult.body);
         (0, vitest_1.expect)(getBody.displayName).toBe('Alice');
@@ -146,7 +156,7 @@ const profileB = {
             method: 'PUT',
             headers: new Map([['origin', 'http://localhost']]),
             json: async () => ({ displayName: 'Hacked', email: 'hacked@example.com' })
-        }, {});
+        }, makeContext());
         (0, vitest_1.expect)(result.status).toBe(200);
         const body = JSON.parse(result.body);
         // The upserted entity should have ownerA's ID as partition key

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.citySearchHandler = citySearchHandler;
 const functions_1 = require("@azure/functions");
 const cors_1 = require("../lib/cors");
+const schemas_1 = require("../lib/schemas");
 function jsonResponse(suggestions, origin) {
     return (0, cors_1.withCors)({
         status: 200,
@@ -113,7 +114,7 @@ function normalizeProviderResponse(payload) {
         .map(normalizeProviderItem)
         .filter((suggestion) => Boolean(suggestion));
 }
-async function citySearchHandler(req, _ctx) {
+async function citySearchHandler(req, ctx) {
     const origin = req?.headers.get('origin') ?? undefined;
     if (req?.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
@@ -121,17 +122,22 @@ async function citySearchHandler(req, _ctx) {
     if (q.length < 2)
         return jsonResponse([], origin);
     const endpoint = process.env.CITY_SEARCH_ENDPOINT?.trim();
-    if (!endpoint)
+    if (!endpoint) {
+        (0, schemas_1.logError)(ctx, 'citySearchHandler: CITY_SEARCH_ENDPOINT not configured');
         return jsonResponse([], origin);
+    }
     try {
         const separator = endpoint.includes('?') ? '&' : '?';
         const response = await fetch(`${endpoint}${separator}q=${encodeURIComponent(q)}`);
-        if (!response.ok)
+        if (!response.ok) {
+            (0, schemas_1.logError)(ctx, `citySearchHandler: provider returned ${response.status}`);
             return jsonResponse([], origin);
+        }
         const payload = await response.json();
         return jsonResponse(normalizeProviderResponse(payload), origin);
     }
-    catch {
+    catch (err) {
+        (0, schemas_1.logError)(ctx, 'citySearchHandler: request failed', err);
         return jsonResponse([], origin);
     }
 }

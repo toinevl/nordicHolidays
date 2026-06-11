@@ -5,8 +5,21 @@ vitest_1.vi.mock('../lib/llmClient', () => ({
     getLlmClient: vitest_1.vi.fn(),
     getModel: vitest_1.vi.fn(() => 'anthropic/claude-sonnet-4-6'),
 }));
+vitest_1.vi.mock('../lib/identity', () => ({
+    resolveOwnerId: vitest_1.vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: true, subject: '' }),
+    authErrorResponse: vitest_1.vi.fn((err, origin) => ({
+        status: 401,
+        body: JSON.stringify({ error: err.message }),
+        headers: {},
+    })),
+}));
+vitest_1.vi.mock('../lib/rateLimit', () => ({
+    checkAndIncrementRateLimit: vitest_1.vi.fn().mockResolvedValue({ allowed: true }),
+}));
 const generate_1 = require("./generate");
 const llmClient_1 = require("../lib/llmClient");
+const identity_1 = require("../lib/identity");
+const rateLimit_1 = require("../lib/rateLimit");
 function makeItinerary() {
     return {
         title: 'Test Trip',
@@ -106,5 +119,78 @@ function makeOpenAIResponse(itin, finishReason = 'tool_calls') {
         const callArgs = mockCreate.mock.calls[0][0];
         const userMessage = callArgs.messages.find((m) => m.role === 'user').content;
         (0, vitest_1.expect)(userMessage).toContain('Generate the itinerary in English');
+    });
+    (0, vitest_1.it)('rejects request without identity', async () => {
+        ;
+        identity_1.resolveOwnerId.mockRejectedValueOnce(new Error('Missing or invalid identity'));
+        identity_1.authErrorResponse.mockReturnValueOnce({
+            status: 401,
+            body: JSON.stringify({ error: 'Missing or invalid identity' }),
+        });
+        const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) };
+        const result = await (0, generate_1.generateHandler)(req);
+        (0, vitest_1.expect)(result.status).toBe(401);
+    });
+    (0, vitest_1.it)('returns 429 when rate limit exceeded for owner', async () => {
+        ;
+        identity_1.resolveOwnerId.mockResolvedValueOnce({ ownerId: 'owner-123', isGuest: true, subject: '' });
+        rateLimit_1.checkAndIncrementRateLimit.mockResolvedValueOnce({
+            allowed: false,
+            retryAfterSeconds: 1234,
+        });
+        const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) };
+        const result = await (0, generate_1.generateHandler)(req);
+        (0, vitest_1.expect)(result.status).toBe(429);
+        const body = JSON.parse(result.body);
+        (0, vitest_1.expect)(body.error).toContain('Rate limit');
+        (0, vitest_1.expect)(body.retryAfterSeconds).toBe(1234);
+        (0, vitest_1.expect)(result.headers?.['Retry-After']).toBe('1234');
+    });
+    (0, vitest_1.it)('clamps tripDays 99 to 30', async () => {
+        const itin = makeItinerary();
+        const mockCreate = vitest_1.vi.fn().mockResolvedValue(makeOpenAIResponse(itin));
+        llmClient_1.getLlmClient.mockReturnValue({ chat: { completions: { create: mockCreate } } });
+        identity_1.resolveOwnerId.mockResolvedValueOnce({ ownerId: 'owner-123', isGuest: true, subject: '' });
+        rateLimit_1.checkAndIncrementRateLimit.mockResolvedValueOnce({ allowed: true });
+        const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 99 }) };
+        await (0, generate_1.generateHandler)(req);
+        const callArgs = mockCreate.mock.calls[0][0];
+        const userMessage = callArgs.messages.find((m) => m.role === 'user').content;
+        (0, vitest_1.expect)(userMessage).toContain('30-day');
+    });
+    (0, vitest_1.it)('clamps tripDays 1 to 7', async () => {
+        const itin = makeItinerary();
+        const mockCreate = vitest_1.vi.fn().mockResolvedValue(makeOpenAIResponse(itin));
+        llmClient_1.getLlmClient.mockReturnValue({ chat: { completions: { create: mockCreate } } });
+        identity_1.resolveOwnerId.mockResolvedValueOnce({ ownerId: 'owner-123', isGuest: true, subject: '' });
+        rateLimit_1.checkAndIncrementRateLimit.mockResolvedValueOnce({ allowed: true });
+        const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 1 }) };
+        await (0, generate_1.generateHandler)(req);
+        const callArgs = mockCreate.mock.calls[0][0];
+        const userMessage = callArgs.messages.find((m) => m.role === 'user').content;
+        (0, vitest_1.expect)(userMessage).toContain('7-day');
+    });
+    (0, vitest_1.it)('calls checkAndIncrementRateLimit with resolved owner', async () => {
+        const itin = makeItinerary();
+        const mockCreate = vitest_1.vi.fn().mockResolvedValue(makeOpenAIResponse(itin));
+        llmClient_1.getLlmClient.mockReturnValue({ chat: { completions: { create: mockCreate } } });
+        identity_1.resolveOwnerId.mockResolvedValueOnce({ ownerId: 'entra-abc123', isGuest: false, subject: 'abc123' });
+        rateLimit_1.checkAndIncrementRateLimit.mockResolvedValueOnce({ allowed: true });
+        const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }) };
+        const ctx = { log: { error: vitest_1.vi.fn() } };
+        await (0, generate_1.generateHandler)(req, ctx);
+        (0, vitest_1.expect)(rateLimit_1.checkAndIncrementRateLimit).toHaveBeenCalledWith(req, 'entra-abc123', ctx);
+    });
+    (0, vitest_1.it)('keeps tripDays unchanged when in valid range (7-30)', async () => {
+        const itin = makeItinerary();
+        const mockCreate = vitest_1.vi.fn().mockResolvedValue(makeOpenAIResponse(itin));
+        llmClient_1.getLlmClient.mockReturnValue({ chat: { completions: { create: mockCreate } } });
+        identity_1.resolveOwnerId.mockResolvedValueOnce({ ownerId: 'owner-123', isGuest: true, subject: '' });
+        rateLimit_1.checkAndIncrementRateLimit.mockResolvedValueOnce({ allowed: true });
+        const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 14 }) };
+        await (0, generate_1.generateHandler)(req);
+        const callArgs = mockCreate.mock.calls[0][0];
+        const userMessage = callArgs.messages.find((m) => m.role === 'user').content;
+        (0, vitest_1.expect)(userMessage).toContain('14-day');
     });
 });
