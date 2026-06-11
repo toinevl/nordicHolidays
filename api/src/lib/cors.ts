@@ -12,7 +12,7 @@ export function withCors(response: HttpResponseInit, origin?: string): HttpRespo
     headers: {
       'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Owner-Id',
       ...(response.headers ?? {}),
     },
   }
@@ -25,7 +25,7 @@ export function corsPreflightResponse(origin?: string): HttpResponseInit {
     headers: {
       'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Owner-Id',
     },
   }
 }

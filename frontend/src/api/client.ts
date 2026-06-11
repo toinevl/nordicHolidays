@@ -2,23 +2,35 @@
 import type { Preferences, Itinerary, SavedItinerarySummary, Locale } from '../types'
 import type { CitySuggestion } from '../lib/citySearch'
 import { getAccessToken } from '../lib/auth'
+import { getOwnerId } from '../lib/identity'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken()
+  const ownerId = getOwnerId()
   const fetchInit: RequestInit = {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Owner-Id': ownerId,
       ...(init?.headers ?? {}),
     },
   }
   const res = await fetch(`${API_BASE}${path}`, fetchInit)
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`${res.status}: ${text}`)
+    let errorMessage = `${res.status}: ${text}`
+    try {
+      const json = JSON.parse(text)
+      if (json.error && typeof json.error === 'string') {
+        errorMessage = `${res.status}: ${json.error}`
+      }
+    } catch {
+      // If JSON parsing fails, use the raw text as fallback (already set above)
+    }
+    throw new Error(errorMessage)
   }
   if (res.status === 204) return undefined as unknown as T
   return res.json() as Promise<T>

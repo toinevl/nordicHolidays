@@ -1,6 +1,7 @@
 import type { Locale, LocaleKey, LocaleStrings } from './types'
 import { en } from './en'
 import { nl } from './nl'
+import { escapeHtml } from '../lib/escape'
 
 export const LOCALE_STORAGE_KEY = 'swedentravel_locale'
 
@@ -42,7 +43,7 @@ export function t(key: LocaleKey): string {
 export function tpl(key: LocaleKey, vars: Record<string, string>): string {
   let result = resolve(key)
   for (const [k, v] of Object.entries(vars)) {
-    result = result.replace(new RegExp(`\\{${k}\\}`, 'g'), v)
+    result = result.replace(new RegExp(`\\{${k}\\}`, 'g'), escapeHtml(v))
   }
   return result
 }

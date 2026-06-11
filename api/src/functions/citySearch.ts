@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import type { CitySuggestion } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
+import { logError } from '../lib/schemas'
 
 type ProviderRecord = Record<string, unknown>
 
@@ -119,7 +120,7 @@ function normalizeProviderResponse(payload: unknown): CitySuggestion[] {
 
 export async function citySearchHandler(
   req?: HttpRequest,
-  _ctx?: InvocationContext
+  ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
   const origin = req?.headers.get('origin') ?? undefined
   if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -128,16 +129,23 @@ export async function citySearchHandler(
   if (q.length < 2) return jsonResponse([], origin)
 
   const endpoint = process.env.CITY_SEARCH_ENDPOINT?.trim()
-  if (!endpoint) return jsonResponse([], origin)
+  if (!endpoint) {
+    logError(ctx, 'citySearchHandler: CITY_SEARCH_ENDPOINT not configured')
+    return jsonResponse([], origin)
+  }
 
   try {
     const separator = endpoint.includes('?') ? '&' : '?'
     const response = await fetch(`${endpoint}${separator}q=${encodeURIComponent(q)}`)
-    if (!response.ok) return jsonResponse([], origin)
+    if (!response.ok) {
+      logError(ctx, `citySearchHandler: provider returned ${response.status}`)
+      return jsonResponse([], origin)
+    }
 
     const payload = await response.json()
     return jsonResponse(normalizeProviderResponse(payload), origin)
-  } catch {
+  } catch (err) {
+    logError(ctx, 'citySearchHandler: request failed', err)
     return jsonResponse([], origin)
   }
 }

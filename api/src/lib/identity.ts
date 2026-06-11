@@ -65,8 +65,46 @@ export async function ownerFromBearer(reqOrToken: HttpRequest | string): Promise
   }
 }
 
+// Guest UUID format: owner-<uuid> where uuid is a standard UUID (8-4-4-4-12 hex)
+const GUEST_OWNER_REGEX = /^owner-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+function isValidGuestOwnerId(id: string): boolean {
+  return GUEST_OWNER_REGEX.test(id)
+}
+
+export async function resolveOwnerId(req: HttpRequest): Promise<OwnerContext> {
+  // Priority 1: Valid bearer token → entra-<sub>
+  try {
+    const auth = req.headers?.get('Authorization') ?? ''
+    if (auth.startsWith('Bearer ')) {
+      return await ownerFromBearer(req)
+    }
+  } catch (err) {
+    // If bearer auth was attempted but failed, propagate the error
+    if ((req.headers?.get('Authorization') ?? '').startsWith('Bearer ')) {
+      throw err
+    }
+  }
+
+  // Priority 2: X-Owner-Id header with valid guest ID format
+  const ownerId = req.headers?.get('X-Owner-Id') ?? ''
+  if (ownerId) {
+    if (!isValidGuestOwnerId(ownerId)) {
+      throw new AuthError(`Invalid X-Owner-Id format: must match owner-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+    }
+    return {
+      ownerId,
+      isGuest: true,
+      subject: '',
+    }
+  }
+
+  // Neither → 400 error
+  throw new AuthError('Missing or invalid identity: provide Authorization bearer token or X-Owner-Id header')
+}
+
 export function authErrorResponse(err: unknown, origin?: string) {
-  const status = err instanceof AuthError ? err.statusCode : 401
-  const message = err instanceof AuthError ? err.message : 'Unauthorized'
-  return withCors({ status, body: message }, origin)
+  const status = err instanceof AuthError ? err.statusCode : 400
+  const message = err instanceof AuthError ? err.message : 'Bad Request'
+  return withCors({ status, body: JSON.stringify({ error: message }) }, origin)
 }

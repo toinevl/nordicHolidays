@@ -2,7 +2,10 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { getLlmClient, getModel } from '../lib/llmClient'
 import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 import { withCors, corsPreflightResponse } from '../lib/cors'
+import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { checkAndIncrementRateLimit } from '../lib/rateLimit'
 import type { Itinerary, Preferences } from '../types'
+import { GenerateRequestBodySchema, logError } from '../lib/schemas'
 
 function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' = 'en'): string {
   const parts: string[] = [
@@ -33,23 +36,69 @@ function validateItinerary(data: unknown): data is Omit<Itinerary, 'generatedAt'
 
 export async function generateHandler(
   req: HttpRequest,
-  _ctx?: InvocationContext
+  ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
   const origin = req.headers?.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
-  let prefs: Preferences
-  let lang: 'en' | 'nl' = 'en'
+  // Resolve identity first (required for rate limiting)
+  let ownerId: string
   try {
-    const body = await req.json() as Preferences & { lang?: string }
-    prefs = body
-    if (body.lang === 'nl') lang = 'nl'
-  } catch {
+    const owner = await resolveOwnerId(req)
+    ownerId = owner.ownerId
+  } catch (err) {
+    return authErrorResponse(err, origin)
+  }
+
+  let rawBody: unknown
+  try {
+    rawBody = await req.json()
+  } catch (err) {
+    logError(ctx, 'generateHandler: invalid JSON body', err)
     return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 
-  if (!prefs || typeof prefs.tripDays !== 'number' || typeof prefs.startCity !== 'string' || typeof prefs.endCity !== 'string') {
-    return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid preferences body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  // Validate and parse body with zod; on failure, return 400 with details
+  const parseResult = GenerateRequestBodySchema.safeParse(rawBody)
+  if (!parseResult.success) {
+    const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+    logError(ctx, `generateHandler: validation failed - ${errors}`, parseResult.error)
+    return withCors({
+      status: 400,
+      body: JSON.stringify({ error: 'Invalid request body', details: errors }),
+      headers: { 'Content-Type': 'application/json' }
+    }, origin)
+  }
+
+  const body = parseResult.data
+  const prefs: Preferences = {
+    mustVisit: body.mustVisit,
+    avoid: body.avoid,
+    startCity: body.startCity,
+    endCity: body.endCity,
+    tripDays: body.tripDays,
+    country: body.country,
+  }
+  const lang = body.lang as 'en' | 'nl'
+
+  // Check rate limits
+  const rateLimitResult = await checkAndIncrementRateLimit(req, ownerId, ctx)
+  if (!rateLimitResult.allowed) {
+    const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
+    return withCors(
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(retryAfter),
+        },
+        body: JSON.stringify({
+          error: 'Rate limit exceeded',
+          retryAfterSeconds: retryAfter,
+        }),
+      },
+      origin
+    )
   }
 
   try {
@@ -67,23 +116,26 @@ export async function generateHandler(
 
     const choice = response.choices[0]
     if (choice.finish_reason === 'length') {
+      logError(ctx, 'generateHandler: model returned length overflow')
       return withCors({ status: 502, body: JSON.stringify({ error: 'Itinerary too long to generate — try fewer days' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     const toolCall = choice.message.tool_calls?.[0]
     if (!toolCall || toolCall.function.name !== 'create_itinerary') {
+      logError(ctx, 'generateHandler: model did not return structured tool call', { toolCall })
       return withCors({ status: 502, body: JSON.stringify({ error: 'Model did not return a structured itinerary' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     let input: unknown
     try {
       input = JSON.parse(toolCall.function.arguments)
-    } catch {
+    } catch (err) {
+      logError(ctx, 'generateHandler: failed to parse tool arguments', err)
       return withCors({ status: 502, body: JSON.stringify({ error: 'Model returned unparseable itinerary arguments' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     if (!validateItinerary(input)) {
-      console.error('validateItinerary failed. raw input:', JSON.stringify(input))
+      logError(ctx, 'generateHandler: validateItinerary failed', { input: JSON.stringify(input) })
       return withCors({ status: 502, body: JSON.stringify({ error: 'Model returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
@@ -97,7 +149,7 @@ export async function generateHandler(
     const msg = err instanceof Error ? err.message : 'Unknown error'
     const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT ?? '(not set)'
     const model = process.env.LLM_MODEL ?? 'gpt-4o'
-    console.error(`Generation error — endpoint: ${endpoint}, model: ${model}, error: ${msg}`)
+    logError(ctx, `generateHandler: generation error - endpoint: ${endpoint}, model: ${model}`, err)
     return withCors({ status: 500, body: JSON.stringify({ error: `Generation failed: ${msg}`, endpoint, model }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }

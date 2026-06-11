@@ -38,4 +38,20 @@ describe('i18n module', () => {
   it('tpl() replaces generationFailed template', () => {
     expect(tpl('toast.generationFailed', { msg: 'rate limit' })).toBe('Generation failed: rate limit')
   })
+
+  it('tpl() escapes XSS payload in parameters (Issue 2)', () => {
+    const result = tpl('toast.generationFailed', { msg: '<script>alert(1)</script>' })
+    expect(result).not.toContain('<script>')
+    expect(result).toContain('&lt;script&gt;')
+    expect(result).toContain('Generation failed:')
+  })
+
+  it('tpl() escapes HTML special chars in parameters', () => {
+    const result = tpl('toast.loaded', { name: '"><img src=x onerror=alert(1)>' })
+    // Verify dangerous tags are escaped
+    expect(result).not.toContain('<img')
+    expect(result).toContain('&lt;img')
+    expect(result).toContain('&gt;')
+    expect(result).toContain('&quot;')
+  })
 })

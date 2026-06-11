@@ -2,6 +2,7 @@ import type { Itinerary } from '../types'
 import type { Store } from '../store'
 import { apiClient } from '../api/client'
 import { t } from '../i18n/index'
+import { escapeHtml, validateThumbnailUrl } from '../lib/escape'
 
 export type LoadItineraryCallback = (itinerary: Itinerary, name: string, id: string) => void
 export type ThumbnailProvider = () => Promise<string | undefined>
@@ -109,17 +110,20 @@ export class SavedTripsPanel {
         container.innerHTML = `<p class="empty-hint">${t('saved.empty')}</p>`
         return
       }
-      container.innerHTML = list.map((item, idx) => `
+      container.innerHTML = list.map((item, idx) => {
+        const thumbUrl = validateThumbnailUrl(item.thumbnail)
+        return `
         <div class="saved-card saved-card-enter" data-id="${item.id}" style="animation-delay:${idx * 0.06}s">
-          ${item.thumbnail ? `<img class="saved-thumb" src="${item.thumbnail}" alt="" />` : ''}
-          <div class="saved-card-name">${item.name}</div>
-          <div class="saved-card-meta">${item.startCity} → ${item.endCity} · ${item.createdAt.slice(0, 10)}</div>
+          ${thumbUrl ? `<img class="saved-thumb" src="${thumbUrl}" alt="" />` : ''}
+          <div class="saved-card-name">${escapeHtml(item.name)}</div>
+          <div class="saved-card-meta">${escapeHtml(item.startCity)} → ${escapeHtml(item.endCity)} · ${item.createdAt.slice(0, 10)}</div>
           <div class="saved-card-actions">
             <button class="btn btn--small btn--secondary btn-load" data-id="${item.id}">${t('saved.load')}</button>
             <button class="btn btn--small btn--danger btn-delete" data-id="${item.id}">${t('saved.delete')}</button>
           </div>
         </div>
-      `).join('')
+      `
+      }).join('')
 
       container.querySelectorAll('.btn-load').forEach(btn => {
         btn.addEventListener('click', async () => {

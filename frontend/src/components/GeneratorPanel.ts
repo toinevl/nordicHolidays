@@ -3,6 +3,7 @@ import type { Store } from '../store'
 import { apiClient } from '../api/client'
 import { searchLocalCities, searchNominatim, type CitySuggestion } from '../lib/citySearch'
 import { t } from '../i18n/index'
+import { escapeHtml } from '../lib/escape'
 
 export type GenerateCallback = (itinerary: Itinerary) => void
 export type GenerateErrorCallback = (message: string) => void
@@ -14,16 +15,6 @@ const ALLOWED_COUNTRIES = [
   { code: 'DK', label: t('country.dk') },
   { code: 'FI', label: t('country.fi') },
 ]
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[char] ?? char))
-}
 
 function cityKey(city: CitySuggestion): string {
   return `${city.name.toLocaleLowerCase()}-${city.countryCode.toLocaleLowerCase()}`
@@ -295,7 +286,7 @@ export class GeneratorPanel {
     const container = this.panel.querySelector(`#${tagsId}`) as HTMLElement
     const tags = this.store.getState().preferences[field]
     container.innerHTML = tags.map(tag => `
-      <span class="tag">${tag}<button class="tag-remove" data-val="${tag}" data-field="${field}">&times;</button></span>
+      <span class="tag">${escapeHtml(tag)}<button class="tag-remove" data-val="${escapeHtml(tag)}" data-field="${field}">&times;</button></span>
     `).join('')
     const spans = container.querySelectorAll<HTMLElement>('.tag')
     spans[spans.length - 1]?.classList.add('tag--new')

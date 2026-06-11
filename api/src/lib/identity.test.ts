@@ -1,61 +1,67 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { jwtVerify } from 'jose'
-import { verifyAccessToken, ownerFromBearer, AuthError } from './identity'
+import { resolveOwnerId, AuthError } from './identity'
 
-vi.mock('jose', async () => {
-  const actual = await vi.importActual<typeof import('jose')>('jose')
-  return {
-    ...actual,
-    jwtVerify: vi.fn(),
-  }
-})
-
-function makeEnv() {
-  process.env.ENTRA_API_AUDIENCE = 'api-test-audience'
-  process.env.ENTRA_ISSUER_HOST = 'login.microsoftonline.com'
-  process.env.ENTRA_REQUIRED_SCOPE = 'user_impersonation'
-}
-
-const fakePayload: Record<string, unknown> = {
-  tid: 'tenant-1',
-  sub: 'user-abc',
-  scp: 'user_impersonation',
-  iss: 'https://login.microsoftonline.com/common/tenant-1/v2.0',
-  aud: 'api-test-audience',
-}
-
-describe('verifyAccessToken', () => {
+describe('resolveOwnerId', () => {
   beforeEach(() => {
-    makeEnv()
-    ;(jwtVerify as any).mockClear()
+    vi.clearAllMocks()
   })
 
-  it('rejects on bad token', async () => {
-    ;(jwtVerify as any).mockRejectedValueOnce(new Error('bad token'))
-    await expect(verifyAccessToken('x')).rejects.toThrow()
-  })
-})
+  it('returns guest owner for valid X-Owner-Id header', async () => {
+    const validGuestId = 'owner-12345678-1234-5678-1234-567812345678'
+    const req = {
+      headers: new Map([
+        ['X-Owner-Id', validGuestId],
+      ]),
+    } as any
 
-describe('ownerFromBearer', () => {
-  beforeEach(() => {
-    makeEnv()
-    ;(jwtVerify as any).mockClear()
-    fakePayload.tid = 'tenant-1'
-    fakePayload.sub = 'user-abc'
-    fakePayload.scp = 'user_impersonation'
-    fakePayload.iss = 'https://login.microsoftonline.com/common/tenant-1/v2.0'
-    fakePayload.aud = 'api-test-audience'
-    ;(jwtVerify as any).mockResolvedValueOnce({ payload: fakePayload })
+    const result = await resolveOwnerId(req)
+    expect(result.ownerId).toBe(validGuestId)
+    expect(result.isGuest).toBe(true)
+    expect(result.subject).toBe('')
   })
 
-  it('throws when Authorization header is missing', async () => {
-    await expect(ownerFromBearer({ headers: { get: () => null } } as any)).rejects.toThrow('Missing Authorization header')
+  it('rejects malformed X-Owner-Id header', async () => {
+    const malformedId = 'owner-not-a-uuid'
+    const req = {
+      headers: new Map([
+        ['X-Owner-Id', malformedId],
+      ]),
+    } as any
+
+    await expect(resolveOwnerId(req)).rejects.toThrow(AuthError)
   })
 
-  it('returns owner context for a valid bearer', async () => {
-    const ctx = await ownerFromBearer({ headers: { get: () => 'Bearer valid' } } as any)
-    expect(ctx.ownerId).toBe('entra-user-abc')
-    expect(ctx.isGuest).toBe(false)
-    expect(ctx.subject).toBe('user-abc')
+  it('rejects missing X-Owner-Id and Authorization headers', async () => {
+    const req = {
+      headers: new Map(),
+    } as any
+
+    await expect(resolveOwnerId(req)).rejects.toThrow(AuthError)
+  })
+
+  it('validates X-Owner-Id UUID format strictly', async () => {
+    const testCases = [
+      { id: 'owner-12345678-1234-5678-1234-567812345678', valid: true },
+      { id: 'owner-ABCDEF01-2345-6789-ABCD-EF0123456789', valid: false },
+      { id: 'owner-12345678-1234-5678-1234-56781234567', valid: false },
+      { id: 'owner-123456789-1234-5678-1234-567812345678', valid: false },
+      { id: 'owner-1234567-1234-5678-1234-567812345678', valid: false },
+      { id: 'not-an-owner-12345678-1234-5678-1234-567812345678', valid: false },
+    ]
+
+    for (const testCase of testCases) {
+      const req = {
+        headers: new Map([
+          ['X-Owner-Id', testCase.id],
+        ]),
+      } as any
+
+      if (testCase.valid) {
+        const result = await resolveOwnerId(req)
+        expect(result.ownerId).toBe(testCase.id)
+      } else {
+        await expect(resolveOwnerId(req)).rejects.toThrow(AuthError)
+      }
+    }
   })
 })
