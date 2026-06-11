@@ -16,6 +16,17 @@ vi.mock('../lib/identity', () => ({
 import { getPreferencesHandler, putPreferencesHandler } from './preferences'
 import { getTableClient } from '../lib/tableClient'
 
+function makeContext() {
+  return {
+    log: {
+      error: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+      warn: vi.fn(),
+    },
+  } as any
+}
+
 describe('GET /api/preferences', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -23,7 +34,7 @@ describe('GET /api/preferences', () => {
     const client = { getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }), upsertEntity: vi.fn() }
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
     const req = { method: 'GET', headers: new Map() } as any
-    const result = await getPreferencesHandler(req, {} as any)
+    const result = await getPreferencesHandler(req, makeContext())
     const body = JSON.parse(result.body as string) as Preferences
     expect(result.status).toBe(200)
     expect(body.mustVisit).toEqual([])
@@ -35,7 +46,7 @@ describe('GET /api/preferences', () => {
     const client = { getEntity: vi.fn().mockResolvedValue(stored), upsertEntity: vi.fn() }
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
     const req = { method: 'GET', headers: new Map() } as any
-    const result = await getPreferencesHandler(req, {} as any)
+    const result = await getPreferencesHandler(req, makeContext())
     const body = JSON.parse(result.body as string) as Preferences
     expect(body.mustVisit).toEqual(['Abisko'])
   })
@@ -49,7 +60,7 @@ describe('PUT /api/preferences', () => {
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
     const prefs: Preferences = { mustVisit: ['Stockholm'], avoid: ['Gothenburg'], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 14, country: 'SE' }
     const req = { json: async () => prefs, method: 'PUT', headers: new Map() } as any
-    const result = await putPreferencesHandler(req, {} as any)
+    const result = await putPreferencesHandler(req, makeContext())
     const body = JSON.parse(result.body as string) as Preferences
     expect(result.status).toBe(200)
     expect(body.mustVisit).toEqual(['Stockholm'])
@@ -58,7 +69,17 @@ describe('PUT /api/preferences', () => {
 
   it('returns 400 for invalid body', async () => {
     const req = { json: async () => { throw new Error('bad json') }, method: 'PUT', headers: new Map() } as any
-    const result = await putPreferencesHandler(req, {} as any)
+    const result = await putPreferencesHandler(req, makeContext())
     expect(result.status).toBe(400)
+  })
+
+  it('returns 400 for missing required field', async () => {
+    const client = { getEntity: vi.fn(), upsertEntity: vi.fn() }
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const req = { json: async () => ({ mustVisit: ['Stockholm'], avoid: [] }), method: 'PUT', headers: new Map() } as any
+    const result = await putPreferencesHandler(req, makeContext())
+    expect(result.status).toBe(400)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('Invalid request body')
   })
 })

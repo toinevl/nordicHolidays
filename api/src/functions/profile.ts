@@ -3,6 +3,7 @@ import { getTableClient } from '../lib/tableClient'
 import type { Profile } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { ProfilePutBodySchema, logError } from '../lib/schemas'
 
 const ROW_KEY = 'profile'
 
@@ -22,7 +23,7 @@ function entityToProfile(entity: Record<string, unknown>): Profile {
 
 export async function getProfileHandler(
   req: HttpRequest,
-  _ctx: InvocationContext,
+  ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -41,15 +42,16 @@ export async function getProfileHandler(
       return authErrorResponse(err, origin)
     }
     if (err?.statusCode === 404) {
-      return withCors({ status: 404, body: 'Profile not found' }, origin)
+      return withCors({ status: 404, body: JSON.stringify({ error: 'Profile not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
-    return withCors({ status: 500, body: 'Internal error' }, origin)
+    logError(ctx, 'getProfileHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
 export async function putProfileHandler(
   req: HttpRequest,
-  _ctx: InvocationContext,
+  ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -57,12 +59,27 @@ export async function putProfileHandler(
   try {
     const owner = await resolveOwnerId(req)
 
-    let updates: Partial<Pick<Profile, 'displayName' | 'email' | 'extensions'>>
+    let rawBody: unknown
     try {
-      updates = (await req.json()) as Partial<Pick<Profile, 'displayName' | 'email' | 'extensions'>>
-    } catch {
-      return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
+      rawBody = await req.json()
+    } catch (err) {
+      logError(ctx, 'putProfileHandler: invalid JSON body', err)
+      return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
+
+    // Validate and parse body with zod; on failure, return 400 with details
+    const parseResult = ProfilePutBodySchema.safeParse(rawBody)
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+      logError(ctx, `putProfileHandler: validation failed - ${errors}`, parseResult.error)
+      return withCors({
+        status: 400,
+        body: JSON.stringify({ error: 'Invalid request body', details: errors }),
+        headers: { 'Content-Type': 'application/json' }
+      }, origin)
+    }
+
+    const updates = parseResult.data
 
     const client = getTableClient('Profiles')
     let existing: Partial<Profile> | undefined
@@ -94,7 +111,8 @@ export async function putProfileHandler(
     if (err instanceof Error && err.name === 'AuthError') {
       return authErrorResponse(err, origin)
     }
-    return withCors({ status: 500, body: 'Internal error' }, origin)
+    logError(ctx, 'putProfileHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 

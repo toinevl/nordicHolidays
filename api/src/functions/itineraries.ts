@@ -4,6 +4,7 @@ import { getTableClient } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { SaveItineraryBodySchema, logError } from '../lib/schemas'
 
 /**
  * Validate and sanitize a thumbnail URL.
@@ -71,7 +72,7 @@ function successResponse(origin: string | undefined, data: unknown, status = 200
 
 export async function listItinerariesHandler(
   req: HttpRequest,
-  _ctx: InvocationContext,
+  ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -89,13 +90,14 @@ export async function listItinerariesHandler(
     if (err instanceof Error && err.name === 'AuthError') {
       return authErrorResponse(err, origin)
     }
-    return withCors({ status: 500, body: 'Internal error' }, origin)
+    logError(ctx, 'listItinerariesHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
 export async function getItineraryHandler(
   req: HttpRequest,
-  _ctx: InvocationContext,
+  ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -120,14 +122,15 @@ export async function getItineraryHandler(
     if (err instanceof Error && err.name === 'AuthError') {
       return authErrorResponse(err, origin)
     }
-    if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)
-    return withCors({ status: 500, body: 'Internal error' }, origin)
+    if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    logError(ctx, 'getItineraryHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
 export async function saveItineraryHandler(
   req: HttpRequest,
-  _ctx: InvocationContext,
+  ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -135,14 +138,27 @@ export async function saveItineraryHandler(
   try {
     const owner = await resolveOwnerId(req)
 
-    type SaveBody = { name: string; itinerary: Itinerary } & Partial<Record<'thumbnail', string | undefined>>
-    let body: SaveBody
+    let rawBody: unknown
     try {
-      body = (await req.json()) as SaveBody
-    } catch {
-      return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
+      rawBody = await req.json()
+    } catch (err) {
+      logError(ctx, 'saveItineraryHandler: invalid JSON body', err)
+      return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
+    // Validate and parse body with zod; on failure, return 400 with details
+    const parseResult = SaveItineraryBodySchema.safeParse(rawBody)
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+      logError(ctx, `saveItineraryHandler: validation failed - ${errors}`, parseResult.error)
+      return withCors({
+        status: 400,
+        body: JSON.stringify({ error: 'Invalid request body', details: errors }),
+        headers: { 'Content-Type': 'application/json' }
+      }, origin)
+    }
+
+    const body = parseResult.data
     const id = nanoid()
     const client = getTableClient('Itineraries')
     // Validate thumbnail: if provided, must be a valid data: URL with correct size. Invalid thumbnails are stripped.
@@ -162,13 +178,14 @@ export async function saveItineraryHandler(
     if (err instanceof Error && err.name === 'AuthError') {
       return authErrorResponse(err, origin)
     }
-    return withCors({ status: 500, body: 'Internal error' }, origin)
+    logError(ctx, 'saveItineraryHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
 export async function deleteItineraryHandler(
   req: HttpRequest,
-  _ctx: InvocationContext,
+  ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -183,8 +200,9 @@ export async function deleteItineraryHandler(
     if (err instanceof Error && err.name === 'AuthError') {
       return authErrorResponse(err, origin)
     }
-    if (err?.statusCode === 404) return withCors({ status: 404, body: 'Not found' }, origin)
-    return withCors({ status: 500, body: 'Internal error' }, origin)
+    if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    logError(ctx, 'deleteItineraryHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 

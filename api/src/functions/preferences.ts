@@ -4,6 +4,7 @@ import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { PreferencesSchema, logError } from '../lib/schemas'
 
 const ROW_KEY = 'default'
 
@@ -21,7 +22,7 @@ function entityToPreferences(entity: Record<string, unknown>): Preferences {
 
 export async function getPreferencesHandler(
   req: HttpRequest,
-  _ctx: InvocationContext,
+  ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -46,13 +47,14 @@ export async function getPreferencesHandler(
         body: JSON.stringify(DEFAULT_PREFERENCES),
       }, origin)
     }
-    return withCors({ status: 500, body: 'Internal error' }, origin)
+    logError(ctx, 'getPreferencesHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
 export async function putPreferencesHandler(
   req: HttpRequest,
-  _ctx: InvocationContext,
+  ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
@@ -60,23 +62,37 @@ export async function putPreferencesHandler(
   try {
     const owner = await resolveOwnerId(req)
 
-    let prefs: Preferences
+    let rawBody: unknown
     try {
-      prefs = await req.json() as Preferences
-    } catch {
-      return withCors({ status: 400, body: 'Invalid JSON body' }, origin)
+      rawBody = await req.json()
+    } catch (err) {
+      logError(ctx, 'putPreferencesHandler: invalid JSON body', err)
+      return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
+    // Validate and parse body with zod; on failure, return 400 with details
+    const parseResult = PreferencesSchema.safeParse(rawBody)
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+      logError(ctx, `putPreferencesHandler: validation failed - ${errors}`, parseResult.error)
+      return withCors({
+        status: 400,
+        body: JSON.stringify({ error: 'Invalid request body', details: errors }),
+        headers: { 'Content-Type': 'application/json' }
+      }, origin)
+    }
+
+    const prefs = parseResult.data
     const client = getTableClient('Preferences')
     await client.upsertEntity({
       partitionKey: owner.ownerId,
       rowKey: ROW_KEY,
       mustVisit: JSON.stringify(prefs.mustVisit ?? []),
       avoid: JSON.stringify(prefs.avoid ?? []),
-      startCity: prefs.startCity ?? DEFAULT_PREFERENCES.startCity,
-      endCity: prefs.endCity ?? DEFAULT_PREFERENCES.endCity,
-      tripDays: prefs.tripDays ?? DEFAULT_PREFERENCES.tripDays,
-      country: prefs.country ?? DEFAULT_PREFERENCES.country ?? 'SE',
+      startCity: prefs.startCity,
+      endCity: prefs.endCity,
+      tripDays: prefs.tripDays,
+      country: prefs.country,
       updatedAt: new Date().toISOString(),
     })
     return withCors({
@@ -88,7 +104,8 @@ export async function putPreferencesHandler(
     if (err instanceof Error && err.name === 'AuthError') {
       return authErrorResponse(err, origin)
     }
-    return withCors({ status: 500, body: 'Internal error' }, origin)
+    logError(ctx, 'putPreferencesHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 

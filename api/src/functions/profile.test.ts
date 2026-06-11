@@ -18,6 +18,17 @@ import { resolveOwnerId } from '../lib/identity'
 const mockResolveOwnerId = resolveOwnerId as ReturnType<typeof vi.fn>
 const mockGetTableClient = getTableClient as ReturnType<typeof vi.fn>
 
+function makeContext() {
+  return {
+    log: {
+      error: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+      warn: vi.fn(),
+    },
+  } as any
+}
+
 const ownerA = { ownerId: 'entra-sub-1', isGuest: false, subject: 'sub-1' }
 const ownerB = { ownerId: 'entra-sub-2', isGuest: false, subject: 'sub-2' }
 
@@ -57,7 +68,7 @@ describe('GET /api/profile', () => {
       throw err
     })
 
-    const result = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, {} as any)
+    const result = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, makeContext())
     expect(result.status).toBe(401)
   })
 
@@ -68,7 +79,7 @@ describe('GET /api/profile', () => {
       upsertEntity: vi.fn()
     })
 
-    const result = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, {} as any)
+    const result = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, makeContext())
     expect(result.status).toBe(404)
   })
 
@@ -79,7 +90,7 @@ describe('GET /api/profile', () => {
       upsertEntity: vi.fn()
     })
 
-    const result = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, {} as any)
+    const result = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, makeContext())
     expect(result.status).toBe(200)
     const body = JSON.parse(result.body as string)
     expect(body.ownerId).toBe('entra-sub-1')
@@ -93,7 +104,7 @@ describe('GET /api/profile', () => {
       upsertEntity: vi.fn()
     })
 
-    const result = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, {} as any)
+    const result = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, makeContext())
     expect(result.status).toBe(404)
   })
 })
@@ -116,7 +127,7 @@ describe('PUT /api/profile', () => {
 
     const result = await putProfileHandler(
       { method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => ({ displayName: 'Test' }) } as any,
-      {} as any,
+      makeContext(),
     )
     expect(result.status).toBe(401)
   })
@@ -126,7 +137,7 @@ describe('PUT /api/profile', () => {
 
     const result = await putProfileHandler(
       { method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => { throw new Error('bad') } } as any,
-      {} as any,
+      makeContext(),
     )
     expect(result.status).toBe(400)
   })
@@ -149,7 +160,7 @@ describe('PUT /api/profile', () => {
         headers: new Map([['origin', 'http://localhost']]),
         json: async () => ({ displayName: 'Alice', email: 'alice@example.com' })
       } as any,
-      {} as any,
+      makeContext(),
     )
     expect(putResult.status).toBe(200)
     const putBody = JSON.parse(putResult.body as string)
@@ -158,7 +169,7 @@ describe('PUT /api/profile', () => {
 
     // GET the profile back
     getEntityMock.mockResolvedValueOnce(profileA)
-    const getResult = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, {} as any)
+    const getResult = await getProfileHandler({ method: 'GET', headers: new Map([['origin', 'http://localhost']]) } as any, makeContext())
     expect(getResult.status).toBe(200)
     const getBody = JSON.parse(getResult.body as string)
     expect(getBody.displayName).toBe('Alice')
@@ -181,7 +192,7 @@ describe('PUT /api/profile', () => {
         headers: new Map([['origin', 'http://localhost']]),
         json: async () => ({ displayName: 'Hacked', email: 'hacked@example.com' })
       } as any,
-      {} as any,
+      makeContext(),
     )
     expect(result.status).toBe(200)
     const body = JSON.parse(result.body as string)
