@@ -8,9 +8,21 @@ const zod_1 = require("zod");
  * If context is unavailable, error is silently ignored (fail open).
  */
 function logError(ctx, message, err) {
-    if (!ctx || !ctx.log)
+    if (!ctx)
         return;
-    ctx.log.error(message, err);
+    const anyCtx = ctx;
+    // Azure Functions v4 runtime: context.error() is the error logger and context.log is a plain function.
+    // context.log.error() does NOT exist at runtime (only in older mocks) — calling it throws,
+    // which turned every error path into a 500 in production.
+    if (typeof anyCtx.error === 'function') {
+        anyCtx.error(message, err);
+    }
+    else if (typeof anyCtx.log?.error === 'function') {
+        anyCtx.log.error(message, err);
+    }
+    else if (typeof anyCtx.log === 'function') {
+        anyCtx.log(message, err);
+    }
 }
 /**
  * Schema for a single itinerary stop.

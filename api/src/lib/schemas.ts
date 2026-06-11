@@ -6,9 +6,18 @@ import type { InvocationContext } from '@azure/functions'
  * If context is unavailable, error is silently ignored (fail open).
  */
 export function logError(ctx: InvocationContext | undefined, message: string, err?: unknown): void {
-  if (!ctx || !ctx.log) return
-  // Cast to any because the Azure Functions context.log typing doesn't fully align with actual usage
-  ;(ctx.log as any).error(message, err)
+  if (!ctx) return
+  const anyCtx = ctx as any
+  // Azure Functions v4 runtime: context.error() is the error logger and context.log is a plain function.
+  // context.log.error() does NOT exist at runtime (only in older mocks) — calling it throws,
+  // which turned every error path into a 500 in production.
+  if (typeof anyCtx.error === 'function') {
+    anyCtx.error(message, err)
+  } else if (typeof anyCtx.log?.error === 'function') {
+    anyCtx.log.error(message, err)
+  } else if (typeof anyCtx.log === 'function') {
+    anyCtx.log(message, err)
+  }
 }
 
 /**

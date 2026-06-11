@@ -1,5 +1,6 @@
 import type { HttpRequest } from '@azure/functions'
 import { getTableClient } from './tableClient'
+import { logError } from './schemas'
 
 // Rate limit constants
 export const RATE_LIMIT_PER_OWNER_PER_HOUR = 5
@@ -70,9 +71,7 @@ async function ensureTableExists(logger?: any): Promise<void> {
         return
       }
       // Log other errors but continue (fail open)
-      logger?.log.error(
-        `Failed to ensure rate limit table exists: ${err instanceof Error ? err.message : String(err)}`
-      )
+      logError(logger, `Failed to ensure rate limit table exists: ${err instanceof Error ? err.message : String(err)}`)
     }
   })()
 
@@ -129,9 +128,7 @@ export async function checkAndIncrementRateLimit(
         })
       } else {
         // Table error; fail open
-        logger?.log.error(
-          `Rate limit check failed for owner ${ownerId}: ${err instanceof Error ? err.message : String(err)}`
-        )
+        logError(logger, `Rate limit check failed for owner ${ownerId}: ${err instanceof Error ? err.message : String(err)}`)
         return { allowed: true }
       }
     }
@@ -165,9 +162,7 @@ export async function checkAndIncrementRateLimit(
         })
       } else {
         // Table error; fail open
-        logger?.log.error(
-          `Rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`
-        )
+        logError(logger, `Rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`)
         return { allowed: true }
       }
     }
@@ -175,9 +170,7 @@ export async function checkAndIncrementRateLimit(
     return { allowed: true }
   } catch (err) {
     // Outer error; fail open
-    logger?.log.error(
-      `Rate limit check failed: ${err instanceof Error ? err.message : String(err)}`
-    )
+    logError(logger, `Rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
     return { allowed: true }
   }
 }

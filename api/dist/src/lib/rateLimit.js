@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RATE_LIMIT_TABLE_NAME = exports.RATE_LIMIT_PER_IP_PER_HOUR = exports.RATE_LIMIT_PER_OWNER_PER_HOUR = void 0;
 exports.checkAndIncrementRateLimit = checkAndIncrementRateLimit;
 const tableClient_1 = require("./tableClient");
+const schemas_1 = require("./schemas");
 // Rate limit constants
 exports.RATE_LIMIT_PER_OWNER_PER_HOUR = 5;
 exports.RATE_LIMIT_PER_IP_PER_HOUR = 20;
@@ -62,7 +63,7 @@ async function ensureTableExists(logger) {
                 return;
             }
             // Log other errors but continue (fail open)
-            logger?.log.error(`Failed to ensure rate limit table exists: ${err instanceof Error ? err.message : String(err)}`);
+            (0, schemas_1.logError)(logger, `Failed to ensure rate limit table exists: ${err instanceof Error ? err.message : String(err)}`);
         }
     })();
     return ensureTablePromise;
@@ -110,7 +111,7 @@ async function checkAndIncrementRateLimit(req, ownerId, logger) {
             }
             else {
                 // Table error; fail open
-                logger?.log.error(`Rate limit check failed for owner ${ownerId}: ${err instanceof Error ? err.message : String(err)}`);
+                (0, schemas_1.logError)(logger, `Rate limit check failed for owner ${ownerId}: ${err instanceof Error ? err.message : String(err)}`);
                 return { allowed: true };
             }
         }
@@ -142,7 +143,7 @@ async function checkAndIncrementRateLimit(req, ownerId, logger) {
             }
             else {
                 // Table error; fail open
-                logger?.log.error(`Rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`);
+                (0, schemas_1.logError)(logger, `Rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`);
                 return { allowed: true };
             }
         }
@@ -150,7 +151,7 @@ async function checkAndIncrementRateLimit(req, ownerId, logger) {
     }
     catch (err) {
         // Outer error; fail open
-        logger?.log.error(`Rate limit check failed: ${err instanceof Error ? err.message : String(err)}`);
+        (0, schemas_1.logError)(logger, `Rate limit check failed: ${err instanceof Error ? err.message : String(err)}`);
         return { allowed: true };
     }
 }
