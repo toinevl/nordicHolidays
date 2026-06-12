@@ -79,8 +79,10 @@ jobs:
           echo "Starting API smoke tests..."
 
           # Test 1: Health check with retry (cold start)
+          HEALTH_OK=0
           for i in $(seq 1 $MAX_RETRIES); do
             if expect 200 "$API_URL/health"; then
+              HEALTH_OK=1
               break
             fi
             if [ $i -lt $MAX_RETRIES ]; then
@@ -88,6 +90,10 @@ jobs:
               sleep $RETRY_DELAY
             fi
           done
+          if [ "$HEALTH_OK" != "1" ]; then
+            echo "✗ Health check failed after $MAX_RETRIES attempts"
+            exit 1
+          fi
 
           # Test 2: GET /itineraries with valid owner
           expect 200 "$API_URL/itineraries" \
