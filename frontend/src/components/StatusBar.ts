@@ -91,7 +91,10 @@ export class StatusBar {
     this.el.querySelector('#btn-open-saved')?.addEventListener('click', this.onOpenSaved)
     this.el.querySelector('#btn-open-generator')?.addEventListener('click', this.onOpenGenerator)
     if (activeTripId) {
-      this.el.querySelector('#btn-share')?.addEventListener('click', () => this.onShare(activeTripId))
+      const shareBtn = this.el.querySelector('#btn-share')
+      shareBtn?.addEventListener('click', () => {
+        if (activeTripId) this.onShare(activeTripId)
+      })
     }
     this.el.querySelector('#btn-locale-nl')?.addEventListener('click', () => {
       if (locale !== 'nl') this.onLocaleChange('nl')
