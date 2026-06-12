@@ -43,6 +43,10 @@ jobs:
           ENTRA_API_AUDIENCE: ${{ secrets.ENTRA_API_AUDIENCE }}
           ENTRA_REQUIRED_SCOPE: ${{ secrets.ENTRA_REQUIRED_SCOPE || 'user_impersonation' }}
 
+      - name: Install dependencies
+        working-directory: api
+        run: npm ci
+
       - name: Build API
         working-directory: api
         run: npm run build
@@ -57,7 +61,7 @@ jobs:
           cp package-lock.json deploy/package-lock.json || true
           cd deploy
           zip -r ../../api.zip .
-
+    
       - name: Deploy API
         run: az functionapp deployment source config-zip --resource-group rgWebsite --name ${{ vars.SWEDEN_TRAVEL_FUNCTION_APP_NAME }} --src ./api.zip --build-remote false
 
