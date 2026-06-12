@@ -32,4 +32,4 @@ api/local.settings.json
 azure_app.json
 azure_app_update.json
 azure_part.sh
-scripts/
+scripts/.worktrees/
