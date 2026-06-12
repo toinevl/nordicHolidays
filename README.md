@@ -8,7 +8,7 @@ An AI-powered road trip planner for Sweden. Generate personalised multi-day itin
 
 ## Features
 
-- **AI itinerary generation** — Claude generates structured day-by-day trips for any Swedish region and duration
+- **AI itinerary generation** — Azure AI Foundry (via OpenAI SDK) generates structured day-by-day trips for any Swedish region and duration
 - **Interactive map** — MapLibre GL with animated route polyline and colour-coded region markers
 - **Save & load trips** — persist itineraries to Azure Table Storage and reload them in one click
 - **Share via URL** — every saved trip gets a shareable `?id=` link
@@ -30,7 +30,7 @@ Opens at http://localhost:5173.
 **API**
 ```bash
 cd api && npm install
-# Add AzureWebJobsStorage + ANTHROPIC_API_KEY to api/local.settings.json
+# Add STORAGE_CONNECTION_STRING + AZURE_FOUNDRY_API_KEY + AZURE_FOUNDRY_ENDPOINT to api/local.settings.json
 npm run start
 ```
 Runs Azure Functions locally at http://localhost:7071.
@@ -47,8 +47,8 @@ cd api && npm test
 
 - **Frontend:** Vite + TypeScript static app deployed to Azure Static Web Apps (Free tier)
 - **API:** Azure Functions v4 TypeScript on Flex Consumption at `https://sweden-travel-api.azurewebsites.net`
-- **Storage:** Azure Table Storage — `Itineraries` and `Preferences` tables (`partitionKey="owner"`)
-- **AI:** Anthropic Claude via server-side `POST /api/generate` with forced tool use for structured output
+- **Storage:** Azure Table Storage — `Itineraries`, `Preferences`, `Profiles`, and `RateLimits` tables (partitioned per owner)
+- **AI:** Azure AI Foundry (OpenAI SDK, model `gpt-4o` by default) via server-side `POST /api/generate` with forced tool use for structured output
 
 See [docs/architecture.md](docs/architecture.md) for the full topology diagram, repository structure, and data-flow walkthroughs.
 
@@ -102,8 +102,9 @@ Two independent GitHub Actions workflows trigger on pushes to `main` with path f
 |---|---|
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | deploy-frontend.yml |
 | `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | deploy-api.yml |
-| `ANTHROPIC_API_KEY` | API runtime (set in Function App config) |
-| `AZURE_STORAGE_CONNECTION_STRING` | API runtime (set in Function App config) |
+| `AZURE_FOUNDRY_API_KEY` | API runtime (set in Function App config, references Key Vault secret) |
+| `AZURE_FOUNDRY_ENDPOINT` | API runtime (set in Function App config) |
+| `TABLES_ENDPOINT` | API runtime (Azure Table Storage, uses managed identity in production) |
 
 ---
 

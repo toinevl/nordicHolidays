@@ -18,7 +18,7 @@ The **GeneratorPanel** (right-hand side) drives AI-powered trip creation.
 1. Choose a Swedish region (or "Full country") and trip duration.
 2. Optionally set a start city and adjust interests/pace.
 3. Click **Generate** — the frontend calls `POST /api/generate`.
-4. The API calls Anthropic Claude with **forced tool use**, guaranteeing a structured `Itinerary` JSON response every time (no free-form text to parse).
+4. The API calls Azure AI Foundry (gpt-4o by default) with **forced tool use**, guaranteeing a structured `Itinerary` JSON response every time (no free-form text to parse).
 5. The itinerary appears immediately in the map and timeline. A **"Unsaved"** badge appears in the StatusBar until the trip is saved.
 
 Generation typically takes 5–15 seconds depending on trip length.
@@ -92,7 +92,7 @@ Every itinerary includes:
 - **Per-day drive km** shown in the day card header.
 - **Total trip drive km** shown in the itinerary summary banner.
 
-Distances are estimated by Claude during generation based on realistic Swedish road routing and are approximate (±10%).
+Distances are estimated by the LLM during generation based on realistic Swedish road routing and are approximate (±10%).
 
 ---
 
