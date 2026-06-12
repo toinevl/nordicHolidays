@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.listItinerariesHandler = listItinerariesHandler;
 exports.getItineraryHandler = getItineraryHandler;
 exports.saveItineraryHandler = saveItineraryHandler;
+exports.updateItineraryHandler = updateItineraryHandler;
 exports.deleteItineraryHandler = deleteItineraryHandler;
 const functions_1 = require("@azure/functions");
 const nanoid_1 = require("nanoid");
@@ -162,6 +163,68 @@ async function saveItineraryHandler(req, ctx) {
         return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
 }
+async function updateItineraryHandler(req, ctx) {
+    const origin = req.headers.get('origin') ?? undefined;
+    if (req.method === 'OPTIONS')
+        return (0, cors_1.corsPreflightResponse)(origin);
+    if (req.method !== 'PATCH')
+        return (0, cors_1.withCors)({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin);
+    try {
+        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
+        const id = req.params.id;
+        if (!id)
+            return (0, cors_1.withCors)({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin);
+        let rawBody;
+        try {
+            rawBody = await req.json();
+        }
+        catch (err) {
+            (0, schemas_1.logError)(ctx, 'updateItineraryHandler: invalid JSON body', err);
+            return (0, cors_1.withCors)({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin);
+        }
+        const parseResult = schemas_1.ItineraryPatchBodySchema.safeParse(rawBody);
+        if (!parseResult.success) {
+            const errors = parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.code}`).join('; ');
+            (0, schemas_1.logError)(ctx, `updateItineraryHandler: validation failed - ${errors}`, parseResult.error);
+            return (0, cors_1.withCors)({
+                status: 400,
+                body: JSON.stringify({ error: 'Invalid request body', details: errors }),
+                headers: { 'Content-Type': 'application/json' }
+            }, origin);
+        }
+        const patch = parseResult.data;
+        const client = (0, tableClient_1.getTableClient)('Itineraries');
+        const entity = await client.getEntity(owner.ownerId, id);
+        const itinerary = JSON.parse(entity.itineraryJson);
+        if (typeof patch.title === 'string')
+            itinerary.title = patch.title;
+        if (typeof patch.startCity === 'string')
+            itinerary.startCity = patch.startCity;
+        if (typeof patch.endCity === 'string')
+            itinerary.endCity = patch.endCity;
+        if (Array.isArray(patch.stops))
+            itinerary.stops = patch.stops;
+        const updatedEntity = await client.updateEntity({
+            partitionKey: owner.ownerId,
+            rowKey: id,
+            eTag: entity.etag,
+            startCity: (itinerary.startCity ?? entity.startCity),
+            endCity: (itinerary.endCity ?? entity.endCity),
+            itineraryJson: JSON.stringify(itinerary),
+        });
+        const refreshed = updatedEntity;
+        const refreshedItinerary = JSON.parse(refreshed.itineraryJson);
+        return (0, cors_1.withCors)({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(refreshedItinerary) }, origin);
+    }
+    catch (err) {
+        if (err instanceof Error && err.name === 'AuthError')
+            return (0, identity_1.authErrorResponse)(err, origin);
+        if (err?.statusCode === 404)
+            return (0, cors_1.withCors)({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin);
+        (0, schemas_1.logError)(ctx, 'updateItineraryHandler: internal error', err);
+        return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
+    }
+}
 async function deleteItineraryHandler(req, ctx) {
     const origin = req.headers.get('origin') ?? undefined;
     if (req.method === 'OPTIONS')
@@ -194,10 +257,12 @@ functions_1.app.http('itineraries', {
     },
 });
 functions_1.app.http('itineraryById', {
-    methods: ['GET', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'PATCH', 'DELETE', 'OPTIONS'],
     authLevel: 'anonymous',
     route: 'itineraries/{id}',
     handler: (req, ctx) => {
+        if (req.method === 'PATCH')
+            return updateItineraryHandler(req, ctx);
         if (req.method === 'DELETE')
             return deleteItineraryHandler(req, ctx);
         return getItineraryHandler(req, ctx);

@@ -34,6 +34,7 @@ export const ItineraryStopSchema = z.object({
   highlights: z.array(z.string().max(500)).max(50),
   accommodation: z.string().max(500),
   culinaryNotes: z.string().max(500),
+  userNotes: z.string().max(2000).optional(),
 }).strict()
 
 /**
@@ -87,6 +88,20 @@ export const GenerateRequestBodySchema = z.object({
   tripDays: z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
   country: z.string().max(2).default('SE'),
   lang: z.enum(['en', 'nl']).default('en'),
+}).strict()
+
+export const ItineraryPutBodySchema = z.object({
+  title: z.string().max(500).optional(),
+  startCity: z.string().max(200).optional(),
+  endCity: z.string().max(200).optional(),
+  stops: z.array(ItineraryStopSchema).max(365).optional(),
+}).strict()
+
+export const ItineraryPatchBodySchema = z.object({
+  title: z.string().max(500).optional(),
+  startCity: z.string().max(200).optional(),
+  endCity: z.string().max(200).optional(),
+  stops: z.array(ItineraryStopSchema).max(365).optional(),
 }).strict()
 
 /**

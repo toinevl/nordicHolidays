@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ProfilePutBodySchema = exports.GenerateRequestBodySchema = exports.PreferencesSchema = exports.SaveItineraryBodySchema = exports.ItinerarySchema = exports.ItineraryStopSchema = void 0;
+exports.ProfilePutBodySchema = exports.ItineraryPatchBodySchema = exports.ItineraryPutBodySchema = exports.GenerateRequestBodySchema = exports.PreferencesSchema = exports.SaveItineraryBodySchema = exports.ItinerarySchema = exports.ItineraryStopSchema = void 0;
 exports.logError = logError;
 const zod_1 = require("zod");
 /**
@@ -38,6 +38,7 @@ exports.ItineraryStopSchema = zod_1.z.object({
     highlights: zod_1.z.array(zod_1.z.string().max(500)).max(50),
     accommodation: zod_1.z.string().max(500),
     culinaryNotes: zod_1.z.string().max(500),
+    userNotes: zod_1.z.string().max(2000).optional(),
 }).strict();
 /**
  * Schema for a complete itinerary (includes optional generatedAt which is added server-side on generation).
@@ -87,6 +88,18 @@ exports.GenerateRequestBodySchema = zod_1.z.object({
     tripDays: zod_1.z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
     country: zod_1.z.string().max(2).default('SE'),
     lang: zod_1.z.enum(['en', 'nl']).default('en'),
+}).strict();
+exports.ItineraryPutBodySchema = zod_1.z.object({
+    title: zod_1.z.string().max(500).optional(),
+    startCity: zod_1.z.string().max(200).optional(),
+    endCity: zod_1.z.string().max(200).optional(),
+    stops: zod_1.z.array(exports.ItineraryStopSchema).max(365).optional(),
+}).strict();
+exports.ItineraryPatchBodySchema = zod_1.z.object({
+    title: zod_1.z.string().max(500).optional(),
+    startCity: zod_1.z.string().max(200).optional(),
+    endCity: zod_1.z.string().max(200).optional(),
+    stops: zod_1.z.array(exports.ItineraryStopSchema).max(365).optional(),
 }).strict();
 /**
  * Schema for profile PUT (partial updates).

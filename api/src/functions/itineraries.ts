@@ -226,7 +226,7 @@ export async function updateItineraryHandler(
     if (typeof patch.endCity === 'string') itinerary.endCity = patch.endCity
     if (Array.isArray(patch.stops)) itinerary.stops = patch.stops
 
-    await client.updateEntity({
+    const updatedEntity = await client.updateEntity({
       partitionKey: owner.ownerId,
       rowKey: id,
       eTag: entity.etag as string | undefined,
@@ -235,7 +235,9 @@ export async function updateItineraryHandler(
       itineraryJson: JSON.stringify(itinerary),
     })
 
-    return withCors({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinerary) }, origin)
+    const refreshed = updatedEntity as Record<string, unknown>
+    const refreshedItinerary = JSON.parse(refreshed.itineraryJson as string) as Itinerary
+    return withCors({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(refreshedItinerary) }, origin)
   } catch (err: any) {
     if (err instanceof Error && err.name === 'AuthError') return authErrorResponse(err, origin)
     if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
