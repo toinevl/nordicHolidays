@@ -6,6 +6,7 @@ exports.saveItineraryHandler = saveItineraryHandler;
 exports.deleteItineraryHandler = deleteItineraryHandler;
 const functions_1 = require("@azure/functions");
 const nanoid_1 = require("nanoid");
+const data_tables_1 = require("@azure/data-tables");
 const tableClient_1 = require("../lib/tableClient");
 const cors_1 = require("../lib/cors");
 const identity_1 = require("../lib/identity");
@@ -63,10 +64,10 @@ async function listItinerariesHandler(req, ctx) {
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
     try {
-        const owner = await (0, identity_1.resolveOwnerId)(req);
+        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
         const client = (0, tableClient_1.getTableClient)('Itineraries');
         const summaries = [];
-        for await (const entity of client.listEntities({ queryOptions: { filter: `PartitionKey eq '${owner.ownerId}'` } })) {
+        for await (const entity of client.listEntities({ queryOptions: { filter: (0, data_tables_1.odata) `PartitionKey eq ${owner.ownerId}` } })) {
             summaries.push(entityToSummary(entity));
         }
         summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -85,7 +86,7 @@ async function getItineraryHandler(req, ctx) {
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
     try {
-        const owner = await (0, identity_1.resolveOwnerId)(req);
+        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
         const id = req.params.id;
         const client = (0, tableClient_1.getTableClient)('Itineraries');
         const entity = await client.getEntity(owner.ownerId, id);
@@ -116,7 +117,7 @@ async function saveItineraryHandler(req, ctx) {
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
     try {
-        const owner = await (0, identity_1.resolveOwnerId)(req);
+        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
         let rawBody;
         try {
             rawBody = await req.json();
@@ -166,7 +167,7 @@ async function deleteItineraryHandler(req, ctx) {
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
     try {
-        const owner = await (0, identity_1.resolveOwnerId)(req);
+        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
         const id = req.params.id;
         const client = (0, tableClient_1.getTableClient)('Itineraries');
         await client.deleteEntity(owner.ownerId, id);

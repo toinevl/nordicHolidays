@@ -41,7 +41,7 @@ async function generateHandler(req, ctx) {
     // Resolve identity first (required for rate limiting)
     let ownerId;
     try {
-        const owner = await (0, identity_1.resolveOwnerId)(req);
+        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
         ownerId = owner.ownerId;
     }
     catch (err) {

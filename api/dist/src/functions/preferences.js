@@ -25,7 +25,7 @@ async function getPreferencesHandler(req, ctx) {
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
     try {
-        const owner = await (0, identity_1.resolveOwnerId)(req);
+        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
         const client = (0, tableClient_1.getTableClient)('Preferences');
         const entity = await client.getEntity(owner.ownerId, ROW_KEY);
         return (0, cors_1.withCors)({
@@ -54,7 +54,7 @@ async function putPreferencesHandler(req, ctx) {
     if (req.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
     try {
-        const owner = await (0, identity_1.resolveOwnerId)(req);
+        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
         let rawBody;
         try {
             rawBody = await req.json();

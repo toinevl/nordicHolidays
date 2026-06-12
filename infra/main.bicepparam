@@ -1,0 +1,11 @@
+using './main.bicep'
+
+param storageAccountName = 'swedentravel'
+param keyVaultName = 'kv-swedentravel'
+param functionAppName = 'sweden-travel-api'
+param appInsightsName = 'sweden-travel-api'
+param staticWebAppName = 'swedentravel'
+param location = 'westeurope'
+param nodeVersion = '22'
+param storageAccountSku = 'Standard_LRS'
+param staticWebAppSku = 'Free'

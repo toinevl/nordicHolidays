@@ -1,6 +1,7 @@
 import type { HttpRequest, InvocationContext } from '@azure/functions'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { withCors } from './cors'
+import { logError } from './schemas'
 
 export type OwnerContext = {
   ownerId: string
@@ -16,23 +17,48 @@ export class AuthError extends Error {
   }
 }
 
+/**
+ * Module-level JWKS cache: create once per issuer URL and reuse across invocations.
+ * Keyed by issuer to support multiple issuer hosts.
+ */
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>()
+
 function getTenant(claims: Record<string, unknown>): string {
   return typeof claims.tid === 'string' ? claims.tid : ''
 }
 
-export async function verifyAccessToken(token: string): Promise<Record<string, unknown>> {
+/**
+ * Get or create a cached JWKS instance for the given issuer URL.
+ */
+function getOrCreateJwks(issuerUrl: string): ReturnType<typeof createRemoteJWKSet> {
+  if (!jwksCache.has(issuerUrl)) {
+    jwksCache.set(issuerUrl, createRemoteJWKSet(new URL(issuerUrl)))
+  }
+  return jwksCache.get(issuerUrl)!
+}
+
+export async function verifyAccessToken(token: string, ctx?: InvocationContext): Promise<Record<string, unknown>> {
   const issuerHost = process.env.ENTRA_ISSUER_HOST ?? 'login.microsoftonline.com'
   const issuer = `https://${issuerHost}/common`
-  const jwks = createRemoteJWKSet(new URL(`${issuer}/discovery/v2.0/keys`))
+  const jwksUrl = `${issuer}/discovery/v2.0/keys`
+  const jwks = getOrCreateJwks(jwksUrl)
+
+  // Require non-empty ENTRA_API_AUDIENCE when bearer token is presented
+  const audience = process.env.ENTRA_API_AUDIENCE
+  if (!audience) {
+    logError(ctx, 'verifyAccessToken: ENTRA_API_AUDIENCE is not set; cannot verify bearer tokens')
+    throw new AuthError('API configuration error: missing audience')
+  }
+
   const result = await jwtVerify(token, jwks, {
     issuer,
-    audience: process.env.ENTRA_API_AUDIENCE ?? '',
+    audience,
     algorithms: ['RS256'],
   })
   return result.payload
 }
 
-export async function ownerFromBearer(reqOrToken: HttpRequest | string): Promise<OwnerContext> {
+export async function ownerFromBearer(reqOrToken: HttpRequest | string, ctx?: InvocationContext): Promise<OwnerContext> {
   let token: string
   if (typeof reqOrToken === 'string') {
     token = reqOrToken.trim()
@@ -44,7 +70,7 @@ export async function ownerFromBearer(reqOrToken: HttpRequest | string): Promise
     token = auth.slice('Bearer '.length).trim()
   }
 
-  const claims = await verifyAccessToken(token)
+  const claims = await verifyAccessToken(token, ctx)
   const tid = getTenant(claims)
   if (!tid) throw new AuthError('Invalid token: missing tenant id')
 
@@ -72,12 +98,12 @@ function isValidGuestOwnerId(id: string): boolean {
   return GUEST_OWNER_REGEX.test(id)
 }
 
-export async function resolveOwnerId(req: HttpRequest): Promise<OwnerContext> {
+export async function resolveOwnerId(req: HttpRequest, ctx?: InvocationContext): Promise<OwnerContext> {
   // Priority 1: Valid bearer token → entra-<sub>
   try {
     const auth = req.headers?.get('Authorization') ?? ''
     if (auth.startsWith('Bearer ')) {
-      return await ownerFromBearer(req)
+      return await ownerFromBearer(req, ctx)
     }
   } catch (err) {
     // If bearer auth was attempted but failed, propagate the error

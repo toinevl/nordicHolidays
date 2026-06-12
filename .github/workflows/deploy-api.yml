@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: read
 
 jobs:
@@ -24,7 +25,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Set API app settings
         run: |
@@ -49,3 +52,61 @@ jobs:
             --name ${{ vars.SWEDEN_TRAVEL_FUNCTION_APP_NAME }} \
             --src ../api.zip \
             --build-remote true
+
+      - name: Smoke test API
+        run: |
+          API_URL="https://sweden-travel-api.azurewebsites.net/api"
+          MAX_RETRIES=6
+          RETRY_DELAY=10
+
+          expect() {
+            local expected_code=$1
+            shift
+            local response=$(curl -s -w "\n%{http_code}" "$@")
+            local body=$(echo "$response" | head -n -1)
+            local status=$(echo "$response" | tail -n 1)
+
+            if [ "$status" = "$expected_code" ]; then
+              echo "✓ GET $* → $status (expected $expected_code)"
+              return 0
+            else
+              echo "✗ GET $* → $status (expected $expected_code)"
+              echo "Response body: $body"
+              return 1
+            fi
+          }
+
+          echo "Starting API smoke tests..."
+
+          # Test 1: Health check with retry (cold start)
+          HEALTH_OK=0
+          for i in $(seq 1 $MAX_RETRIES); do
+            if expect 200 "$API_URL/health"; then
+              HEALTH_OK=1
+              break
+            fi
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "Retry $i/$MAX_RETRIES, waiting ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
+          done
+          if [ "$HEALTH_OK" != "1" ]; then
+            echo "✗ Health check failed after $MAX_RETRIES attempts"
+            exit 1
+          fi
+
+          # Test 2: GET /itineraries with valid owner
+          expect 200 "$API_URL/itineraries" \
+            -H "X-Owner-Id: owner-00000000-0000-4000-8000-000000000000"
+
+          # Test 3: GET /itineraries without owner (should 401)
+          expect 401 "$API_URL/itineraries"
+
+          # Test 4: POST /itineraries with invalid body (should 400)
+          expect 400 "$API_URL/itineraries" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Owner-Id: owner-00000000-0000-4000-8000-000000000000" \
+            -d '{"bad":"body"}'
+
+          echo "All API smoke tests passed!"

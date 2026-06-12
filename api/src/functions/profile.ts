@@ -29,7 +29,7 @@ export async function getProfileHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req)
+    const owner = await resolveOwnerId(req, ctx)
     const client = getTableClient('Profiles')
     const entity = await client.getEntity(owner.ownerId, ROW_KEY)
     return withCors({
@@ -57,7 +57,7 @@ export async function putProfileHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req)
+    const owner = await resolveOwnerId(req, ctx)
 
     let rawBody: unknown
     try {

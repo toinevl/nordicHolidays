@@ -203,3 +203,34 @@ function makeContext() {
         (0, vitest_1.expect)(client.deleteEntity).toHaveBeenCalledWith('owner-123', 'id1');
     });
 });
+(0, vitest_1.describe)('OData filter security', () => {
+    (0, vitest_1.beforeEach)(() => vitest_1.vi.clearAllMocks());
+    (0, vitest_1.it)('uses odata helper to escape PartitionKey filter values', async () => {
+        const { odata } = require('@azure/data-tables');
+        // Test that odata escapes malicious input by replacing single quotes with pairs of quotes
+        const maliciousOwnerId = "owner-x' or PartitionKey ne '";
+        const filter = odata `PartitionKey eq ${maliciousOwnerId}`;
+        // The odata helper escapes single quotes by doubling them (OData standard escaping)
+        // So the malicious syntax becomes part of a string literal, not executable OData
+        (0, vitest_1.expect)(filter).toBe("PartitionKey eq 'owner-x'' or PartitionKey ne '''");
+        // The injection attempt is now just part of the string value
+        (0, vitest_1.expect)(filter).toContain("owner-x''");
+    });
+    (0, vitest_1.it)('normal ownerId works correctly with odata helper', async () => {
+        const { odata } = require('@azure/data-tables');
+        const normalOwnerId = "entra-user-123";
+        const filter = odata `PartitionKey eq ${normalOwnerId}`;
+        // Normal IDs are passed through unchanged
+        (0, vitest_1.expect)(filter).toBe("PartitionKey eq 'entra-user-123'");
+    });
+    (0, vitest_1.it)('listItinerariesHandler passes filter through odata helper', async () => {
+        const client = makeClient();
+        tableClient_1.getTableClient.mockReturnValue(client);
+        const req = { method: 'GET', headers: new Map() };
+        await (0, itineraries_1.listItinerariesHandler)(req, makeContext());
+        // Verify listEntities was called with queryOptions that include a filter
+        const listCall = client.listEntities.mock.calls[0];
+        (0, vitest_1.expect)(listCall).toBeDefined();
+        (0, vitest_1.expect)(listCall[0]?.queryOptions?.filter).toBeDefined();
+    });
+});

@@ -12,31 +12,43 @@ All endpoints are prefixed with `/api`. Requests and responses use `application/
 
 ## LLM Provider
 
-The generate endpoint uses [OpenRouter](https://openrouter.ai) as a model-routing layer, configured via two Azure App Settings:
+The generate endpoint uses **Azure AI Foundry** (via OpenAI SDK) to access GPT models, configured via three Azure App Settings:
 
 | Setting | Required | Default | Description |
 |---------|----------|---------|-------------|
-| `OPENROUTER_API_KEY` | yes | — | API key from openrouter.ai |
-| `LLM_MODEL` | no | `anthropic/claude-sonnet-4-6` | Model string passed to OpenRouter |
+| `AZURE_FOUNDRY_API_KEY` | yes | — | API key from Azure AI Foundry (stored in Key Vault secret `AZURE-FOUNDRY-API-KEY`) |
+| `AZURE_FOUNDRY_ENDPOINT` | yes | — | Azure AI Foundry endpoint URL |
+| `LLM_MODEL` | no | `gpt-4o` | Model name deployed in Azure AI Foundry |
 
 ### Switching models
 
 To swap the active model without redeploying:
 
 1. Go to **Azure Portal → Function App `sweden-travel-api` → Configuration → Application settings**
-2. Set `LLM_MODEL` to any [OpenRouter model string](https://openrouter.ai/models), e.g.:
-   - `openai/gpt-4o`
-   - `meta-llama/llama-3.1-70b-instruct`
-   - `anthropic/claude-opus-4-8`
+2. Set `LLM_MODEL` to any model deployed in your Azure AI Foundry project, e.g.:
+   - `gpt-4o` (default)
+   - `gpt-4-turbo`
+   - `gpt-35-turbo`
 3. Click **Save** and restart the Function App.
 
 ### Local development
 
-Add to `api/.env` (create if it doesn't exist):
+Add to `api/local.settings.json`:
 
+```json
+{
+  "AZURE_FOUNDRY_API_KEY": "your-api-key-here",
+  "AZURE_FOUNDRY_ENDPOINT": "https://<your-region>.api.cognitive.microsoft.com/openai",
+  "LLM_MODEL": "gpt-4o"
+}
 ```
-OPENROUTER_API_KEY=sk-or-...
-LLM_MODEL=anthropic/claude-sonnet-4-6
+
+Or set environment variables before running `npm start`:
+
+```bash
+export AZURE_FOUNDRY_API_KEY="your-api-key-here"
+export AZURE_FOUNDRY_ENDPOINT="https://<your-region>.api.cognitive.microsoft.com/openai"
+export LLM_MODEL="gpt-4o"
 ```
 
 ---
@@ -90,7 +102,7 @@ Saves (upserts) travel preferences.
 
 ## POST /api/generate
 
-Generates an AI-powered itinerary using Claude (forced tool use for structured output).
+Generates an AI-powered itinerary using Azure AI Foundry (forced tool use for structured output).
 
 **Request body**
 ```json
@@ -148,7 +160,8 @@ Generates an AI-powered itinerary using Claude (forced tool use for structured o
 ```
 
 **Response 400** — invalid request body.
-**Response 502** — Anthropic API error.
+**Response 429** — rate limit exceeded (5/hour per owner, 20/hour per IP).
+**Response 502** — Azure AI Foundry API error.
 
 ---
 

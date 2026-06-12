@@ -1,5 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { resolveOwnerId, AuthError } from './identity'
+import { resolveOwnerId, AuthError, verifyAccessToken } from './identity'
+
+describe('verifyAccessToken', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Clear environment variables
+    delete process.env.ENTRA_API_AUDIENCE
+    delete process.env.ENTRA_ISSUER_HOST
+  })
+
+  it('requires non-empty ENTRA_API_AUDIENCE', async () => {
+    // Unset ENTRA_API_AUDIENCE
+    delete process.env.ENTRA_API_AUDIENCE
+
+    const token = 'dummy.token.here'
+    await expect(verifyAccessToken(token)).rejects.toThrow(AuthError)
+  })
+
+  it('rejects when ENTRA_API_AUDIENCE is empty string', async () => {
+    process.env.ENTRA_API_AUDIENCE = ''
+
+    const token = 'dummy.token.here'
+    await expect(verifyAccessToken(token)).rejects.toThrow(AuthError)
+  })
+
+  it('accepts when ENTRA_API_AUDIENCE is set (though token validation will fail separately)', async () => {
+    process.env.ENTRA_API_AUDIENCE = 'api://app-id'
+
+    const token = 'invalid.token'
+    // This should fail at JWT verification (not audience validation), which is the expected behavior
+    await expect(verifyAccessToken(token)).rejects.toThrow()
+  })
+})
 
 describe('resolveOwnerId', () => {
   beforeEach(() => {

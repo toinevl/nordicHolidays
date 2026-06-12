@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { nanoid } from 'nanoid'
+import { odata } from '@azure/data-tables'
 import { getTableClient } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
@@ -78,10 +79,10 @@ export async function listItinerariesHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req)
+    const owner = await resolveOwnerId(req, ctx)
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
-    for await (const entity of client.listEntities({ queryOptions: { filter: `PartitionKey eq '${owner.ownerId}'` } })) {
+    for await (const entity of client.listEntities({ queryOptions: { filter: odata`PartitionKey eq ${owner.ownerId}` } })) {
       summaries.push(entityToSummary(entity as Record<string, unknown>))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -103,7 +104,7 @@ export async function getItineraryHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req)
+    const owner = await resolveOwnerId(req, ctx)
     const id = req.params.id
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(owner.ownerId, id) as Record<string, unknown>
@@ -136,7 +137,7 @@ export async function saveItineraryHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req)
+    const owner = await resolveOwnerId(req, ctx)
 
     let rawBody: unknown
     try {
@@ -191,7 +192,7 @@ export async function deleteItineraryHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req)
+    const owner = await resolveOwnerId(req, ctx)
     const id = req.params.id
     const client = getTableClient('Itineraries')
     await client.deleteEntity(owner.ownerId, id)

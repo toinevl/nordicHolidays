@@ -54,3 +54,36 @@ jobs:
           action: upload
           app_location: frontend/dist
           skip_app_build: true
+
+      - name: Smoke test frontend
+        run: |
+          FRONTEND_URL="https://zealous-forest-053645a03.7.azurestaticapps.net/"
+          MAX_RETRIES=6
+          RETRY_DELAY=10
+
+          echo "Starting frontend smoke tests..."
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            response=$(curl -s -w "\n%{http_code}" "$FRONTEND_URL")
+            body=$(echo "$response" | head -n -1)
+            status=$(echo "$response" | tail -n 1)
+
+            if [ "$status" = "200" ]; then
+              # Check for stable markers in the HTML
+              if echo "$body" | grep -q '<div id="status-bar"'; then
+                echo "✓ Frontend is live (200) with expected marker"
+                exit 0
+              else
+                echo "✗ Frontend returned 200 but missing expected marker"
+                exit 1
+              fi
+            fi
+
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "Attempt $i/$MAX_RETRIES returned $status, waiting ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
+          done
+
+          echo "✗ Frontend failed all $MAX_RETRIES attempts"
+          exit 1
