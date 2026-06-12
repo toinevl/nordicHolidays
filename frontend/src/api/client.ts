@@ -45,5 +45,10 @@ export const apiClient = {
   getItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}`),
   saveItinerary: (name: string, itinerary: Itinerary, thumbnail?: string) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) }),
   deleteItinerary: (id: string) => request<void>(`/api/itineraries/${id}`, { method: 'DELETE' }),
-  searchCities: (query: string) => request<CitySuggestion[]>(`/api/city-search?q=${encodeURIComponent(query)}`),
+  searchCities: (query: string, limit?: number) => {
+    const url = new URL('/api/city-search', import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net')
+    url.searchParams.set('q', query)
+    if (typeof limit === 'number') url.searchParams.set('limit', String(limit))
+    return request<CitySuggestion[]>(url.pathname + url.search)
+  },
 }

@@ -36,13 +36,13 @@ describe('GET /api/city-search', () => {
     expect(JSON.parse(short.body as string)).toEqual([])
   })
 
-  it('returns an empty array when no provider endpoint is configured', async () => {
+  it('falls back to the public Nominatim provider when no provider endpoint is configured', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const result = await citySearchHandler(requestWithQuery('st'))
 
     expect(result.status).toBe(200)
     expect(JSON.parse(result.body as string)).toEqual([])
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(fetchSpy).toHaveBeenCalledWith('https://nominatim.openstreetmap.org/search?q=st')
   })
 
   it('normalizes a configured provider response', async () => {

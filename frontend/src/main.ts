@@ -69,15 +69,18 @@ const statusBar = new StatusBar(
   (lang: Locale) => changeLocale(lang),
 )
 
-function applyItinerary(itinerary: Itinerary): void {
-  itineraryView.renderFromItinerary(itinerary)
-  const stopsForMap = itinerary.stops.map((s, i) => ({
+function toMapStops(itinerary: Itinerary): typeof STOPS {
+  return itinerary.stops.map((s, i) => ({
     id: i + 1, days: String(s.day), dates: '', dest: s.city, region: s.region,
     coords: [s.lng, s.lat] as [number, number], tags: [], nights: s.nights,
     desc: '', highlights: s.highlights, from: '', km: 0, time: '',
     zoom: 12, pitch: 45, bearing: 0,
   }))
-  mapView.replaceStops(stopsForMap)
+}
+
+function applyItinerary(itinerary: Itinerary): void {
+  itineraryView.renderFromItinerary(itinerary)
+  mapView.replaceStops(toMapStops(itinerary))
   statusBar.syncFromStore(store)
 }
 
@@ -99,7 +102,11 @@ const generatorPanel = new GeneratorPanel(
   }
 )
 
-store.subscribe(() => statusBar.syncFromStore(store))
+store.subscribe(() => {
+  statusBar.syncFromStore(store)
+  const { isGenerating } = store.getState()
+  loadingOverlay.classList.toggle('hidden', !isGenerating)
+})
 
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
 mapView.addStops(STOPS)
@@ -114,34 +121,39 @@ if (urlId) {
     })
     .catch(() => toast.error(t('toast.sharedItineraryFailed')))
 }
-
 // Flythrough
 let isFlying = false
 let flyIdx = 0
 
+function activeStops(): typeof STOPS {
+  const itinerary = store.getState().currentItinerary
+  return itinerary ? toMapStops(itinerary) : STOPS
+}
+
 function flyStep(): void {
   if (!isFlying) return
-  if (flyIdx >= STOPS.length) {
+  const stops = activeStops()
+  if (flyIdx >= stops.length) {
     isFlying = false
     const btn = document.getElementById('btn-fly')
     if (btn) btn.textContent = '▶ Fly the Route'
     return
   }
-  const stop = STOPS[flyIdx++]
+  const stop = stops[flyIdx++]
   store.setState({ selectedStopId: stop.id })
   mapView.flyTo(stop)
   mapView.setActiveMarker(stop.id)
 }
 
 document.getElementById('btn-fly')?.addEventListener('click', () => {
-  const btn = document.getElementById('btn-fly')!
+  const btnFly = document.getElementById('btn-fly')!
   if (isFlying) {
     isFlying = false
-    btn.textContent = '▶ Fly the Route'
+    btnFly.textContent = '▶ Fly the Route'
   } else {
     isFlying = true
     flyIdx = 0
-    btn.textContent = '⏸ Stop'
+    btnFly.textContent = '⏸ Stop'
     flyStep()
   }
 })

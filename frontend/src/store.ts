@@ -29,9 +29,6 @@ const initialState: Omit<AppState, 'locale'> = {
   activeTripId: null,
   selectedStopId: 1,
   currentFilter: 'all',
-  profile: null,
-  isAuthenticated: false,
-  accessToken: null,
 }
 
 type Listener = () => void

@@ -1,5 +1,4 @@
 import type { Locale } from './i18n/types'
-import type { Profile } from './api/types'
 
 export type Stop = {
   id: number
@@ -57,6 +56,7 @@ export type ItineraryStop = {
   highlights: string[]
   accommodation: string
   culinaryNotes: string
+  tags?: string[]
 }
 
 export type Itinerary = {
@@ -91,7 +91,4 @@ export type AppState = {
   selectedStopId: number
   currentFilter: string
   locale: Locale
-  profile: Profile | null
-  isAuthenticated: boolean
-  accessToken: string | null
 }

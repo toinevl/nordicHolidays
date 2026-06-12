@@ -121,11 +121,7 @@ async function citySearchHandler(req, ctx) {
     const q = getQuery(req);
     if (q.length < 2)
         return jsonResponse([], origin);
-    const endpoint = process.env.CITY_SEARCH_ENDPOINT?.trim();
-    if (!endpoint) {
-        (0, schemas_1.logError)(ctx, 'citySearchHandler: CITY_SEARCH_ENDPOINT not configured');
-        return jsonResponse([], origin);
-    }
+    const endpoint = process.env.CITY_SEARCH_ENDPOINT?.trim() ?? 'https://nominatim.openstreetmap.org/search';
     try {
         const separator = endpoint.includes('?') ? '&' : '?';
         const response = await fetch(`${endpoint}${separator}q=${encodeURIComponent(q)}`);

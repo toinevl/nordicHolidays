@@ -50,7 +50,44 @@ cd api && npm test
 - **Storage:** Azure Table Storage — `Itineraries`, `Preferences`, `Profiles`, and `RateLimits` tables (partitioned per owner)
 - **AI:** Azure AI Foundry (OpenAI SDK, model `gpt-4o` by default) via server-side `POST /api/generate` with forced tool use for structured output
 
-See [docs/architecture.md](docs/architecture.md) for the full topology diagram, repository structure, and data-flow walkthroughs.
+```mermaid
+flowchart TB
+  Traveler([Traveler])
+
+  subgraph Browser["Browser"]
+    Store[Store<br/>AppState · subscriptions]
+    GeneratorPanel[GeneratorPanel<br/>preferences · city search · generate]
+    SavedTripsPanel[SavedTripsPanel<br/>save · load · delete]
+    MapView[MapView<br/>MapLibre GL · animated route]
+    ItineraryView[ItineraryView<br/>timeline · filters · print]
+    StatusBar[StatusBar<br/>locale · saved/unsaved · share]
+  end
+
+  SWA[Azure Static Web Apps<br/>serves /dist<br/>handles ?id share links]
+  API[Azure Functions v4<br/>Flex Consumption<br/>TypeScript API]
+  Table[(Azure Table Storage<br/>Itineraries<br/>Preferences<br/>RateLimits)]
+  LLM[Azure AI Foundry<br/>OpenAI-compatible LLM<br/>structured itinerary tool]
+  City[(Nominatim<br/>city autocomplete)]
+  Tiles[(OpenFreeMap<br/>MapLibre tiles)]
+  Entra[Entra ID<br/>Bearer token validation]
+  GitHub[GitHub Actions<br/>frontend + API workflows]
+  Repo[(Repository<br/>frontend/ · api/ · docs/)]
+
+  Traveler -->|HTTPS static assets| SWA
+  SWA -->|HTTPS fetch + CORS| Browser
+  Browser -->|GET/PUT/POST/DELETE JSON| API
+  API -->|verify Authorization or X-Owner-Id| Entra
+  API -->|CRUD with STORAGE_CONNECTION_STRING| Table
+  API -->|chat.completions.create| LLM
+  API -->|GET q| City
+  Browser -->|Nominatim autocomplete| City
+  Browser -->|Map tiles| Tiles
+  Repo -->|push main| GitHub
+  GitHub -->|deploy frontend/dist| SWA
+  GitHub -->|zip deploy api| API
+```
+
+See [docs/architecture-diagram.md](docs/architecture-diagram.md) for the full Mermaid architecture documentation, including generation, save/share, load, and component responsibility flows.
 
 ---
 

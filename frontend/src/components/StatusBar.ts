@@ -8,6 +8,7 @@ export class StatusBar {
   private onOpenSaved: () => void
   private onShare: (tripId: string) => void
   private onLocaleChange: (locale: Locale) => void
+  private currentTripId: string | null = null
 
   constructor(
     el: HTMLElement,
@@ -90,12 +91,13 @@ export class StatusBar {
   private bindButtons(activeTripId: string | null, locale: Locale): void {
     this.el.querySelector('#btn-open-saved')?.addEventListener('click', this.onOpenSaved)
     this.el.querySelector('#btn-open-generator')?.addEventListener('click', this.onOpenGenerator)
-    if (activeTripId) {
-      const shareBtn = this.el.querySelector('#btn-share')
-      shareBtn?.addEventListener('click', () => {
-        if (activeTripId) this.onShare(activeTripId)
-      })
+    const onShare = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return
+      if (!target.closest('#btn-share')) return
+      const current = this.currentTripId ?? activeTripId
+      if (current) this.onShare(current)
     }
+    this.el.addEventListener('click', (event) => onShare(event.target))
     this.el.querySelector('#btn-locale-nl')?.addEventListener('click', () => {
       if (locale !== 'nl') this.onLocaleChange('nl')
     })
@@ -106,7 +108,9 @@ export class StatusBar {
 
   syncFromStore(store: Store): void {
     const { activeTripName, unsaved, activeTripId, locale } = store.getState()
+    this.currentTripId = activeTripId ?? this.currentTripId ?? null
+    const displayName = activeTripName ?? t('status.defaultTripName')
     const badge = unsaved ? 'unsaved' : activeTripName ? 'saved' : null
-    this.render(activeTripName ?? t('status.defaultTripName'), badge, activeTripId ?? null, locale)
+    this.render(displayName, badge, this.currentTripId, locale)
   }
 }

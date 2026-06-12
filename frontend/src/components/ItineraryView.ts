@@ -87,7 +87,7 @@ export class ItineraryView {
         dest: s.city,
         region: s.region,
         coords: [s.lng, s.lat] as [number, number],
-        tags: [],
+        tags: s.tags ?? [],
         nights: s.nights,
         desc: '',
         highlights: s.highlights,
@@ -104,6 +104,8 @@ export class ItineraryView {
     this.currentFilter = 'all'
     this.renderRouteTools()
     this.renderTimeline()
+    this.renderCulinary()
+    this.renderAccommodations()
     this.initScrollReveal()
 
     const titleEl = document.querySelector('.hero-title, h1, .page-title') as HTMLElement | null
