@@ -34,6 +34,46 @@ loadingOverlay.innerHTML = `
 `
 document.body.appendChild(loadingOverlay)
 
+function onReorderStopForMain(stopId: number, direction: 'up' | 'down'): void {
+  const state = store.getState()
+  const itinerary = state.currentItinerary
+  if (!itinerary || !Array.isArray(itinerary.stops)) return
+  const idx = itinerary.stops.findIndex(
+    (s) => s.day === stopId || String(s.day) === String(stopId),
+  )
+  if (idx < 0) return
+  const target = direction === 'up' ? idx - 1 : idx + 1
+  if (target < 0 || target >= itinerary.stops.length) return
+  const stops = [...itinerary.stops]
+  ;[stops[idx], stops[target]] = [stops[target], stops[idx]]
+  const next = { ...itinerary, stops }
+  store.setState({ currentItinerary: next, unsaved: true })
+  itineraryView.renderFromItinerary(next)
+  if (state.activeTripId) {
+    apiClient
+      .updateItinerary(state.activeTripId, { stops })
+      .catch(() => toast.error(t('saved.saveFailed')))
+  }
+}
+
+function onRemoveStopForMain(stopId: number): void {
+  const state = store.getState()
+  const itinerary = state.currentItinerary
+  if (!itinerary || !Array.isArray(itinerary.stops)) return
+  const stops = itinerary.stops.filter(
+    (s) => s.day !== stopId && String(s.day) !== String(stopId),
+  )
+  if (stops.length === itinerary.stops.length) return
+  const next = { ...itinerary, stops }
+  store.setState({ currentItinerary: next, unsaved: true })
+  itineraryView.renderFromItinerary(next)
+  if (state.activeTripId) {
+    apiClient
+      .updateItinerary(state.activeTripId, { stops })
+      .catch(() => toast.error(t('saved.saveFailed')))
+  }
+}
+
 const itineraryView = new ItineraryView(
   (filter) => {
     store.setState({ currentFilter: filter })
@@ -45,7 +85,9 @@ const itineraryView = new ItineraryView(
     itineraryView.setSelectedStop(stop.id, false)
     mapView.setActiveMarker(stop.id)
     if (opts?.fly !== false) mapView.flyTo(stop)
-  }
+  },
+  onReorderStopForMain,
+  onRemoveStopForMain,
 )
 
 const mapView = new MapView('map', (stop, opts) => {
@@ -71,10 +113,22 @@ const statusBar = new StatusBar(
 
 function toMapStops(itinerary: Itinerary): typeof STOPS {
   return itinerary.stops.map((s, i) => ({
-    id: i + 1, days: String(s.day), dates: '', dest: s.city, region: s.region,
-    coords: [s.lng, s.lat] as [number, number], tags: [], nights: s.nights,
-    desc: '', highlights: s.highlights, from: '', km: 0, time: '',
-    zoom: 12, pitch: 45, bearing: 0,
+    id: i + 1,
+    days: String(s.day),
+    dates: '',
+    dest: s.city,
+    region: s.region,
+    coords: [s.lng, s.lat] as [number, number],
+    tags: [],
+    nights: s.nights,
+    desc: '',
+    highlights: s.highlights,
+    from: '',
+    km: 0,
+    time: '',
+    zoom: 12,
+    pitch: 45,
+    bearing: 0,
   }))
 }
 
@@ -121,51 +175,3 @@ if (urlId) {
     })
     .catch(() => toast.error(t('toast.sharedItineraryFailed')))
 }
-// Flythrough
-let isFlying = false
-let flyIdx = 0
-
-function activeStops(): typeof STOPS {
-  const itinerary = store.getState().currentItinerary
-  return itinerary ? toMapStops(itinerary) : STOPS
-}
-
-function flyStep(): void {
-  if (!isFlying) return
-  const stops = activeStops()
-  if (flyIdx >= stops.length) {
-    isFlying = false
-    const btn = document.getElementById('btn-fly')
-    if (btn) btn.textContent = '▶ Fly the Route'
-    return
-  }
-  const stop = stops[flyIdx++]
-  store.setState({ selectedStopId: stop.id })
-  mapView.flyTo(stop)
-  mapView.setActiveMarker(stop.id)
-}
-
-document.getElementById('btn-fly')?.addEventListener('click', () => {
-  const btnFly = document.getElementById('btn-fly')!
-  if (isFlying) {
-    isFlying = false
-    btnFly.textContent = '▶ Fly the Route'
-  } else {
-    isFlying = true
-    flyIdx = 0
-    btnFly.textContent = '⏸ Stop'
-    flyStep()
-  }
-})
-
-window.addEventListener('scroll', () => {
-  document.getElementById('nav')?.classList.toggle('scrolled', scrollY > 60)
-})
-
-fetch('/build-info.json')
-  .then(r => r.json())
-  .then((info: { runNumber?: string; sha?: string }) => {
-    const el = document.getElementById('build-indicator')
-    if (el) el.innerHTML = `<span class="build-dot"></span><span>Build ${info.runNumber ?? '—'} · ${info.sha?.slice(0, 7) ?? 'local'}</span>`
-  })
-  .catch(() => {})

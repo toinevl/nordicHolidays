@@ -5,7 +5,7 @@ import { getTableClient } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
-import { SaveItineraryBodySchema, logError } from '../lib/schemas'
+import { SaveItineraryBodySchema, ItineraryPatchBodySchema, logError } from '../lib/schemas'
 
 /**
  * Validate and sanitize a thumbnail URL.
@@ -184,6 +184,66 @@ export async function saveItineraryHandler(
   }
 }
 
+export async function updateItineraryHandler(
+  req: HttpRequest,
+  ctx: InvocationContext,
+): Promise<HttpResponseInit> {
+  const origin = req.headers.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method !== 'PATCH') return withCors({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
+
+  try {
+    const owner = await resolveOwnerId(req, ctx)
+    const id = req.params.id
+    if (!id) return withCors({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
+
+    let rawBody: unknown
+    try {
+      rawBody = await req.json()
+    } catch (err) {
+      logError(ctx, 'updateItineraryHandler: invalid JSON body', err)
+      return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    }
+
+    const parseResult = ItineraryPatchBodySchema.safeParse(rawBody)
+    if (!parseResult.success) {
+      const errors = parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.code}`).join('; ')
+      logError(ctx, `updateItineraryHandler: validation failed - ${errors}`, parseResult.error)
+      return withCors({
+        status: 400,
+        body: JSON.stringify({ error: 'Invalid request body', details: errors }),
+        headers: { 'Content-Type': 'application/json' }
+      }, origin)
+    }
+
+    const patch = parseResult.data
+    const client = getTableClient('Itineraries')
+    const entity = await client.getEntity(owner.ownerId, id) as Record<string, unknown>
+
+    const itinerary = JSON.parse(entity.itineraryJson as string) as Record<string, unknown>
+    if (typeof patch.title === 'string') itinerary.title = patch.title
+    if (typeof patch.startCity === 'string') itinerary.startCity = patch.startCity
+    if (typeof patch.endCity === 'string') itinerary.endCity = patch.endCity
+    if (Array.isArray(patch.stops)) itinerary.stops = patch.stops
+
+    await client.updateEntity({
+      partitionKey: owner.ownerId,
+      rowKey: id,
+      eTag: entity.etag as string | undefined,
+      startCity: (itinerary.startCity ?? entity.startCity) as string,
+      endCity: (itinerary.endCity ?? entity.endCity) as string,
+      itineraryJson: JSON.stringify(itinerary),
+    })
+
+    return withCors({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinerary) }, origin)
+  } catch (err: any) {
+    if (err instanceof Error && err.name === 'AuthError') return authErrorResponse(err, origin)
+    if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    logError(ctx, 'updateItineraryHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  }
+}
+
 export async function deleteItineraryHandler(
   req: HttpRequest,
   ctx: InvocationContext,
@@ -218,10 +278,11 @@ app.http('itineraries', {
 })
 
 app.http('itineraryById', {
-  methods: ['GET', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'PATCH', 'DELETE', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'itineraries/{id}',
   handler: (req, ctx) => {
+    if (req.method === 'PATCH') return updateItineraryHandler(req, ctx)
     if (req.method === 'DELETE') return deleteItineraryHandler(req, ctx)
     return getItineraryHandler(req, ctx)
   },

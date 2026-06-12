@@ -5,7 +5,66 @@ import { t, tpl } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
 
 export type FilterChangeCallback = (filter: string) => void
-export type StopSelectCallback = (stop: Stop, options?: { fly?: boolean }) => void
+export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
+export type UpdateStopCallback = (stopId: number, updates: Record<string, unknown>) => void
+export type ReorderStopCallback = (stopId: number, direction: 'up' | 'down') => void
+export type RemoveStopCallback = (stopId: number) => void
+
+export function applyInlineEditToItinerary(
+  currentItinerary: Record<string, unknown> | null,
+  action:
+    | { type: 'updateStop'; stop: Record<string, unknown>; previousStop: Record<string, unknown> }
+    | { type: 'reorderStops'; stops: Record<string, unknown>[] },
+) {
+  if (!currentItinerary || !Array.isArray(currentItinerary.stops)) return currentItinerary
+  const updatedItinerary = { ...currentItinerary } as Record<string, unknown>
+  const stops = [...(updatedItinerary.stops as Record<string, unknown>[])]
+
+  if (action.type === 'updateStop') {
+    const index = stops.findIndex((candidate) => String(candidate.id) === String(action.stop.id))
+    if (index !== -1) stops[index] = { ...action.previousStop, ...action.stop }
+  }
+
+  if (action.type === 'reorderStops') {
+    if (action.stops.length !== stops.length) return updatedItinerary
+    updatedItinerary.stops = action.stops
+  }
+
+  updatedItinerary.stops = stops
+  return updatedItinerary
+}
+
+export function updateInlineEditStopsOrder(
+  stops: Array<Record<string, unknown>>,
+  stopId: number,
+  action: { type: 'moveUp' } | { type: 'moveDown' } | { type: 'remove' },
+): Array<Record<string, unknown>> | null {
+  const updated = [...stops]
+
+  if (action.type === 'remove') {
+    const index = updated.findIndex((candidate) => typeof candidate.id === 'number' && candidate.id === stopId)
+    if (index === -1) return null
+    updated.splice(index, 1)
+  }
+
+  if (action.type === 'moveUp') {
+    const index = updated.findIndex((candidate) => typeof candidate.id === 'number' && candidate.id === stopId)
+    if (index <= 0) return null
+    const target = { ...updated[index] } as Record<string, unknown>
+    updated[index] = updated[index - 1]
+    updated[index - 1] = target
+  }
+
+  if (action.type === 'moveDown') {
+    const index = updated.findIndex((candidate) => typeof candidate.id === 'number' && candidate.id === stopId)
+    if (index === -1 || index >= updated.length - 1) return null
+    const target = { ...updated[index] } as Record<string, unknown>
+    updated[index] = updated[index + 1]
+    updated[index + 1] = target
+  }
+
+  return updated
+}
 
 function tagLabel(tag: string): string {
   const label = tag === 'offbeat' ? 'Off-beat' : tag[0].toUpperCase() + tag.slice(1)
@@ -26,10 +85,6 @@ function regionColorKey(region: string): string {
   return match ? match[1] : 'amber'
 }
 
-/**
- * Sanitize a tag string to be used as a CSS class token.
- * Only allows lowercase letters, digits, and hyphens to prevent attribute breakout.
- */
 function sanitizeTagForClass(tag: string): string {
   return tag.toLowerCase().replace(/[^a-z0-9-]/g, '')
 }
@@ -42,10 +97,19 @@ export class ItineraryView {
   private selectedStopId = 1
   private onFilterChange: FilterChangeCallback
   private onStopSelect: StopSelectCallback
+  private onReorderStop: ReorderStopCallback
+  private onRemoveStop: RemoveStopCallback
 
-  constructor(onFilterChange: FilterChangeCallback, onStopSelect: StopSelectCallback) {
+  constructor(
+    onFilterChange: FilterChangeCallback,
+    onStopSelect: StopSelectCallback,
+    onReorderStop: ReorderStopCallback,
+    onRemoveStop: RemoveStopCallback,
+  ) {
     this.onFilterChange = onFilterChange
     this.onStopSelect = onStopSelect
+    this.onReorderStop = onReorderStop
+    this.onRemoveStop = onRemoveStop
   }
 
   render(stops: Stop[], culinary: CulinaryRegion[], accommodations: Accommodation[]): void {
@@ -87,7 +151,7 @@ export class ItineraryView {
         dest: s.city,
         region: s.region,
         coords: [s.lng, s.lat] as [number, number],
-        tags: s.tags ?? [],
+        tags: (s as Record<string, unknown>).tags as string[] ?? [],
         nights: s.nights,
         desc: '',
         highlights: s.highlights,
@@ -121,7 +185,7 @@ export class ItineraryView {
   setSelectedStop(stopId: number, scroll = false): void {
     this.selectedStopId = stopId
     this.renderSelectedStop()
-    document.querySelectorAll('.t-card').forEach(c => c.classList.remove('active'))
+    document.querySelectorAll('.t-card').forEach((c) => c.classList.remove('active'))
     document.getElementById(`stop-${stopId}`)?.classList.add('active')
     if (scroll) {
       const card = document.getElementById(`stop-${stopId}`)
@@ -130,34 +194,38 @@ export class ItineraryView {
   }
 
   private renderRouteTools(): void {
-    const totalNights   = this.stops.reduce((sum, s) => sum + s.nights, 0)
-    const totalKm       = this.stops.reduce((sum, s) => sum + s.km, 0)
-    const longestDrive  = this.stops.reduce((max, s) => s.km > max.km ? s : max, this.stops[0])
-    const overnightStops = this.stops.filter(s => s.nights > 0).length
+    const totalNights = this.stops.reduce((sum, s) => sum + s.nights, 0)
+    const totalKm = this.stops.reduce((sum, s) => sum + s.km, 0)
+    const longestDrive = this.stops.reduce((max, s) => (s.km > max.km ? s : max), this.stops[0])
+    const overnightStops = this.stops.filter((s) => s.nights > 0).length
 
     const summaryEl = document.getElementById('route-summary')
     if (summaryEl) {
       summaryEl.innerHTML = [
-        { value: `${totalNights}`,                 label: t('itinerary.plannedNights') },
-        { value: totalKm.toLocaleString('en-US'),  label: t('itinerary.roadKilometres') },
-        { value: `${overnightStops}`,              label: t('itinerary.overnightStops') },
-        { value: `${longestDrive.km} km`,          label: tpl('itinerary.longestDriveTo', { dest: longestDrive.dest }) },
-      ].map((item, i) => `
+        { value: `${totalNights}`, label: t('itinerary.plannedNights') },
+        { value: totalKm.toLocaleString('en-US'), label: t('itinerary.roadKilometres') },
+        { value: `${overnightStops}`, label: t('itinerary.overnightStops') },
+        { value: `${longestDrive.km} km`, label: tpl('itinerary.longestDriveTo', { dest: longestDrive.dest }) },
+      ]
+        .map((item, i) => `
         <div class="summary-tile" data-reveal style="transition-delay:${0.05 + i * 0.06}s">
           <div class="summary-value">${item.value}</div>
           <div class="summary-label">${item.label}</div>
-        </div>`).join('')
+        </div>`)
+        .join('')
     }
 
-    const tags = ['all', ...new Set(this.stops.flatMap(s => s.tags))]
+    const tags = ['all', ...new Set(this.stops.flatMap((s) => s.tags))]
     const chipsEl = document.getElementById('filter-chips')
     if (chipsEl) {
-      chipsEl.innerHTML = tags.map(tag => `
+      chipsEl.innerHTML = tags
+        .map((tag) => `
         <button class="chip ${tag === this.currentFilter ? 'active' : ''}" data-filter="${escapeHtml(tag)}">
           ${tag === 'all' ? t('itinerary.allStops') : tagLabel(tag)}
-        </button>`).join('')
+        </button>`)
+        .join('')
 
-      chipsEl.querySelectorAll<HTMLButtonElement>('.chip').forEach(chip => {
+      chipsEl.querySelectorAll<HTMLButtonElement>('.chip').forEach((chip) => {
         chip.addEventListener('click', () => {
           const filter = chip.dataset.filter ?? 'all'
           this.onFilterChange(filter)
@@ -169,7 +237,7 @@ export class ItineraryView {
   }
 
   private renderSelectedStop(): void {
-    const stop = this.stops.find(s => s.id === this.selectedStopId) || this.stops[0]
+    const stop = this.stops.find((s) => s.id === this.selectedStopId) || this.stops[0]
     if (!stop) return
     const drive = stop.km > 0 ? `${stop.km} km from ${escapeHtml(stop.from)} · ${stop.time}` : escapeHtml(stop.from)
     const el = document.getElementById('selected-stop')
@@ -185,43 +253,58 @@ export class ItineraryView {
     const tl = document.getElementById('timeline')
     if (!tl) return
 
-    tl.innerHTML = this.stops.map((s, idx) => {
-      const tags   = s.tags.map(t => `<span class="tag tag-${sanitizeTagForClass(t)}">${tagLabel(t)}</span>`).join('')
-      const nights = s.nights === 0 ? t('itinerary.dayTrip') : s.nights === 1 ? t('itinerary.oneNight') : tpl('itinerary.nights', { n: String(s.nights) })
-      const drive  = s.km > 0
-        ? `<div class="stop-drive">🚗 from ${escapeHtml(s.from)}<br>${s.km} km · ${s.time}</div>`
-        : `<div class="stop-drive">⛴️ ${escapeHtml(s.from)}</div>`
+    tl.innerHTML = this.stops
+      .map((s, idx) => {
+        const tags = s.tags
+          .map((tag) => `<span class="tag tag-${sanitizeTagForClass(tag)}">${tagLabel(tag)}</span>`)
+          .join('')
+        const nights =
+          s.nights === 0
+            ? t('itinerary.dayTrip')
+            : s.nights === 1
+              ? t('itinerary.oneNight')
+              : tpl('itinerary.nights', { n: String(s.nights) })
+        const drive =
+          s.km > 0
+            ? `<div class="stop-drive">🚗 from ${escapeHtml(s.from)}<br>${s.km} km · ${s.time}</div>`
+            : `<div class="stop-drive">⛴️ ${escapeHtml(s.from)}</div>`
 
-      return `<div class="t-item" data-tags="${escapeHtml(s.tags.join(','))}" data-reveal style="transition-delay:${idx * 0.04}s">
-        <div class="t-dot"><div class="dot">${s.id}</div></div>
-        <div>
-          <div class="t-meta">
-            <div class="stop-date">Day ${s.days} · ${s.dates}</div>
-            ${drive}
-          </div>
-          <div class="t-card" id="stop-${s.id}" data-day="${s.id}">
-            <div class="card-head">
-              <div><div class="card-dest">${escapeHtml(s.dest)}</div><div class="card-region region--${regionColorKey(s.region)}">${escapeHtml(s.region)}</div></div>
-              <div class="card-nights">${nights}</div>
+        return `<div class="t-item" data-tags="${escapeHtml(s.tags.join(','))}" data-reveal style="transition-delay:${idx * 0.04}s">
+          <div class="t-dot"><div class="dot">${s.id}</div></div>
+          <div>
+            <div class="t-meta">
+              <div class="stop-date">Day ${s.days} · ${s.dates}</div>
+              ${drive}
             </div>
-            <div class="tags">${tags}</div>
-            <p class="card-desc">${escapeHtml(s.desc)}</p>
-            <ul class="card-highlights">${s.highlights.map(h => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
-            ${(() => {
-              const info = getSeasonInfo(s.region)
-              return info
-                ? `<div class="season-callout"><span class="season-callout__icon">${info.icon}</span><span>${t(info.noteKey)}</span></div>`
-                : ''
-            })()}
-            <button class="btn-fly" data-id="${s.id}">${t('itinerary.flyHere')}</button>
+            <div class="t-card" id="stop-${s.id}" data-day="${s.id}">
+              <div class="card-head">
+                <div><div class="card-dest">${escapeHtml(s.dest)}</div><div class="card-region region--${regionColorKey(s.region)}">${escapeHtml(s.region)}</div></div>
+                <div class="card-nights">${nights}</div>
+              </div>
+              <div class="tags">${tags}</div>
+              <p class="card-desc">${escapeHtml(s.desc)}</p>
+              <ul class="card-highlights">${s.highlights.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
+              ${(() => {
+                const info = getSeasonInfo(s.region)
+                return info
+                  ? `<div class="season-callout"><span class="season-callout__icon">${info.icon}</span><span>${t(info.noteKey)}</span></div>`
+                  : ''
+              })()}
+              <button class="btn-fly" data-id="${s.id}">${t('itinerary.flyHere')}</button>
+              <div class="stop-actions">
+                <button type="button" class="btn btn--ghost btn--small" data-action="moveUp" data-id="${s.id}" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                <button type="button" class="btn btn--ghost btn--small" data-action="moveDown" data-id="${s.id}" ${idx === this.stops.length - 1 ? 'disabled' : ''}>▼</button>
+                <button type="button" class="btn btn--ghost btn--small" data-action="remove" data-id="${s.id}">✕</button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>`
-    }).join('')
+        </div>`
+      })
+      .join('')
 
-    tl.querySelectorAll<HTMLButtonElement>('.btn-fly').forEach(btn => {
+    tl.querySelectorAll<HTMLButtonElement>('.btn-fly').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const stop = this.stops.find(s => s.id === Number(btn.dataset.id))
+        const stop = this.stops.find((s) => s.id === Number(btn.dataset.id))
         if (stop) {
           this.onStopSelect(stop)
           window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -229,11 +312,38 @@ export class ItineraryView {
       })
     })
 
-    tl.querySelectorAll<HTMLElement>('.t-card').forEach(card => {
+    tl.querySelectorAll<HTMLElement>('.t-card').forEach((card) => {
       card.addEventListener('click', (event) => {
         if ((event.target as HTMLElement).closest('button')) return
-        const stop = this.stops.find(s => `stop-${s.id}` === card.id)
+        const stop = this.stops.find((s) => `stop-${s.id}` === card.id)
         if (stop) this.onStopSelect(stop, { fly: false })
+      })
+    })
+
+    tl.querySelectorAll<HTMLElement>('[data-action="remove"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation()
+        const stopId = Number(button.getAttribute('data-id'))
+        if (!Number.isFinite(stopId)) return
+        this.onRemoveStop(stopId)
+      })
+    })
+
+    tl.querySelectorAll<HTMLElement>('[data-action="moveUp"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation()
+        const stopId = Number(button.getAttribute('data-id'))
+        if (!Number.isFinite(stopId)) return
+        this.onReorderStop(stopId, 'up')
+      })
+    })
+
+    tl.querySelectorAll<HTMLElement>('[data-action="moveDown"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation()
+        const stopId = Number(button.getAttribute('data-id'))
+        if (!Number.isFinite(stopId)) return
+        this.onReorderStop(stopId, 'down')
       })
     })
 
@@ -243,7 +353,7 @@ export class ItineraryView {
 
   private applyTimelineFilter(): void {
     let visible = 0
-    document.querySelectorAll<HTMLElement>('.t-item').forEach(item => {
+    document.querySelectorAll<HTMLElement>('.t-item').forEach((item) => {
       const tags = (item.dataset.tags ?? '').split(',')
       const show = this.currentFilter === 'all' || tags.includes(this.currentFilter)
       item.classList.toggle('hidden', !show)
@@ -268,15 +378,17 @@ export class ItineraryView {
   private renderCulinary(): void {
     const el = document.getElementById('cul-grid')
     if (!el) return
-    el.innerHTML = this.culinary.map((c, i) => `
+    el.innerHTML = this.culinary
+      .map((c, i) => `
       <div class="cul-card" data-reveal style="transition-delay:${i * 0.08}s">
         <div class="cul-icon">${c.icon}</div>
         <div class="cul-name">${escapeHtml(c.name)}</div>
         <div class="cul-region" style="color:${c.color}">${escapeHtml(c.region)}</div>
         <p class="cul-desc">${escapeHtml(c.desc)}</p>
         <div class="cul-label">Must try</div>
-        <ul class="cul-list">${c.must.map(m => `<li>${escapeHtml(m)}</li>`).join('')}</ul>
-      </div>`).join('')
+        <ul class="cul-list">${c.must.map((m) => `<li>${escapeHtml(m)}</li>`).join('')}</ul>
+      </div>`)
+      .join('')
   }
 
   private renderAccommodations(): void {
@@ -284,7 +396,8 @@ export class ItineraryView {
     if (!el) return
     const pl: Record<string, string> = { free: 'Free cancellation', cond: 'Conditional', mod: 'Moderate' }
     const pc: Record<string, string> = { free: 'b-free', cond: 'b-mod', mod: 'b-mod' }
-    el.innerHTML = this.accommodations.map(a => `
+    el.innerHTML = this.accommodations
+      .map((a) => `
       <tr>
         <td>${escapeHtml(a.dest)}</td>
         <td>${escapeHtml(a.type)}</td>
@@ -292,14 +405,15 @@ export class ItineraryView {
         <td class="${a.bath ? 'ok' : 'no'}">${a.bath ? '✓' : '✗'}</td>
         <td class="${a.terrace ? 'ok' : 'no'}">${a.terrace ? '✓' : '–'}</td>
         <td class="td-note">${escapeHtml(a.note)}</td>
-      </tr>`).join('')
+      </tr>`)
+      .join('')
   }
 
   private initScrollReveal(): void {
     const observer = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in') }),
-      { threshold: 0.1 }
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('in') }),
+      { threshold: 0.1 },
     )
-    document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el))
+    document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el))
   }
 }
