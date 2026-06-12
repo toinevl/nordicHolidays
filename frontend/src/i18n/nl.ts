@@ -67,6 +67,10 @@ export const nl: LocaleStrings = {
     flyHere: 'Vlieg hierheen',
     noStopsMatch: 'Geen stops gevonden',
     print: 'Afdrukken',
+    notes: 'Notities',
+    notesPlaceholder: 'Voeg je eigen notities toe',
+    saveNote: 'Opslaan',
+    savingNote: 'Opslaan...',
   },
   season: {
     skane: 'Mild klimaat. Warme zomers, kleurrijke herfsten.',

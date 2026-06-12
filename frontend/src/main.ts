@@ -7,7 +7,7 @@ import { GeneratorPanel } from './components/GeneratorPanel'
 import { SavedTripsPanel } from './components/SavedTripsPanel'
 import { Toast } from './components/Toast'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
-import type { Itinerary, Locale } from './types'
+import type { Itinerary, ItineraryStop, Locale } from './types'
 import { apiClient } from './api/client'
 import { setLocale } from './i18n/index'
 import { t, tpl } from './i18n/index'
@@ -74,6 +74,31 @@ function onRemoveStopForMain(stopId: number): void {
   }
 }
 
+function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
+  const state = store.getState()
+  if (!state.currentItinerary || !state.activeTripId || !Array.isArray(state.currentItinerary.stops)) {
+    return Promise.resolve()
+  }
+
+  const updatedStops = state.currentItinerary.stops.map((item) => {
+    if (item.day === stop.day) {
+      return { ...item, userNotes: note }
+    }
+    return item
+  })
+
+  const next = { ...state.currentItinerary, stops: updatedStops }
+  store.setState({ currentItinerary: next, unsaved: true })
+  itineraryView.renderFromItinerary(next)
+
+  return Promise.resolve(
+    apiClient.saveStopNote(state.activeTripId, stop.day, note)
+  ).then(() => undefined).catch((error) => {
+    toast.error(error instanceof Error ? error.message : 'Failed to save note')
+    throw error
+  })
+}
+
 const itineraryView = new ItineraryView(
   (filter) => {
     store.setState({ currentFilter: filter })
@@ -88,6 +113,7 @@ const itineraryView = new ItineraryView(
   },
   onReorderStopForMain,
   onRemoveStopForMain,
+  onSaveNoteForMain,
 )
 
 const mapView = new MapView('map', (stop, opts) => {

@@ -45,6 +45,15 @@ export const apiClient = {
   getItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}`),
   saveItinerary: (name: string, itinerary: Itinerary, thumbnail?: string) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) }),
   updateItinerary: (id: string, patch: Partial<Itinerary>) => request<Itinerary>(`/api/itineraries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  saveStopNote: (itineraryId: string, stopDay: number, userNotes: string) =>
+    request<Itinerary>(`/api/itineraries/${itineraryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        stops: [
+          { day: stopDay, userNotes },
+        ],
+      }),
+    }),
   deleteItinerary: (id: string) => request<void>(`/api/itineraries/${id}`, { method: 'DELETE' }),
   searchCities: (query: string, limit?: number) => {
     const url = new URL('/api/city-search', import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net')

@@ -1,4 +1,4 @@
-import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
+import type { Stop, CulinaryRegion, Accommodation, Itinerary, ItineraryStop } from '../types'
 import { haversineKm } from '../lib/distance'
 import { getSeasonInfo } from '../data/seasonData'
 import { t, tpl } from '../i18n/index'
@@ -9,6 +9,7 @@ export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>)
 export type UpdateStopCallback = (stopId: number, updates: Record<string, unknown>) => void
 export type ReorderStopCallback = (stopId: number, direction: 'up' | 'down') => void
 export type RemoveStopCallback = (stopId: number) => void
+export type SaveNoteCallback = (stop: ItineraryStop, note: string) => Promise<void>
 
 export function applyInlineEditToItinerary(
   currentItinerary: Record<string, unknown> | null,
@@ -99,17 +100,20 @@ export class ItineraryView {
   private onStopSelect: StopSelectCallback
   private onReorderStop: ReorderStopCallback
   private onRemoveStop: RemoveStopCallback
+  private onSaveNoteCallback?: (stop: ItineraryStop, note: string) => Promise<void>
 
   constructor(
     onFilterChange: FilterChangeCallback,
     onStopSelect: StopSelectCallback,
     onReorderStop: ReorderStopCallback,
     onRemoveStop: RemoveStopCallback,
+    onSaveNote?: (stop: ItineraryStop, note: string) => Promise<void>,
   ) {
     this.onFilterChange = onFilterChange
     this.onStopSelect = onStopSelect
     this.onReorderStop = onReorderStop
     this.onRemoveStop = onRemoveStop
+    this.onSaveNoteCallback = onSaveNote
   }
 
   render(stops: Stop[], culinary: CulinaryRegion[], accommodations: Accommodation[]): void {
@@ -285,6 +289,16 @@ export class ItineraryView {
               <p class="card-desc">${escapeHtml(s.desc)}</p>
               <ul class="card-highlights">${s.highlights.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
               ${(() => {
+                const note = (s as any).userNotes
+                const noteText = typeof note === 'string' ? escapeHtml(note) : ''
+                return `
+                <div class="stop-notes" data-stop-id="${s.id}">
+                  <label class="stop-notes-label" for="note-${s.id}">${t('itinerary.notes')}</label>
+                  <textarea id="note-${s.id}" class="form-input stop-notes-input" maxlength="2000" placeholder="${t('itinerary.notesPlaceholder')}">${noteText}</textarea>
+                  <button class="btn btn--secondary btn--small btn-save-note" data-id="${s.id}">${t('itinerary.saveNote')}</button>
+                </div>`
+              })()}
+              ${(() => {
                 const info = getSeasonInfo(s.region)
                 return info
                   ? `<div class="season-callout"><span class="season-callout__icon">${info.icon}</span><span>${t(info.noteKey)}</span></div>`
@@ -344,6 +358,17 @@ export class ItineraryView {
         const stopId = Number(button.getAttribute('data-id'))
         if (!Number.isFinite(stopId)) return
         this.onReorderStop(stopId, 'down')
+      })
+    })
+
+    tl.querySelectorAll<HTMLElement>('.btn-save-note').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation()
+        const stopId = Number(button.getAttribute('data-id'))
+        if (!Number.isFinite(stopId)) return
+        const noteInput = document.getElementById(`note-${stopId}`) as HTMLTextAreaElement | null
+        const note = noteInput?.value ?? ''
+        this.onSaveNoteCallback?.({ day: stopId, note } as any, note)
       })
     })
 

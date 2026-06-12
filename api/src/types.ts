@@ -17,6 +17,7 @@ export type ItineraryStop = {
   highlights: string[]
   accommodation: string
   culinaryNotes: string
+  userNotes?: string
 }
 
 export type Itinerary = {

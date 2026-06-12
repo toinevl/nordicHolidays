@@ -67,6 +67,10 @@ export interface LocaleStrings {
     flyHere: string
     noStopsMatch: string
     print: string
+    notes: string
+    notesPlaceholder: string
+    saveNote: string
+    savingNote: string
   }
   season: {
     skane: string

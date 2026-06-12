@@ -67,6 +67,10 @@ export const en: LocaleStrings = {
     flyHere: 'Fly here',
     noStopsMatch: 'No stops match',
     print: 'Print',
+    notes: 'Notes',
+    notesPlaceholder: 'Add your own notes',
+    saveNote: 'Save',
+    savingNote: 'Saving...',
   },
   season: {
     skane: 'Mild climate. Warm summers, colourful autumns.',
