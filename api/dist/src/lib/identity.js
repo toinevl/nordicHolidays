@@ -7,6 +7,7 @@ exports.resolveOwnerId = resolveOwnerId;
 exports.authErrorResponse = authErrorResponse;
 const jose_1 = require("jose");
 const cors_1 = require("./cors");
+const schemas_1 = require("./schemas");
 class AuthError extends Error {
     statusCode = 401;
     constructor(message) {
@@ -15,21 +16,42 @@ class AuthError extends Error {
     }
 }
 exports.AuthError = AuthError;
+/**
+ * Module-level JWKS cache: create once per issuer URL and reuse across invocations.
+ * Keyed by issuer to support multiple issuer hosts.
+ */
+const jwksCache = new Map();
 function getTenant(claims) {
     return typeof claims.tid === 'string' ? claims.tid : '';
 }
-async function verifyAccessToken(token) {
+/**
+ * Get or create a cached JWKS instance for the given issuer URL.
+ */
+function getOrCreateJwks(issuerUrl) {
+    if (!jwksCache.has(issuerUrl)) {
+        jwksCache.set(issuerUrl, (0, jose_1.createRemoteJWKSet)(new URL(issuerUrl)));
+    }
+    return jwksCache.get(issuerUrl);
+}
+async function verifyAccessToken(token, ctx) {
     const issuerHost = process.env.ENTRA_ISSUER_HOST ?? 'login.microsoftonline.com';
     const issuer = `https://${issuerHost}/common`;
-    const jwks = (0, jose_1.createRemoteJWKSet)(new URL(`${issuer}/discovery/v2.0/keys`));
+    const jwksUrl = `${issuer}/discovery/v2.0/keys`;
+    const jwks = getOrCreateJwks(jwksUrl);
+    // Require non-empty ENTRA_API_AUDIENCE when bearer token is presented
+    const audience = process.env.ENTRA_API_AUDIENCE;
+    if (!audience) {
+        (0, schemas_1.logError)(ctx, 'verifyAccessToken: ENTRA_API_AUDIENCE is not set; cannot verify bearer tokens');
+        throw new AuthError('API configuration error: missing audience');
+    }
     const result = await (0, jose_1.jwtVerify)(token, jwks, {
         issuer,
-        audience: process.env.ENTRA_API_AUDIENCE ?? '',
+        audience,
         algorithms: ['RS256'],
     });
     return result.payload;
 }
-async function ownerFromBearer(reqOrToken) {
+async function ownerFromBearer(reqOrToken, ctx) {
     let token;
     if (typeof reqOrToken === 'string') {
         token = reqOrToken.trim();
@@ -41,7 +63,7 @@ async function ownerFromBearer(reqOrToken) {
         }
         token = auth.slice('Bearer '.length).trim();
     }
-    const claims = await verifyAccessToken(token);
+    const claims = await verifyAccessToken(token, ctx);
     const tid = getTenant(claims);
     if (!tid)
         throw new AuthError('Invalid token: missing tenant id');
@@ -66,12 +88,12 @@ const GUEST_OWNER_REGEX = /^owner-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4
 function isValidGuestOwnerId(id) {
     return GUEST_OWNER_REGEX.test(id);
 }
-async function resolveOwnerId(req) {
+async function resolveOwnerId(req, ctx) {
     // Priority 1: Valid bearer token → entra-<sub>
     try {
         const auth = req.headers?.get('Authorization') ?? '';
         if (auth.startsWith('Bearer ')) {
-            return await ownerFromBearer(req);
+            return await ownerFromBearer(req, ctx);
         }
     }
     catch (err) {

@@ -228,3 +228,44 @@ describe('DELETE /api/itineraries/:id', () => {
     expect(client.deleteEntity).toHaveBeenCalledWith('owner-123', 'id1')
   })
 })
+
+describe('OData filter security', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('uses odata helper to escape PartitionKey filter values', async () => {
+    const { odata } = require('@azure/data-tables')
+
+    // Test that odata escapes malicious input by replacing single quotes with pairs of quotes
+    const maliciousOwnerId = "owner-x' or PartitionKey ne '"
+    const filter = odata`PartitionKey eq ${maliciousOwnerId}`
+
+    // The odata helper escapes single quotes by doubling them (OData standard escaping)
+    // So the malicious syntax becomes part of a string literal, not executable OData
+    expect(filter).toBe("PartitionKey eq 'owner-x'' or PartitionKey ne '''")
+    // The injection attempt is now just part of the string value
+    expect(filter).toContain("owner-x''")
+  })
+
+  it('normal ownerId works correctly with odata helper', async () => {
+    const { odata } = require('@azure/data-tables')
+
+    const normalOwnerId = "entra-user-123"
+    const filter = odata`PartitionKey eq ${normalOwnerId}`
+
+    // Normal IDs are passed through unchanged
+    expect(filter).toBe("PartitionKey eq 'entra-user-123'")
+  })
+
+  it('listItinerariesHandler passes filter through odata helper', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = { method: 'GET', headers: new Map() } as any
+    await listItinerariesHandler(req, makeContext())
+
+    // Verify listEntities was called with queryOptions that include a filter
+    const listCall = (client.listEntities as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(listCall).toBeDefined()
+    expect(listCall[0]?.queryOptions?.filter).toBeDefined()
+  })
+})

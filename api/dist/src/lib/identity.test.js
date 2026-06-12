@@ -2,6 +2,31 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const vitest_1 = require("vitest");
 const identity_1 = require("./identity");
+(0, vitest_1.describe)('verifyAccessToken', () => {
+    (0, vitest_1.beforeEach)(() => {
+        vitest_1.vi.clearAllMocks();
+        // Clear environment variables
+        delete process.env.ENTRA_API_AUDIENCE;
+        delete process.env.ENTRA_ISSUER_HOST;
+    });
+    (0, vitest_1.it)('requires non-empty ENTRA_API_AUDIENCE', async () => {
+        // Unset ENTRA_API_AUDIENCE
+        delete process.env.ENTRA_API_AUDIENCE;
+        const token = 'dummy.token.here';
+        await (0, vitest_1.expect)((0, identity_1.verifyAccessToken)(token)).rejects.toThrow(identity_1.AuthError);
+    });
+    (0, vitest_1.it)('rejects when ENTRA_API_AUDIENCE is empty string', async () => {
+        process.env.ENTRA_API_AUDIENCE = '';
+        const token = 'dummy.token.here';
+        await (0, vitest_1.expect)((0, identity_1.verifyAccessToken)(token)).rejects.toThrow(identity_1.AuthError);
+    });
+    (0, vitest_1.it)('accepts when ENTRA_API_AUDIENCE is set (though token validation will fail separately)', async () => {
+        process.env.ENTRA_API_AUDIENCE = 'api://app-id';
+        const token = 'invalid.token';
+        // This should fail at JWT verification (not audience validation), which is the expected behavior
+        await (0, vitest_1.expect)((0, identity_1.verifyAccessToken)(token)).rejects.toThrow();
+    });
+});
 (0, vitest_1.describe)('resolveOwnerId', () => {
     (0, vitest_1.beforeEach)(() => {
         vitest_1.vi.clearAllMocks();

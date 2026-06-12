@@ -28,7 +28,7 @@ export async function getPreferencesHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req)
+    const owner = await resolveOwnerId(req, ctx)
     const client = getTableClient('Preferences')
     const entity = await client.getEntity(owner.ownerId, ROW_KEY)
     return withCors({
@@ -60,7 +60,7 @@ export async function putPreferencesHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req)
+    const owner = await resolveOwnerId(req, ctx)
 
     let rawBody: unknown
     try {
