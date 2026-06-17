@@ -9,7 +9,6 @@ export class MapView {
   private markerEls = new Map<number, HTMLElement>()
   private onStopSelect: StopSelectCallback
   private _animRafId = 0
-  private thumbnailCanvas: HTMLCanvasElement | null = null
 
   constructor(containerId: string, onStopSelect: StopSelectCallback) {
     this.onStopSelect = onStopSelect
@@ -22,45 +21,50 @@ export class MapView {
     })
   }
 
-  captureThumbnail(): Promise<string> {
+  captureThumbnail(canvas?: HTMLCanvasElement | null): Promise<string> {
     return new Promise((resolve, reject) => {
-      const canvas = this.thumbnailCanvas ?? document.createElement('canvas')
-      if (!canvas) return reject(new Error('Canvas unavailable'))
-      canvas.width = 320
-      canvas.height = 220
-      this.thumbnailCanvas = canvas
+      const canvasRef = canvas ?? document.createElement('canvas')
+      if (!canvasRef) return reject(new Error('Canvas unavailable'))
+      canvasRef.width = 320
+      canvasRef.height = 220
 
-      const onIdle = () => {
-        this.map.off('idle', onIdle)
-        try {
-          const ctx = canvas.getContext('2d')
-          if (!ctx) return reject(new Error('Canvas context unavailable'))
-          ctx.fillStyle = '#0f172a'
-          ctx.fillRect(0, 0, 320, 220)
-          ctx.drawImage(this.map.getCanvas(), 0, 0, 320, 220)
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.6)
-          resolve(dataUrl)
-        } catch (err) {
-          reject(err)
-        }
+      if (!this._routeReady()) return reject(new Error('Map canvas not rendered'))
+
+      let renders = 0
+      const onRender = () => {
+        renders++
+        if (renders < 2) return
+        this.map.off('render', onRender)
+        this._setThumbnail(canvasRef, resolve, reject)
       }
-      this.map.on('idle', onIdle)
-      // Fallback timeout in case idle doesn't fire within 1s
-      setTimeout(() => {
-        this.map.off('idle', onIdle)
-        try {
-          const ctx = canvas.getContext('2d')
-          if (!ctx) return reject(new Error('Canvas context unavailable'))
-          ctx.fillStyle = '#0f172a'
-          ctx.fillRect(0, 0, 320, 220)
-          ctx.drawImage(this.map.getCanvas(), 0, 0, 320, 220)
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.6)
-          resolve(dataUrl)
-        } catch (err) {
-          reject(err)
-        }
-      }, 1000)
+      this.map.on('render', onRender)
     })
+  }
+
+  private _routeReady(): boolean {
+    const mapCanvas = this.map.getCanvas()
+    if (!mapCanvas || mapCanvas.width === 0 || mapCanvas.height === 0) return false
+    if (!this.map.getSource('route')) return false
+    if (!this.map.isSourceLoaded('route')) return false
+    if (!this.map.getLayer('route')) return false
+    return true
+  }
+
+  private _setThumbnail(
+    canvas: HTMLCanvasElement,
+    resolve: (value: string) => void,
+    reject: (reason?: unknown) => void,
+  ): void {
+    try {
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return reject(new Error('Canvas context unavailable'))
+      ctx.fillStyle = '#0f172a'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(this.map.getCanvas() as HTMLCanvasElement, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/jpeg', 0.6))
+    } catch (err) {
+      reject(err)
+    }
   }
 
   addStops(stops: Stop[]): void {

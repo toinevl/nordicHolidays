@@ -2,13 +2,41 @@
 import type { Preferences, Itinerary, SavedItinerarySummary, Locale } from '../types'
 import type { CitySuggestion } from '../lib/citySearch'
 import { getAccessToken } from '../lib/auth'
-import { getOwnerId } from '../lib/identity'
+import { getOwnerId, isGuestOwner } from '../lib/identity'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net'
 
+function isLikelyCorsError(err: unknown): boolean {
+  if (!(err instanceof TypeError)) return false
+  const message = err.message.toLowerCase()
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('networkerror when attempting to fetch resource') ||
+    message.includes('cors')
+  )
+}
+
+function resolveOwnerForRequest(): { ownerId: string } {
+  const ownerId = getOwnerId()
+  if (isGuestOwner(ownerId)) {
+    return { ownerId }
+  }
+
+  const fallbackId = `owner-${crypto.randomUUID()}`
+  return { ownerId: fallbackId }
+}
+
+function clearInvalidOwner(): void {
+  const ownerId = getOwnerId()
+  if (isGuestOwner(ownerId)) {
+    localStorage.removeItem('ownerId')
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken()
-  const ownerId = getOwnerId()
+  let { ownerId } = resolveOwnerForRequest()
+
   const fetchInit: RequestInit = {
     ...init,
     headers: {
@@ -18,22 +46,59 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   }
-  const res = await fetch(`${API_BASE}${path}`, fetchInit)
-  if (!res.ok) {
-    const text = await res.text()
-    let errorMessage = `${res.status}: ${text}`
-    try {
-      const json = JSON.parse(text)
-      if (json.error && typeof json.error === 'string') {
-        errorMessage = `${res.status}: ${json.error}`
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, fetchInit)
+    if (!res.ok) {
+      const text = await res.text()
+      let errorMessage = `${res.status}: ${text}`
+      try {
+        const json = JSON.parse(text)
+        if (json.error && typeof json.error === 'string') {
+          errorMessage = `${res.status}: ${json.error}`
+        }
+      } catch {
+        // leave plain text fallback
       }
-    } catch {
-      // If JSON parsing fails, use the raw text as fallback (already set above)
+      throw new Error(errorMessage)
     }
-    throw new Error(errorMessage)
+    if (res.status === 204) return undefined as unknown as T
+    return res.json() as Promise<T>
+  } catch (err) {
+    if (
+      !token &&
+      isGuestOwner(ownerId) &&
+      err instanceof TypeError &&
+      isLikelyCorsError(err)
+    ) {
+      clearInvalidOwner()
+      const freshOwnerId = getOwnerId()
+      const freshFetchInit: RequestInit = {
+        ...fetchInit,
+        headers: {
+          ...fetchInit.headers,
+          'X-Owner-Id': freshOwnerId,
+        },
+      }
+      const res = await fetch(`${API_BASE}${path}`, freshFetchInit)
+      if (!res.ok) {
+        const text = await res.text()
+        let errorMessage = `${res.status}: ${text}`
+        try {
+          const json = JSON.parse(text)
+          if (json.error && typeof json.error === 'string') {
+            errorMessage = `${res.status}: ${json.error}`
+          }
+        } catch {
+          // leave plain text fallback
+        }
+        throw new Error(errorMessage)
+      }
+      if (res.status === 204) return undefined as unknown as T
+      return res.json() as Promise<T>
+    }
+    throw err
   }
-  if (res.status === 204) return undefined as unknown as T
-  return res.json() as Promise<T>
 }
 
 export const apiClient = {

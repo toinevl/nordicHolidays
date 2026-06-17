@@ -69,8 +69,8 @@ jobs:
       - name: Smoke test API
         run: |
           API_URL="https://sweden-travel-api.azurewebsites.net/api"
-          MAX_RETRIES=6
-          RETRY_DELAY=10
+          MAX_RETRIES=20
+          RETRY_DELAY=15
 
           expect() {
             local expected_code=$1

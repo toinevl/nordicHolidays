@@ -75,11 +75,14 @@ async function putProfileHandler(req, ctx) {
         const client = (0, tableClient_1.getTableClient)('Profiles');
         let existing;
         try {
-            existing = (await client.getEntity(owner.ownerId, ROW_KEY));
+            existing = await client.getEntity(owner.ownerId, ROW_KEY);
         }
-        catch {
-            existing = undefined;
+        catch (err) {
+            if (err.code !== 'ResourceNotFound')
+                throw err;
+            existing = null;
         }
+        const isNew = !existing;
         const entity = {
             partitionKey: owner.ownerId,
             rowKey: ROW_KEY,
@@ -89,10 +92,24 @@ async function putProfileHandler(req, ctx) {
             createdAt: existing?.createdAt ?? new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             extensions: updates.extensions ?? existing?.extensions ?? {},
+            ...(existing && { etag: existing.etag }),
         };
-        await client.upsertEntity(entity);
+        try {
+            if (existing) {
+                await client.updateEntity(entity, 'Replace');
+            }
+            else {
+                await client.createEntity(entity);
+            }
+        }
+        catch (err) {
+            if (err.code === 'InvalidInput' || err.statusCode === 412) {
+                return (0, cors_1.withCors)({ status: 409, body: JSON.stringify({ error: 'Conflict: profile was modified' }), headers: { 'Content-Type': 'application/json' } }, origin);
+            }
+            throw err;
+        }
         return (0, cors_1.withCors)({
-            status: 200,
+            status: isNew ? 201 : 200,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(entity),
         }, origin);
