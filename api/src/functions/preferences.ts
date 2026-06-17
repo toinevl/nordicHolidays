@@ -84,7 +84,16 @@ export async function putPreferencesHandler(
 
     const prefs = parseResult.data
     const client = getTableClient('Preferences')
-    await client.upsertEntity({
+    let existing: any
+    try {
+      existing = await client.getEntity(owner.ownerId, ROW_KEY)
+    } catch (err: any) {
+      if (err.code !== 'ResourceNotFound') throw err
+      existing = null
+    }
+
+    const isNew = !existing
+    const entity = {
       partitionKey: owner.ownerId,
       rowKey: ROW_KEY,
       mustVisit: JSON.stringify(prefs.mustVisit ?? []),
@@ -94,9 +103,24 @@ export async function putPreferencesHandler(
       tripDays: prefs.tripDays,
       country: prefs.country,
       updatedAt: new Date().toISOString(),
-    })
+      ...(existing && { etag: existing.etag }),
+    }
+
+    try {
+      if (existing) {
+        await client.updateEntity(entity, 'Replace')
+      } else {
+        await client.createEntity(entity)
+      }
+    } catch (err: any) {
+      if (err.code === 'InvalidInput' || err.statusCode === 412) {
+        return withCors({ status: 409, body: JSON.stringify({ error: 'Conflict: preferences were modified' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      }
+      throw err
+    }
+
     return withCors({
-      status: 200,
+      status: isNew ? 201 : 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prefs),
     }, origin)
