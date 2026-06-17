@@ -55,11 +55,11 @@ jobs:
         working-directory: api
         run: |
           rm -rf deploy
-          mkdir -p deploy/dist/src
+          mkdir -p deploy
           cp package.json deploy/
           cp package-lock.json deploy/ || true
           cp host.json deploy/
-          cp -r dist/src deploy/dist/src
+          cp -r dist/src deploy/src
           cd deploy
           zip -r ../../api.zip .
 
