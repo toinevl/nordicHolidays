@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "13232792160615262553"
+      "templateHash": "5979877991178431906"
     }
   },
   "parameters": {
@@ -178,12 +178,12 @@
     },
     {
       "type": "Microsoft.Web/serverfarms",
-      "apiVersion": "2023-12-01",
+      "apiVersion": "2024-04-01",
       "name": "[variables('serverFarmName')]",
       "location": "[parameters('location')]",
       "kind": "elastic",
       "sku": {
-        "name": "FlexConsumption",
+        "name": "FC1",
         "tier": "FlexConsumption"
       },
       "properties": {
@@ -192,7 +192,7 @@
     },
     {
       "type": "Microsoft.Web/sites",
-      "apiVersion": "2023-12-01",
+      "apiVersion": "2024-04-01",
       "name": "[parameters('functionAppName')]",
       "location": "[parameters('location')]",
       "kind": "functionapp,linux",
@@ -243,7 +243,7 @@
     },
     {
       "type": "Microsoft.Web/sites/config",
-      "apiVersion": "2023-12-01",
+      "apiVersion": "2024-04-01",
       "name": "[format('{0}/{1}', parameters('functionAppName'), 'appsettings')]",
       "properties": {
         "APPLICATIONINSIGHTS_CONNECTION_STRING": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]",
@@ -266,7 +266,7 @@
     },
     {
       "type": "Microsoft.Web/staticSites",
-      "apiVersion": "2023-12-01",
+      "apiVersion": "2024-04-01",
       "name": "[parameters('staticWebAppName')]",
       "location": "[parameters('location')]",
       "sku": {
@@ -284,8 +284,8 @@
       "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
       "name": "[guid(parameters('functionAppName'), parameters('storageAccountName'), 'Storage Table Data Contributor')]",
       "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-49cc-fffb-d5cc30f82956')]",
-        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2024-04-01', 'full').identity.principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
@@ -300,7 +300,7 @@
       "name": "[guid(parameters('functionAppName'), parameters('keyVaultName'), 'Key Vault Secrets User')]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
-        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2024-04-01', 'full').identity.principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
@@ -340,11 +340,11 @@
     },
     "functionAppUrl": {
       "type": "string",
-      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01').defaultHostName)]"
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2024-04-01').defaultHostName)]"
     },
     "functionAppIdentityPrincipalId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]"
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2024-04-01', 'full').identity.principalId]"
     },
     "appInsightsId": {
       "type": "string",
@@ -372,7 +372,7 @@
     },
     "staticWebAppDefaultDomain": {
       "type": "string",
-      "value": "[coalesce(reference(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2023-12-01').defaultHostname, 'Not assigned')]"
+      "value": "[coalesce(reference(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2024-04-01').defaultHostname, 'Not assigned')]"
     }
   }
 }

@@ -116,12 +116,12 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 }
 
 // Server Farm for Function App (Flex Consumption)
-resource serverFarm 'Microsoft.Web/serverfarms@2023-12-01' = {
+resource serverFarm 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: serverFarmName
   location: location
   kind: 'elastic'
   sku: {
-    name: 'FlexConsumption'
+    name: 'FC1'
     tier: 'FlexConsumption'
   }
   properties: {
@@ -130,7 +130,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2023-12-01' = {
 }
 
 // Function App
-resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
+resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   name: functionAppName
   location: location
   kind: 'functionapp,linux'
@@ -180,7 +180,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
 }
 
 // Function App Configuration - App Settings
-resource functionAppConfig 'Microsoft.Web/sites/config@2023-12-01' = {
+resource functionAppConfig 'Microsoft.Web/sites/config@2024-04-01' = {
   parent: functionApp
   name: 'appsettings'
   properties: {
@@ -199,7 +199,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2023-12-01' = {
 }
 
 // Static Web App
-resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
+resource staticWebApp 'Microsoft.Web/staticSites@2024-04-01' = {
   name: staticWebAppName
   location: location
   sku: {
@@ -217,7 +217,7 @@ resource storageTableDataContributorRole 'Microsoft.Authorization/roleAssignment
   scope: storageAccount
   name: guid(functionAppName, storageAccountName, 'Storage Table Data Contributor')
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-49cc-fffb-d5cc30f82956')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
