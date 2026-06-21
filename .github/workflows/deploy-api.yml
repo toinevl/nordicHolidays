@@ -60,6 +60,7 @@ jobs:
           cp package-lock.json deploy/ || true
           cp host.json deploy/
           cp -r dist deploy/dist
+          cp -r node_modules deploy/node_modules
           cd deploy
           zip -r ../../api.zip .
 
