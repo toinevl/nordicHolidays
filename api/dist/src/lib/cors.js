@@ -2,8 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.withCors = withCors;
 exports.corsPreflightResponse = corsPreflightResponse;
+function getDefaultOrigin() {
+    const fromEnv = process.env.NORDIC_HOLIDAYS_SWA_URL;
+    if (typeof fromEnv === 'string' && fromEnv.length > 0)
+        return fromEnv.replace(/\/$/, '');
+    return 'https://nordicholidays.azurestaticapps.net';
+}
 const ALLOWED_ORIGINS = [
-    'https://zealous-forest-053645a03.7.azurestaticapps.net',
+    'https://agreeable-island-03429a403.7.azurestaticapps.net',
+    'https://nordicholidays.azurestaticapps.net',
     'http://localhost:5173',
 ];
 function withCors(response, origin) {

@@ -10,7 +10,7 @@ const rateLimit_1 = require("../lib/rateLimit");
 const schemas_1 = require("../lib/schemas");
 function buildUserMessage(prefs, lang = 'en') {
     const parts = [
-        `Create a ${prefs.tripDays}-day Sweden road trip itinerary.`,
+        `Create a ${prefs.tripDays}-day Nordic road trip itinerary.`,
         `Start city: ${prefs.startCity}`,
         `End city: ${prefs.endCity}`,
     ];

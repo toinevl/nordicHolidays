@@ -14,14 +14,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@azure/data-tables": "^13.3.2",
     "@azure/functions": "^4.7.0",
-    "@azure/storage-table": "^12.3.0",
+    "@azure/identity": "^4.13.1",
+    "jose": "^6.2.3",
+    "nanoid": "^5.1.15",
     "openai": "^4.87.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
-    "typescript": "^5.8.3",
-    "azure-functions-core-tools": "^4.0.7004"
+    "azure-functions-core-tools": "^4.0.7004",
+    "typescript": "^5.8.3"
   }
 }
