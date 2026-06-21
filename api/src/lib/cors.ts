@@ -7,6 +7,7 @@ function getDefaultOrigin(): string {
 }
 
 const ALLOWED_ORIGINS = [
+  'https://agreeable-island-03429a403.7.azurestaticapps.net',
   'https://nordicholidays.azurestaticapps.net',
   'http://localhost:5173',
 ]
