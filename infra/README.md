@@ -4,7 +4,7 @@ This directory contains Bicep Infrastructure as Code (IaC) templates that **capt
 
 ## Purpose
 
-The templates in this directory are a **reference implementation** of the existing live infrastructure in resource group `rgWebsite` (subscription `2dbeb3f1-e45d-4207-a7e9-185330aad74b`, region `westeurope`). They document the current architecture and can be used to validate drift and plan future infrastructure changes.
+The templates in this directory are a **reference implementation** of the existing live infrastructure in resource group `rgNordicHolidays` (subscription `2dbeb3f1-e45d-4207-a7e9-185330aad74b`, region `westeurope`). They document the current architecture and can be used to validate drift and plan future infrastructure changes.
 
 ## Scope
 
@@ -23,7 +23,7 @@ The templates in this directory are a **reference implementation** of the existi
   - Function App identity → Key Vault Secrets User (on key vault)
 
 ### Out of Scope
-- **Entra App Registration** (`nordicholidays-github-deploy`): Not manageable via Bicep (app registration objects are created/managed separately). The GitHub OIDC federated credential and Contributor role assignment on rgWebsite must be set up manually or via Microsoft Graph.
+- **Entra App Registration** (`nordicholidays-github-deploy`): Not manageable via Bicep (app registration objects are created/managed separately). The GitHub OIDC federated credential and Contributor role assignment on rgNordicHolidays must be set up manually or via Microsoft Graph.
 - **Secrets and Sensitive Values**: The actual secret values (e.g., AZURE_FOUNDRY_API_KEY) are not stored in the template. Deploy secrets via Azure Key Vault or CI/CD pipelines.
 
 ## Template Files
@@ -46,7 +46,7 @@ To validate the template against the current resource group and see what changes
 
 ```bash
 az deployment group what-if \
-  --resource-group rgWebsite \
+  --resource-group rgNordicHolidays \
   --template-file infra/main.bicep \
   --parameters infra/main.bicepparam
 ```
@@ -58,7 +58,7 @@ To validate the template for correctness without deploying:
 
 ```bash
 az deployment group validate \
-  --resource-group rgWebsite \
+  --resource-group rgNordicHolidays \
   --template-file infra/main.bicep \
   --parameters infra/main.bicepparam
 ```
@@ -77,7 +77,7 @@ az deployment group validate \
 
 1. **App Settings**: Some app settings in the live Function App are not parameterized in the template (e.g., OLD_ANTHROPIC_API_KEY, OPENROUTER_API_KEY). These can be added if needed.
 2. **Static Web App Configuration**: SWA deployment and routing configuration are not defined in the template (API associations, build configuration, etc.).
-3. **Regional Variation**: The Function App's server farm name (`ASP-rgWebsite-846d`) is hardcoded. In a multi-region deployment, this would need to be parameterized.
+3. **Regional Variation**: The Function App's server farm name (`ASP-rgNordicHolidays-846d`) is hardcoded. In a multi-region deployment, this would need to be parameterized.
 
 ## Parameters
 

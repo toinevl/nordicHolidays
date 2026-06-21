@@ -17,7 +17,7 @@ Publish the NordicHolidays static site to Azure Static Web Apps and configure de
 
 - Azure Static Web Apps Free plan.
 - Rationale: best fit for a static HTML site, free tier, built-in GitHub Actions deployment flow, no server required.
-- Resource group: `rgWebsite` (existing).
+- Resource group: `rgNordicHolidays`.
 - Region: `westeurope`.
 - Proposed app name: `nordicholidays`.
 - Default hostname: `nordicholidays.azurestaticapps.net` (exact subdomain will be assigned at creation time).
