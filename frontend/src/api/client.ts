@@ -4,7 +4,7 @@ import type { CitySuggestion } from '../lib/citySearch'
 import { getAccessToken } from '../lib/auth'
 import { getOwnerId, isGuestOwner } from '../lib/identity'
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net'
+const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net'
 
 function isLikelyCorsError(err: unknown): boolean {
   if (!(err instanceof TypeError)) return false
@@ -121,7 +121,7 @@ export const apiClient = {
     }),
   deleteItinerary: (id: string) => request<void>(`/api/itineraries/${id}`, { method: 'DELETE' }),
   searchCities: (query: string, limit?: number) => {
-    const url = new URL('/api/city-search', import.meta.env.VITE_API_BASE ?? 'https://sweden-travel-api.azurewebsites.net')
+    const url = new URL('/api/city-search', import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net')
     url.searchParams.set('q', query)
     if (typeof limit === 'number') url.searchParams.set('limit', String(limit))
     return request<CitySuggestion[]>(url.pathname + url.search)

@@ -1,26 +1,27 @@
 {
-  "name": "sweden-travel-api",
+  "name": "nordic-holidays-api",
   "version": "1.0.0",
-  "private": true,
+  "description": "",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
-    "watch": "tsc -w",
-    "start": "npm run build && func start",
-    "test": "vitest run"
+    "watch": "tsc --watch",
+    "prestart": "npm run build",
+    "start": "func start",
+    "test": "echo \"No tests yet\""
   },
-  "main": "dist/src/index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@azure/data-tables": "^13.3.0",
-    "@azure/functions": "^4.5.0",
-    "@azure/identity": "^4.4.0",
-    "jose": "^6.2.3",
-    "nanoid": "^5.0.0",
-    "openai": "^4.77.0",
-    "zod": "^3.25.76"
+    "@azure/functions": "^4.7.0",
+    "@azure/storage-table": "^12.3.0",
+    "openai": "^4.87.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "typescript": "~5.5.4",
-    "vitest": "^2.1.9"
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3",
+    "azure-functions-core-tools": "^4.0.7004"
   }
 }

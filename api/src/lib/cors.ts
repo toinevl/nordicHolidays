@@ -1,7 +1,13 @@
 import type { HttpResponseInit } from '@azure/functions'
 
+function getDefaultOrigin(): string {
+  const fromEnv = process.env.NORDIC_HOLIDAYS_SWA_URL
+  if (typeof fromEnv === 'string' && fromEnv.length > 0) return fromEnv.replace(/\/$/, '')
+  return 'https://nordicholidays.azurestaticapps.net'
+}
+
 const ALLOWED_ORIGINS = [
-  'https://zealous-forest-053645a03.7.azurestaticapps.net',
+  'https://nordicholidays.azurestaticapps.net',
   'http://localhost:5173',
 ]
 

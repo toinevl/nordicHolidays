@@ -42,7 +42,7 @@ export const en: LocaleStrings = {
     shareTitle: 'Share this trip',
     saved: 'Saved',
     unsaved: 'Unsaved',
-    defaultTripName: 'My Sweden Trip',
+    defaultTripName: 'My Nordic Trip',
   },
   toast: {
     generated: 'Itinerary generated',

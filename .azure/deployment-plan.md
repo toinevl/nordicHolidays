@@ -1,10 +1,10 @@
 # Deployment Plan
 
-Status: Deployed
+Status: Planned
 
 ## Goal
 
-Publish the SwedenTravel static site to the best free Azure hosting option and configure deployment on every commit to `main`.
+Publish the NordicHolidays static site to Azure Static Web Apps and configure deployment on every commit to `main`.
 
 ## Current Findings
 
@@ -19,15 +19,15 @@ Publish the SwedenTravel static site to the best free Azure hosting option and c
 - Rationale: best fit for a static HTML site, free tier, built-in GitHub Actions deployment flow, no server required.
 - Resource group: `rgWebsite` (existing).
 - Region: `westeurope`.
-- Proposed app name: `swedentravel`.
-- Default hostname: `zealous-forest-053645a03.7.azurestaticapps.net`.
-- Repository: `https://github.com/toinevl/SwedenTravel`.
+- Proposed app name: `nordicholidays`.
+- Default hostname: `nordicholidays.azurestaticapps.net` (exact subdomain will be assigned at creation time).
+- Repository: `https://github.com/toinevl/nordicHolidays`.
 - Branch: `main`.
 
 ## Artifacts
 
 - `index.html`: footer build indicator that reads `build-info.json`.
-- `.github/workflows/azure-static-web-apps.yml`: deploys on every push to `main` and manual `workflow_dispatch`.
+- `.github/workflows/deploy-frontend.yml`: deploys on every push to `main` and manual `workflow_dispatch`.
 - GitHub secret required: `AZURE_STATIC_WEB_APPS_API_TOKEN`.
 
 ## Deployment Steps
@@ -35,9 +35,10 @@ Publish the SwedenTravel static site to the best free Azure hosting option and c
 1. Create the Azure Static Web App resource on the Free SKU.
 2. Retrieve the resource deployment token.
 3. Store the token as the GitHub secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
-4. Commit and push the workflow and build indicator to `main`.
-5. Confirm the GitHub Actions run succeeds.
-6. Open the Azure Static Web Apps hostname and verify the footer build number.
+4. Create the GitHub Actions variable `NORDIC_HOLIDAYS_SWA_URL` with the new SWA hostname.
+5. Commit and push the workflow and build indicator to `main`.
+6. Confirm the GitHub Actions run succeeds.
+7. Open the Azure Static Web Apps hostname and verify the footer build number.
 
 ## Validation
 
@@ -46,17 +47,3 @@ Publish the SwedenTravel static site to the best free Azure hosting option and c
 - Confirm Git status before committing.
 - Confirm Azure resource hostname after creation.
 - Confirm GitHub Actions dependencies and browser libraries are on supported current versions.
-
-## Execution Log
-
-- Planning started.
-- Confirmed repo root is `/home/toine/projects/playground/SwedenTravel`.
-- Confirmed branch is `main` and remote is `https://github.com/toinevl/SwedenTravel.git`.
-- Selected Azure Static Web Apps Free over App Service Free because the app is static HTML with no server or build step.
-- Added GitHub Actions workflow and build indicator.
-- Created Azure Static Web App `swedentravel` in `rgWebsite`.
-- Stored the deployment token in GitHub secret `AZURE_STATIC_WEB_APPS_API_TOKEN`.
-- Pushed commit `78f014c` to `main`; GitHub Actions deployment run `26720720643` completed successfully.
-- Verified deployed `build-info.json` reports run `1`, ref `main`, and SHA `78f014c845cefb335bbe6a444faa7ad486084e9d`.
-- Updated `actions/checkout` from `v4` to `v6` to use the Node 24 action runtime.
-- Updated MapLibre GL JS from `4.7.1` to the current stable `5.24.0`.

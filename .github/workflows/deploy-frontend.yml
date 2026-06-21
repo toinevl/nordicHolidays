@@ -57,7 +57,7 @@ jobs:
 
       - name: Smoke test frontend
         run: |
-          FRONTEND_URL="https://zealous-forest-053645a03.7.azurestaticapps.net/"
+          FRONTEND_URL="${{ vars.NORDIC_HOLIDAYS_SWA_URL }}"
           MAX_RETRIES=6
           RETRY_DELAY=10
 

@@ -23,7 +23,7 @@ describe('i18n module', () => {
 
   it('setLocale() persists to localStorage', () => {
     setLocale('nl')
-    expect(localStorage.getItem('swedentravel_locale')).toBe('nl')
+    expect(localStorage.getItem('nordicholidays_locale')).toBe('nl')
   })
 
   it('tpl() replaces {vars} in English template', () => {

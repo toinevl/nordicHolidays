@@ -1,4 +1,4 @@
-# SwedenTravel Architecture Diagram
+# NordicHolidays Architecture Diagram
 
 ## Runtime topology
 

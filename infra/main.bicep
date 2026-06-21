@@ -4,19 +4,19 @@ targetScope = 'resourceGroup'
 @minLength(3)
 @maxLength(24)
 @description('Globally unique storage account name')
-param storageAccountName string = 'swedentravel'
+param storageAccountName string = 'nordicholidays'
 
 @description('Key Vault name')
-param keyVaultName string = 'kv-swedentravel'
+param keyVaultName string = 'kv-nordicholidays'
 
 @description('Function App name')
-param functionAppName string = 'sweden-travel-api'
+param functionAppName string = 'nordic-holidays-api'
 
 @description('Application Insights name')
-param appInsightsName string = 'sweden-travel-api'
+param appInsightsName string = 'nordic-holidays-api'
 
 @description('Static Web App name')
-param staticWebAppName string = 'swedentravel'
+param staticWebAppName string = 'nordicholidays'
 
 @description('Azure region')
 param location string = 'westeurope'

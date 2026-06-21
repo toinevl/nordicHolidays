@@ -1,6 +1,6 @@
-# SwedenTravel Azure Infrastructure as Code
+# NordicHolidays Azure Infrastructure as Code
 
-This directory contains Bicep Infrastructure as Code (IaC) templates that **capture the manually-built Azure stack as of 2026-06-12** for the SwedenTravel application.
+This directory contains Bicep Infrastructure as Code (IaC) templates that **capture the manually-built Azure stack as of 2026-06-12** for the NordicHolidays application.
 
 ## Purpose
 
@@ -9,21 +9,21 @@ The templates in this directory are a **reference implementation** of the existi
 ## Scope
 
 ### Resources Included
-- **Storage Account** (`swedentravel`)
+- **Storage Account** (`nordicholidays`)
   - Table Storage with tables: Itineraries, Preferences, Profiles, RateLimits
   - Blob Storage (for Function App deployment packages)
-- **Key Vault** (`kv-swedentravel`, RBAC-enabled)
-- **Function App** (`sweden-travel-api`, Flex Consumption, Node 22)
+- **Key Vault** (`kv-nordicholidays`, RBAC-enabled)
+- **Function App** (`nordic-holidays-api`, Flex Consumption, Node 22)
   - System-assigned managed identity
   - Application settings (excluding secrets)
-- **Application Insights** (`sweden-travel-api`)
-- **Static Web App** (`swedentravel`, Free tier)
+- **Application Insights** (`nordic-holidays-api`)
+- **Static Web App** (`nordicholidays`, Free tier)
 - **Role Assignments**
   - Function App identity → Storage Table Data Contributor (on storage account)
   - Function App identity → Key Vault Secrets User (on key vault)
 
 ### Out of Scope
-- **Entra App Registration** (`swedentravel-github-deploy`): Not manageable via Bicep (app registration objects are created/managed separately). The GitHub OIDC federated credential and Contributor role assignment on rgWebsite must be set up manually or via Microsoft Graph.
+- **Entra App Registration** (`nordicholidays-github-deploy`): Not manageable via Bicep (app registration objects are created/managed separately). The GitHub OIDC federated credential and Contributor role assignment on rgWebsite must be set up manually or via Microsoft Graph.
 - **Secrets and Sensitive Values**: The actual secret values (e.g., AZURE_FOUNDRY_API_KEY) are not stored in the template. Deploy secrets via Azure Key Vault or CI/CD pipelines.
 
 ## Template Files
@@ -85,9 +85,9 @@ See `main.bicepparam` for all parameters. Key parameters:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `storageAccountName` | `swedentravel` | Name of the storage account (must be globally unique) |
-| `keyVaultName` | `kv-swedentravel` | Name of the Key Vault |
-| `functionAppName` | `sweden-travel-api` | Name of the Function App |
+| `storageAccountName` | `nordicholidays` | Name of the storage account (must be globally unique) |
+| `keyVaultName` | `kv-nordicholidays` | Name of the Key Vault |
+| `functionAppName` | `nordic-holidays-api` | Name of the Function App |
 | `location` | `westeurope` | Azure region |
 | `nodeVersion` | `22` | Node.js runtime version for Function App |
 

@@ -11,7 +11,7 @@
   "parameters": {
     "storageAccountName": {
       "type": "string",
-      "defaultValue": "swedentravel",
+      "defaultValue": "nordicholidays",
       "minLength": 3,
       "maxLength": 24,
       "metadata": {
@@ -20,28 +20,28 @@
     },
     "keyVaultName": {
       "type": "string",
-      "defaultValue": "kv-swedentravel",
+      "defaultValue": "kv-nordicholidays",
       "metadata": {
         "description": "Key Vault name"
       }
     },
     "functionAppName": {
       "type": "string",
-      "defaultValue": "sweden-travel-api",
+      "defaultValue": "nordic-holidays-api",
       "metadata": {
         "description": "Function App name"
       }
     },
     "appInsightsName": {
       "type": "string",
-      "defaultValue": "sweden-travel-api",
+      "defaultValue": "nordic-holidays-api",
       "metadata": {
         "description": "Application Insights name"
       }
     },
     "staticWebAppName": {
       "type": "string",
-      "defaultValue": "swedentravel",
+      "defaultValue": "nordicholidays",
       "metadata": {
         "description": "Static Web App name"
       }

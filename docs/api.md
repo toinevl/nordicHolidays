@@ -3,7 +3,7 @@
 ## Base URL
 
 ```
-https://sweden-travel-api.azurewebsites.net
+https://nordic-holidays-api.azurewebsites.net
 ```
 
 All endpoints are prefixed with `/api`. Requests and responses use `application/json`. CORS is open to the SWA origin.
@@ -24,7 +24,7 @@ The generate endpoint uses **Azure AI Foundry** (via OpenAI SDK) to access GPT m
 
 To swap the active model without redeploying:
 
-1. Go to **Azure Portal → Function App `sweden-travel-api` → Configuration → Application settings**
+1. Go to **Azure Portal → Function App `nordic-holidays-api` → Configuration → Application settings**
 2. Set `LLM_MODEL` to any model deployed in your Azure AI Foundry project, e.g.:
    - `gpt-4o` (default)
    - `gpt-4-turbo`

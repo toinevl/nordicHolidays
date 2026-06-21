@@ -33,7 +33,7 @@ jobs:
         run: |
           az functionapp config appsettings set \
             --resource-group rgWebsite \
-            --name ${{ vars.SWEDEN_TRAVEL_FUNCTION_APP_NAME }} \
+            --name ${{ vars.NORDIC_HOLIDAYS_FUNCTION_APP_NAME }} \
             --settings \
               ENTRA_ISSUER_HOST="${ENTRA_ISSUER_HOST:-login.microsoftonline.com}" \
               ENTRA_API_AUDIENCE="${ENTRA_API_AUDIENCE}" \
@@ -64,11 +64,11 @@ jobs:
           zip -r ../../api.zip .
 
       - name: Deploy API
-        run: az functionapp deployment source config-zip --resource-group rgWebsite --name ${{ vars.SWEDEN_TRAVEL_FUNCTION_APP_NAME }} --src ./api.zip --build-remote false
+        run: az functionapp deployment source config-zip --resource-group rgWebsite --name ${{ vars.NORDIC_HOLIDAYS_FUNCTION_APP_NAME }} --src ./api.zip --build-remote false
 
       - name: Smoke test API
         run: |
-          API_URL="https://sweden-travel-api.azurewebsites.net/api"
+          API_URL="https://nordic-holidays-api.azurewebsites.net/api"
           MAX_RETRIES=20
           RETRY_DELAY=15
 

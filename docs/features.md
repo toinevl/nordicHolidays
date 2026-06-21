@@ -15,7 +15,7 @@ The map is powered by **MapLibre GL** and renders automatically whenever an itin
 
 The **GeneratorPanel** (right-hand side) drives AI-powered trip creation.
 
-1. Choose a Swedish region (or "Full country") and trip duration.
+1. Choose a Nordic region (or "Full country") and trip duration.
 2. Optionally set a start city and adjust interests/pace.
 3. Click **Generate** — the frontend calls `POST /api/generate`.
 4. The API calls Azure AI Foundry (gpt-4o by default) with **forced tool use**, guaranteeing a structured `Itinerary` JSON response every time (no free-form text to parse).
@@ -39,7 +39,7 @@ Generation typically takes 5–15 seconds depending on trip length.
 Every saved trip has a shareable URL in the form:
 
 ```
-https://zealous-forest-053645a03.7.azurestaticapps.net/?id=<tripId>
+https://nordicholidays.azurestaticapps.net/?id=<tripId>
 ```
 
 Opening the link loads the full itinerary directly. The URL is updated automatically after saving and can be copied from the browser address bar.
@@ -60,7 +60,7 @@ Use the browser's native **Print** dialog (`Ctrl+P` / `Cmd+P`). The app ships a 
 
 The **ItineraryView** presents each day as a card containing:
 
-- Day number and title (e.g., "Day 3 — Östersund to Åre").
+- Day number and title.
 - Drive distance for the day (in km).
 - Each stop with name, type badge, region colour tag, description, recommended duration, and local tips.
 - Season/weather callout (see below).
@@ -71,13 +71,13 @@ Clicking a stop card pans the map to that stop and highlights its marker.
 
 ## Season / Weather Callouts
 
-Each generated itinerary includes a `season` field and a `weatherNote` (e.g., "Midnight sun; temperatures 15–22 °C. Pack layers for evenings."). These are surfaced as a banner at the top of the ItineraryView to help travellers pack and plan activities appropriately.
+Each generated itinerary includes a `season` field and a `weatherNote`. These are surfaced as a banner at the top of the ItineraryView to help travellers pack and plan activities appropriately.
 
 ---
 
 ## Region Colour Tags
 
-Each stop belongs to a Swedish region (e.g., Norrland, Svealand, Götaland, Höga Kusten). Regions are assigned a consistent colour (`regionColour` hex) used in:
+Each stop belongs to a region. Regions are assigned a consistent colour (`regionColour` hex) used in:
 
 - Map marker fill colour.
 - Timeline stop card left-border accent.
@@ -92,7 +92,7 @@ Every itinerary includes:
 - **Per-day drive km** shown in the day card header.
 - **Total trip drive km** shown in the itinerary summary banner.
 
-Distances are estimated by the LLM during generation based on realistic Swedish road routing and are approximate (±10%).
+Distances are estimated by the LLM during generation based on realistic routing and are approximate (±10%).
 
 ---
 

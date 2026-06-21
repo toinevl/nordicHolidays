@@ -12,14 +12,14 @@
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  Azure Static Web Apps (Free tier)                               │
-│  https://zealous-forest-053645a03.7.azurestaticapps.net         │
+│  https://nordicholidays.azurestaticapps.net                      │
 │  — serves /dist, handles ?id= share links                        │
 └──────────────────────────────────────────────────────────────────┘
                        │ HTTPS CORS (fetch)
                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  Azure Functions v4 TypeScript — Flex Consumption                │
-│  https://sweden-travel-api.azurewebsites.net                     │
+│  https://nordic-holidays-api.azurewebsites.net                   │
 │                                                                  │
 │  /api/preferences   /api/generate                                │
 │  /api/itineraries   /api/itineraries/:id                         │
@@ -41,7 +41,7 @@
 ## Repository Structure
 
 ```
-SwedenTravel/
+nordicHolidays/
 ├── frontend/                   # Vite + TypeScript SPA
 │   ├── src/
 │   │   ├── main.ts             # App entry point, store init
@@ -66,7 +66,7 @@ SwedenTravel/
 │   │   │   ├── nl.ts           # Dutch translations
 │   │   │   └── index.ts        # i18n init
 │   │   ├── data/               # Static data
-│   │   │   ├── cities.ts       # Curated Swedish cities
+│   │   │   ├── cities.ts       # Curated Nordic cities
 │   │   │   ├── defaultItinerary.ts # Sample data
 │   │   │   └── seasonData.ts   # Season & weather info
 │   │   └── styles/             # CSS stylesheets

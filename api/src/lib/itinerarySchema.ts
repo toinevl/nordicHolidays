@@ -4,7 +4,7 @@ export const ITINERARY_FUNCTION: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: 'function',
   function: {
     name: 'create_itinerary',
-    description: 'Create a structured road trip itinerary for Sweden',
+    description: 'Create a structured road trip itinerary for the Nordics',
     parameters: {
       type: 'object',
       properties: {
@@ -38,7 +38,7 @@ export const ITINERARY_FUNCTION: OpenAI.Chat.Completions.ChatCompletionTool = {
   },
 }
 
-export const SYSTEM_PROMPT = `You are an expert Sweden road trip planner with deep knowledge of Swedish geography, culture, cuisine, and seasonal conditions.
+export const SYSTEM_PROMPT = `You are an expert Nordic road trip planner with deep knowledge of geography, culture, cuisine, and seasonal conditions across Sweden, Norway, Denmark, Finland, and related Nordic destinations.
 
 When creating itineraries:
 - Respect must-visit locations by including them as stops

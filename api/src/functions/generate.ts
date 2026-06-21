@@ -9,7 +9,7 @@ import { GenerateRequestBodySchema, logError } from '../lib/schemas'
 
 function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' = 'en'): string {
   const parts: string[] = [
-    `Create a ${prefs.tripDays}-day Sweden road trip itinerary.`,
+    `Create a ${prefs.tripDays}-day Nordic road trip itinerary.`,
     `Start city: ${prefs.startCity}`,
     `End city: ${prefs.endCity}`,
   ]

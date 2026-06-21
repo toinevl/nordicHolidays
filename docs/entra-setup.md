@@ -1,6 +1,6 @@
-# Entra Setup For SwedenTravel
+# Entra Setup For NordicHolidays
 
-This document captures the exact app registration steps required to add Microsoft Entra identity to SwedenTravel.
+This document captures the exact app registration steps required to add Microsoft Entra identity to NordicHolidays.
 
 ## 1. Tenant requirements
 - An Entra ID tenant (External ID or Azure AD B2C) is required.
@@ -10,7 +10,7 @@ This document captures the exact app registration steps required to add Microsof
 1. Open the Entra admin center: https://entra.microsoft.com
 2. Go to **Identity > Applications > App registrations** and select **New registration**.
 3. Set:
-   - **Name:** SwedenTravel
+   - **Name:** NordicHolidays
    - **Supported account types:** Accounts in any organizational directory and personal Microsoft accounts
    - **Redirect URI:** Web — `https://<swa-host>/.auth/login/aad/callback`
    - **Front-channel logout URI:** `https://<swa-host>/`

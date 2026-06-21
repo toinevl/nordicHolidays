@@ -76,7 +76,7 @@ export async function searchNominatim(query: string, limit = DEFAULT_LIMIT): Pro
   try {
     const url = new URL(NOMINATIM_URL)
     url.search = new URLSearchParams({ q: normalizedQuery, format: 'json', limit: String(limit), addressdetails: '0', 'accept-language': 'en' }).toString()
-    const res = await fetch(url.toString(), { headers: { 'User-Agent': 'SwedenTravel-app/1.0 (+https://example.com)' } })
+    const res = await fetch(url.toString(), { headers: { 'User-Agent': 'NordicHolidays-app/1.0 (+https://example.com)' } })
     if (!res.ok) throw new Error('nominatim-error')
     const rows: { display_name: string; lat: string; lon: string }[] = await res.json()
     const results = rows.slice(0, limit).map(row => ({

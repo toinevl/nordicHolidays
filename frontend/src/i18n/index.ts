@@ -3,7 +3,7 @@ import { en } from './en'
 import { nl } from './nl'
 import { escapeHtml } from '../lib/escape'
 
-export const LOCALE_STORAGE_KEY = 'swedentravel_locale'
+export const LOCALE_STORAGE_KEY = 'nordicholidays_locale'
 
 const locales: Record<Locale, LocaleStrings> = { en, nl }
 
