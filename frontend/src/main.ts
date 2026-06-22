@@ -123,6 +123,36 @@ const mapView = new MapView('map', (stop, opts) => {
   mapView.flyTo(stop)
 })
 
+let map3DView: MapView | null = null
+
+function sync3DMap(): void {
+  const itinerary = store.getState().currentItinerary
+  if (!map3DView) {
+    map3DView = new MapView('map-3d', (stop) => {
+      store.setState({ selectedStopId: stop.id })
+      mapView.setActiveMarker(stop.id)
+      mapView.flyTo(stop)
+      if (map3DView) map3DView.flyTo(stop)
+    }, { pitch: 55, zoom: 5, dragRotate: true })
+  }
+  map3DView.replaceStops(toMapStops({ ...(itinerary ?? STOPS) } as Itinerary))
+}
+
+function handleMapPage(): void {
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage) return
+  const isMapPage = window.location.hash === '#map-page'
+  mapPage.classList.toggle('hidden', !isMapPage)
+  if (isMapPage) sync3DMap()
+}
+
+window.addEventListener('hashchange', handleMapPage)
+handleMapPage()
+
+document.getElementById('btn-close-map')?.addEventListener('click', () => {
+  window.location.hash = '#hero'
+})
+
 const statusBarEl = document.getElementById('status-bar')!
 const statusBar = new StatusBar(
   statusBarEl,
@@ -161,6 +191,9 @@ function toMapStops(itinerary: Itinerary): typeof STOPS {
 function applyItinerary(itinerary: Itinerary): void {
   itineraryView.renderFromItinerary(itinerary)
   mapView.replaceStops(toMapStops(itinerary))
+  if (map3DView && window.location.hash === '#map-page') {
+    map3DView.replaceStops(toMapStops(itinerary))
+  }
   statusBar.syncFromStore(store)
 }
 

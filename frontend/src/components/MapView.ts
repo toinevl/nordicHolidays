@@ -4,20 +4,30 @@ import type { Stop } from '../types'
 
 export type StopSelectCallback = (stop: Stop, options?: { scroll?: boolean }) => void
 
+export type MapViewOptions = {
+  center?: [number, number]
+  zoom?: number
+  pitch?: number
+  bearing?: number
+  dragRotate?: boolean
+}
+
 export class MapView {
   private map: maplibregl.Map
   private markerEls = new Map<number, HTMLElement>()
   private onStopSelect: StopSelectCallback
   private _animRafId = 0
 
-  constructor(containerId: string, onStopSelect: StopSelectCallback) {
+  constructor(containerId: string, onStopSelect: StopSelectCallback, options?: MapViewOptions) {
     this.onStopSelect = onStopSelect
     this.map = new maplibregl.Map({
       container: containerId,
       style: 'https://tiles.openfreemap.org/styles/liberty',
-      center: [15, 62],
-      zoom: 5,
-      pitch: 30,
+      center: options?.center ?? [15, 62],
+      zoom: options?.zoom ?? 5,
+      pitch: options?.pitch ?? 30,
+      bearing: options?.bearing ?? 0,
+      dragRotate: options?.dragRotate ?? false,
     })
   }
 
