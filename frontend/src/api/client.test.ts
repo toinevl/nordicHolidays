@@ -42,25 +42,8 @@ describe('apiClient.getPreferences', () => {
     await expect(apiClient.getPreferences()).rejects.toThrow('500')
   })
 
-  it('retries once with a fresh owner after a likely CORS fetch error', async () => {
-    const ownerError = new TypeError('NetworkError when attempting to fetch resource.')
-    ;(ownerError as Record<string, unknown>).name = 'TypeError'
-    mockFetch.mockRejectedValueOnce(ownerError)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7 }),
-    })
-
-    const prefs = await apiClient.getPreferences()
-    expect(prefs.tripDays).toBe(7)
-    expect(mockFetch).toHaveBeenCalledTimes(2)
-    const retryHeaders = mockFetch.mock.calls[1]?.[1]?.headers as Record<string, string> | undefined
-    expect(retryHeaders?.['X-Owner-Id']).toMatch(/^owner-[0-9a-f-]+$/)
-  })
-
-  it('propagates non-CORS TypeError without retry', async () => {
+  it('does not retry on TypeError (passes through to caller)', async () => {
     const ownerError = new TypeError('some other fetch failure')
-    ;(ownerError as Record<string, unknown>).name = 'TypeError'
     mockFetch.mockRejectedValue(ownerError)
 
     await expect(apiClient.getPreferences()).rejects.toThrow('some other fetch failure')

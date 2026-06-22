@@ -63,6 +63,8 @@ jobs:
           cp -r node_modules deploy/node_modules
           cd deploy
           zip -r ../../api.zip .
+          cd ..
+          rm -rf deploy
 
       - name: Deploy API
         run: az functionapp deployment source config-zip --resource-group rgNordicHolidays --name ${{ vars.NORDIC_HOLIDAYS_FUNCTION_APP_NAME }} --src ./api.zip --build-remote false
