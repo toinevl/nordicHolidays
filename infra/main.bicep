@@ -194,7 +194,8 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2024-04-01' = {
     ENTRA_ISSUER_HOST: 'https://${environment().authentication.loginEndpoint}'
     ENTRA_API_AUDIENCE: '46d45892-55e5-4bd4-ad30-bd9fb9b4950b'
     ENTRA_REQUIRED_SCOPE: 'user_impersonation'
-    AZURE_FOUNDRY_ENDPOINT: 'https://proj-tvv-openclaw-resource.cognitiveservices.azure.com/models'
+    AZURE_FOUNDRY_ENDPOINT: 'https://proj-tvv-openclaw-resource.cognitiveservices.azure.com/openai'
+    AZURE_FOUNDRY_API_KEY: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/AZURE-FOUNDRY-API-KEY)'
   }
 }
 

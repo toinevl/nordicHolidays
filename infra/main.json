@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "5979877991178431906"
+      "templateHash": "9767759333655809370"
     }
   },
   "parameters": {
@@ -256,11 +256,13 @@
         "ENTRA_ISSUER_HOST": "[format('https://{0}', environment().authentication.loginEndpoint)]",
         "ENTRA_API_AUDIENCE": "46d45892-55e5-4bd4-ad30-bd9fb9b4950b",
         "ENTRA_REQUIRED_SCOPE": "user_impersonation",
-        "AZURE_FOUNDRY_ENDPOINT": "https://proj-tvv-openclaw-resource.cognitiveservices.azure.com/models"
+        "AZURE_FOUNDRY_ENDPOINT": "https://proj-tvv-openclaw-resource.cognitiveservices.azure.com/openai",
+        "AZURE_FOUNDRY_API_KEY": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/AZURE-FOUNDRY-API-KEY)', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
         "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
       ]
     },

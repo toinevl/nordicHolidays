@@ -5,9 +5,12 @@ export function getLlmClient(): OpenAI {
   if (!key?.trim()) throw new Error('AZURE_FOUNDRY_API_KEY is not configured')
   const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT
   if (!endpoint?.trim()) throw new Error('AZURE_FOUNDRY_ENDPOINT is not configured')
+  const model = getModel()
+  const base = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint
   return new OpenAI({
-    baseURL: endpoint,
+    baseURL: `${base}/deployments/${encodeURIComponent(model)}`,
     apiKey: key,
+    defaultQuery: { 'api-version': '2024-10-01-preview' },
   })
 }
 
