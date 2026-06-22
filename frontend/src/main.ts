@@ -133,7 +133,7 @@ function sync3DMap(): void {
       mapView.setActiveMarker(stop.id)
       mapView.flyTo(stop)
       if (map3DView) map3DView.flyTo(stop)
-    }, { pitch: 55, zoom: 5, dragRotate: true })
+    }, { pitch: 0, zoom: 5, dragRotate: false })
   }
   map3DView.replaceStops(toMapStops({ ...(itinerary ?? STOPS) } as Itinerary))
 }

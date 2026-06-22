@@ -34,3 +34,4 @@ azure_app_update.json
 azure_part.sh
 scripts/.worktrees/
 .worktrees/
+frontend/dist/
