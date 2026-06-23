@@ -34,6 +34,10 @@ export class StatusBar {
       </span>
     `
 
+    this.el.querySelector('.status-center')?.addEventListener('click', () => {
+      this.onOpenSaved()
+    })
+
     this.bindButtons(null, 'en')
   }
 

@@ -414,7 +414,8 @@ footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: cent
 .locale-btn--active { color: var(--amber) !important; font-weight: 600; }
 .status-center { display: flex; align-items: center; gap: 0.5rem; }
 .status-trip-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; color: var(--birch); }
-.status-badge { font-size: 0.65rem; padding: 0.125rem 0.5rem; border-radius: 999px; font-family: var(--font-mono, 'DM Mono', monospace); }
+.status-badge { font-size: 0.65rem; padding: 0.125rem 0.5rem; border-radius: 999px; font-family: var(--font-mono, 'DM Mono', monospace); cursor: pointer; }
+.status-badge:hover { filter: brightness(1.2); }
 .status-badge--saved { background: rgba(201, 125, 0, 0.2); color: var(--amber); border: 1px solid var(--amber); }
 .status-badge--unsaved { background: rgba(180, 60, 60, 0.2); color: #e07070; border: 1px solid #e07070; }
 
