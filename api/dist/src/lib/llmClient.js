@@ -13,9 +13,12 @@ function getLlmClient() {
     const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT;
     if (!endpoint?.trim())
         throw new Error('AZURE_FOUNDRY_ENDPOINT is not configured');
+    const model = getModel();
+    const base = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
     return new openai_1.default({
-        baseURL: endpoint,
+        baseURL: `${base}/deployments/${encodeURIComponent(model)}`,
         apiKey: key,
+        defaultQuery: { 'api-version': '2024-10-01-preview' },
     });
 }
 function getModel() {
