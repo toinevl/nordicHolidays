@@ -149,11 +149,13 @@ describe('PUT /api/profile', () => {
 
     mockGetTableClient.mockReturnValue({
       getEntity: getEntityMock,
-      upsertEntity: upsertEntityMock
+      upsertEntity: upsertEntityMock,
+      createEntity: vi.fn().mockResolvedValue(undefined),
+      updateEntity: vi.fn().mockResolvedValue(undefined),
     })
 
-    // PUT with new profile
-    getEntityMock.mockRejectedValueOnce({ statusCode: 404 })
+    // PUT with existing profile
+    getEntityMock.mockResolvedValueOnce(profileA)
     const putResult = await putProfileHandler(
       {
         method: 'PUT',
@@ -181,11 +183,12 @@ describe('PUT /api/profile', () => {
     const getEntityMock = vi.fn()
     mockGetTableClient.mockReturnValue({
       getEntity: getEntityMock,
-      upsertEntity: vi.fn().mockResolvedValue(undefined)
+      upsertEntity: vi.fn().mockResolvedValue(undefined),
+      createEntity: vi.fn().mockResolvedValue(undefined),
     })
 
     // Try to update, it should create ownerA's own row not ownerB's
-    getEntityMock.mockRejectedValue({ statusCode: 404 })
+    getEntityMock.mockRejectedValue({ statusCode: 404, code: 'ResourceNotFound' })
     const result = await putProfileHandler(
       {
         method: 'PUT',
@@ -194,7 +197,7 @@ describe('PUT /api/profile', () => {
       } as any,
       makeContext(),
     )
-    expect(result.status).toBe(200)
+    expect(result.status).toBe(201)
     const body = JSON.parse(result.body as string)
     // The upserted entity should have ownerA's ID as partition key
     expect(body.ownerId).toBe('entra-sub-1')

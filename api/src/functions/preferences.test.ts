@@ -56,15 +56,15 @@ describe('PUT /api/preferences', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('saves preferences and returns them', async () => {
-    const client = { getEntity: vi.fn(), upsertEntity: vi.fn().mockResolvedValue(undefined) }
+    const client = { getEntity: vi.fn(), upsertEntity: vi.fn().mockResolvedValue(undefined), createEntity: vi.fn().mockResolvedValue(undefined) }
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
     const prefs: Preferences = { mustVisit: ['Stockholm'], avoid: ['Gothenburg'], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 14, country: 'SE' }
     const req = { json: async () => prefs, method: 'PUT', headers: new Map() } as any
     const result = await putPreferencesHandler(req, makeContext())
     const body = JSON.parse(result.body as string) as Preferences
-    expect(result.status).toBe(200)
+    expect(result.status).toBe(201)
     expect(body.mustVisit).toEqual(['Stockholm'])
-    expect(client.upsertEntity).toHaveBeenCalledOnce()
+    expect(client.createEntity).toHaveBeenCalledOnce()
   })
 
   it('returns 400 for invalid body', async () => {

@@ -1,43 +1,46 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@azure/data-tables', () => {
-  const mockTableClientConstructor = vi.fn(() => ({
-    getEntity: vi.fn(),
-    upsertEntity: vi.fn(),
-    createEntity: vi.fn(),
-    deleteEntity: vi.fn(),
-    listEntities: vi.fn(),
-  }))
+const credentialMock = vi.fn()
+const tableClientMock = vi.fn(() => ({
+  getEntity: vi.fn(),
+  upsertEntity: vi.fn(),
+  createEntity: vi.fn(),
+  deleteEntity: vi.fn(),
+  listEntities: vi.fn(),
+}))
 
-  const mockFromConnectionString = vi.fn(() => ({
-    getEntity: vi.fn(),
-    upsertEntity: vi.fn(),
-    createEntity: vi.fn(),
-    deleteEntity: vi.fn(),
-    listEntities: vi.fn(),
-  }))
+const fromConnectionStringMock = vi.fn(() => ({
+  getEntity: vi.fn(),
+  upsertEntity: vi.fn(),
+  createEntity: vi.fn(),
+  deleteEntity: vi.fn(),
+  listEntities: vi.fn(),
+}))
 
-  return {
-    TableClient: Object.assign(mockTableClientConstructor, {
-      fromConnectionString: mockFromConnectionString,
-    }),
-  }
-})
+vi.mock('@azure/data-tables', () => ({
+  TableClient: class {
+    constructor(...args: any[]) {
+      return tableClientMock(...args)
+    }
+    static fromConnectionString(...args: any[]) {
+      return fromConnectionStringMock(...args)
+    }
+  },
+}))
 
-vi.mock('@azure/identity', () => {
-  const mockDefaultAzureCredential = vi.fn()
-  return {
-    DefaultAzureCredential: mockDefaultAzureCredential,
-  }
-})
+vi.mock('@azure/identity', () => ({
+  DefaultAzureCredential: class {
+    constructor(...args: any[]) {
+      return credentialMock(...args)
+    }
+  },
+}))
 
 import { getTableClient } from './tableClient'
-import { TableClient } from '@azure/data-tables'
-import { DefaultAzureCredential } from '@azure/identity'
 
 describe('getTableClient', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     delete process.env.TABLES_ENDPOINT
     delete process.env.STORAGE_CONNECTION_STRING
   })
@@ -50,14 +53,14 @@ describe('getTableClient', () => {
   it('uses TABLES_ENDPOINT with DefaultAzureCredential when set', () => {
     const endpoint = 'https://swedentravel.table.core.windows.net'
     const mockCredential = {}
-    vi.mocked(DefaultAzureCredential).mockReturnValue(mockCredential as any)
+    credentialMock.mockReturnValue(mockCredential as any)
 
     process.env.TABLES_ENDPOINT = endpoint
     process.env.STORAGE_CONNECTION_STRING = 'some-old-connection-string' // Verify endpoint takes precedence
     const client = getTableClient('Preferences')
 
-    expect(TableClient).toHaveBeenCalledWith(endpoint, 'Preferences', mockCredential)
-    expect(TableClient.fromConnectionString).not.toHaveBeenCalled()
+    expect(tableClientMock).toHaveBeenCalledWith(endpoint, 'Preferences', mockCredential)
+    expect(fromConnectionStringMock).not.toHaveBeenCalled()
     expect(client).toBeDefined()
   })
 
@@ -66,8 +69,8 @@ describe('getTableClient', () => {
     process.env.STORAGE_CONNECTION_STRING = connString
     const client = getTableClient('Preferences')
 
-    expect(TableClient.fromConnectionString).toHaveBeenCalledWith(connString, 'Preferences')
-    expect(TableClient).not.toHaveBeenCalled()
+    expect(fromConnectionStringMock).toHaveBeenCalledWith(connString, 'Preferences')
+    expect(tableClientMock).not.toHaveBeenCalled()
     expect(client).toBeDefined()
   })
 
@@ -89,9 +92,9 @@ describe('getTableClient', () => {
     const client2 = getTableClient('Table2')
 
     // Verify both calls were made to TableClient with the same credential instance
-    expect(TableClient).toHaveBeenCalledTimes(2)
-    const call1Args = vi.mocked(TableClient).mock.calls[0]
-    const call2Args = vi.mocked(TableClient).mock.calls[1]
+    expect(tableClientMock).toHaveBeenCalledTimes(2)
+    const call1Args = tableClientMock.mock.calls[0]
+    const call2Args = tableClientMock.mock.calls[1]
 
     expect(call1Args[0]).toBe(endpoint)
     expect(call1Args[1]).toBe('Table1')
