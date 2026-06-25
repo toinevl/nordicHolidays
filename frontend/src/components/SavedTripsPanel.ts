@@ -69,8 +69,14 @@ export class SavedTripsPanel {
   }
 
   private syncSaveForm(): void {
-    const { unsaved } = this.store.getState()
+    const { unsaved, currentItinerary } = this.store.getState()
     this.panel.querySelector('#save-current-form')?.classList.toggle('hidden', !unsaved)
+    if (unsaved) {
+      const nameInput = this.panel.querySelector('#save-name-input') as HTMLInputElement | null
+      if (nameInput && !nameInput.value) {
+        nameInput.value = currentItinerary?.title ?? ''
+      }
+    }
   }
 
   private bindEvents(): void {
@@ -95,6 +101,7 @@ export class SavedTripsPanel {
       nameInput.value = ''
       this.syncSaveForm()
       this.loadList()
+      alert(`Trip \"${name}\" saved`)
     } catch (err) {
       alert(`${t('saved.saveFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }

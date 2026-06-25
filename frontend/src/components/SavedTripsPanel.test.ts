@@ -138,3 +138,39 @@ describe('SavedTripsPanel XSS Prevention', () => {
     expect((thumbs[0] as HTMLImageElement).src).toBe('data:image/jpeg;base64,/9j/4AAQSkZJRgABA...')
   })
 })
+
+describe('SavedTripsPanel save form default name', () => {
+  it('prefills the save name with the current itinerary title when unsaved', () => {
+    document.body.innerHTML = ''
+    const store = {
+      getState: vi.fn(() => ({
+        unsaved: true,
+        savedItineraries: [],
+        currentItinerary: { title: 'Scandinavia Summer', stops: [] },
+      })),
+      setState: vi.fn(),
+      subscribe: vi.fn(),
+    }
+    const panel = new SavedTripsPanel(store as any, () => {}, async () => undefined)
+    ;(panel as any).syncSaveForm()
+    const input = document.querySelector('#save-name-input') as HTMLInputElement
+    expect(input.value).toBe('Scandinavia Summer')
+  })
+
+  it('leaves the save name empty when no current itinerary', () => {
+    document.body.innerHTML = ''
+    const store = {
+      getState: vi.fn(() => ({
+        unsaved: true,
+        savedItineraries: [],
+        currentItinerary: null,
+      })),
+      setState: vi.fn(),
+      subscribe: vi.fn(),
+    }
+    const panel = new SavedTripsPanel(store as any, () => {}, async () => undefined)
+    ;(panel as any).syncSaveForm()
+    const input = document.querySelector('#save-name-input') as HTMLInputElement
+    expect(input.value).toBe('')
+  })
+})

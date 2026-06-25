@@ -15,9 +15,10 @@ statuses:
 
 ## Backlog
 
-- [~] (A) Add MapLibre 3D `/map` route and integrated view +feature @me #1
-- [ ] (A) Harden anonymous owner persistence flow +storage +feature @me #2
-- [ ] (B) Externalize UI strings to NL/EN locale files +i18n +feature @me #3
+- [x] (A) Add MapLibre 3D `/map` route and integrated view +feature @me #1
+- [~] (A) Harden anonymous owner persistence flow +storage +feature @me #2
+- [x] (B) Externalize UI strings to NL/EN locale files +i18n +feature @me #3
 - [ ] (B) Add GitHub Actions CI status badge to frontend +ci +feature @me #4
 - [ ] (C) Add integration tests for anonymous save/load flow +testing +feature @me #5
 - [ ] (C) Profile API hardening and request validation +api +improvement @me #6
+- [x] (C) Default the trip-save name to the current trip name +api +improvement @me #7
