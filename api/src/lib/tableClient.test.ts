@@ -40,7 +40,7 @@ import { getTableClient } from './tableClient'
 
 describe('getTableClient', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    vi.clearAllMocks()
     delete process.env.TABLES_ENDPOINT
     delete process.env.STORAGE_CONNECTION_STRING
   })

@@ -8,7 +8,7 @@
     "watch": "tsc --watch",
     "prestart": "npm run build",
     "start": "func start",
-    "test": "echo \"No tests yet\""
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +25,7 @@
   "devDependencies": {
     "@types/node": "^22.15.3",
     "azure-functions-core-tools": "^4.0.7004",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.9"
   }
 }

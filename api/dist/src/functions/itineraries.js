@@ -212,9 +212,11 @@ async function updateItineraryHandler(req, ctx) {
             endCity: (itinerary.endCity ?? entity.endCity),
             itineraryJson: JSON.stringify(itinerary),
         });
-        const refreshed = updatedEntity;
-        const refreshedItinerary = JSON.parse(refreshed.itineraryJson);
-        return (0, cors_1.withCors)({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(refreshedItinerary) }, origin);
+        // updateEntity returns only response headers/etag, not the entity body.
+        // The merged `itinerary` object above is exactly what we persisted, so
+        // return it directly instead of trying to re-read a non-existent body
+        // (which would throw on JSON.parse(undefined) → 500).
+        return (0, cors_1.withCors)({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinerary) }, origin);
     }
     catch (err) {
         if (err instanceof Error && err.name === 'AuthError')

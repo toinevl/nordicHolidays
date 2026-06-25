@@ -19,6 +19,6 @@ statuses:
 - [~] (A) Harden anonymous owner persistence flow +storage +feature @me #2
 - [x] (B) Externalize UI strings to NL/EN locale files +i18n +feature @me #3
 - [ ] (B) Add GitHub Actions CI status badge to frontend +ci +feature @me #4
-- [ ] (C) Add integration tests for anonymous save/load flow +testing +feature @me #5
+- [x] (C) Add integration tests for anonymous save/load flow +testing +feature @me #5
 - [ ] (C) Profile API hardening and request validation +api +improvement @me #6
 - [x] (C) Default the trip-save name to the current trip name +api +improvement @me #7
