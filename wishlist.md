@@ -8,7 +8,7 @@ statuses:
   - { char: ~, label: "in-progress", color: "#f59e0b" }
   - { char: r, label: "in-review", color: "#8b5cf6" }
   - { char: x, label: done, color: "#22c55e" }
-  - { char: -, label: cancelled, color: "#6b7280" }
+  - { char: c, label: cancelled, color: "#6b7280" }
 ---
 
 # Wishlist
@@ -22,3 +22,5 @@ statuses:
 - [x] (C) Add integration tests for anonymous save/load flow +testing +feature @me #5
 - [ ] (C) Profile API hardening and request validation +api +improvement @me #6
 - [x] (C) Default the trip-save name to the current trip name +api +improvement @me #7
+- [ ] (B) Country-aware lookup fields for start/end city +feature +improvement @me #8
+- [ ] (A) Saving a generated itinerary gives no success/failure feedback +bug +ui @me #9
