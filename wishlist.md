@@ -22,5 +22,6 @@ statuses:
 - [x] (C) Add integration tests for anonymous save/load flow +testing +feature @me #5
 - [ ] (C) Profile API hardening and request validation +api +improvement @me #6
 - [x] (C) Default the trip-save name to the current trip name +api +improvement @me #7
-- [ ] (B) Country-aware lookup fields for start/end city +feature +improvement @me #8
+- [x] (B) Country-aware lookup fields for start/end city +feature +improvement @me #8
 - [x] (A) Saving a generated itinerary gives no success/failure feedback +bug +ui @me #9
+- [x] (A) Can the country of travel be limited to the one selected so travels do not cross boarders +bug +ui @me #10

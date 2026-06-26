@@ -231,4 +231,39 @@ describe('POST /api/generate', () => {
     const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
     expect(userMessage).toContain('14-day')
   })
+
+  it('includes country name and border constraint in the prompt when country is set', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Stockholm', endCity: 'Gothenburg', tripDays: 7, country: 'SE' }),
+    } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('Sweden')
+    expect(userMessage).toContain('do not cross international borders')
+  })
+
+  it('uses generic fallback when country code is unknown', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7, country: 'XX' }),
+    } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('the selected Nordic country')
+  })
 })

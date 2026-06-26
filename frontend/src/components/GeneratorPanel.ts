@@ -234,7 +234,8 @@ export class GeneratorPanel {
         return
       }
 
-      const localResults = searchLocalCities(query)
+      const countryCode = this.store.getState().preferences.country
+      const localResults = searchLocalCities(query, countryCode)
       render(localResults)
       hintEl.classList.toggle('hidden', localResults.some(city => city.name.toLowerCase() === query.toLowerCase()))
 
@@ -242,7 +243,7 @@ export class GeneratorPanel {
       const requestId = ++this.cityLookupRequest
       timer = window.setTimeout(async () => {
         try {
-          const remoteResults = await searchNominatim(query)
+          const remoteResults = await searchNominatim(query, countryCode)
           if (requestId !== this.cityLookupRequest) return
           const seen = new Set(localResults.flatMap(city => [city.id, cityKey(city)]))
           render([

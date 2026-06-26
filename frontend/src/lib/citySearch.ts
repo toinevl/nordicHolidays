@@ -54,13 +54,13 @@ export function searchLocalCities(query: string, countryCode = '', limit = DEFAU
     .map(({ city }) => city)
 }
 
-export async function searchNominatim(query: string, limit = DEFAULT_LIMIT): Promise<CitySuggestion[]> {
+export async function searchNominatim(query: string, countryCode = '', limit = DEFAULT_LIMIT): Promise<CitySuggestion[]> {
   const normalizedQuery = query.trim()
   if (normalizedQuery.length < MIN_QUERY_LENGTH || limit <= 0) {
     return []
   }
 
-  const cacheKey = `${normalizedQuery.toLowerCase()}:${limit}`
+  const cacheKey = `${normalizedQuery.toLowerCase()}:${countryCode}:${limit}`
   const cached = cache.get(cacheKey)
   if (cached && Date.now() - cached.fetchedAt < CACHE_MAX_AGE_MS) {
     return cached.results
@@ -75,15 +75,23 @@ export async function searchNominatim(query: string, limit = DEFAULT_LIMIT): Pro
 
   try {
     const url = new URL(NOMINATIM_URL)
-    url.search = new URLSearchParams({ q: normalizedQuery, format: 'json', limit: String(limit), addressdetails: '0', 'accept-language': 'en' }).toString()
+    const params: Record<string, string> = {
+      q: normalizedQuery,
+      format: 'json',
+      limit: String(limit),
+      addressdetails: '1',
+      'accept-language': 'en',
+    }
+    if (countryCode) params.countrycodes = countryCode.toLowerCase()
+    url.search = new URLSearchParams(params).toString()
     const res = await fetch(url.toString(), { headers: { 'User-Agent': 'NordicHolidays-app/1.0 (+https://example.com)' } })
     if (!res.ok) throw new Error('nominatim-error')
-    const rows: { display_name: string; lat: string; lon: string }[] = await res.json()
+    const rows: { display_name: string; lat: string; lon: string; address?: Record<string, string> }[] = await res.json()
     const results = rows.slice(0, limit).map(row => ({
       id: `remote-${row.lat}-${row.lon}`,
       name: row.display_name,
-      countryCode: '',
-      countryName: '',
+      countryCode: row.address?.country_code?.toUpperCase() ?? '',
+      countryName: row.address?.country ?? '',
       aliases: [],
       lat: Number(row.lat),
       lng: Number(row.lon),

@@ -7,9 +7,18 @@ import { checkAndIncrementRateLimit } from '../lib/rateLimit'
 import type { Itinerary, Preferences } from '../types'
 import { GenerateRequestBodySchema, logError } from '../lib/schemas'
 
+const COUNTRY_NAMES: Record<string, string> = {
+  SE: 'Sweden',
+  NO: 'Norway',
+  DK: 'Denmark',
+  FI: 'Finland',
+}
+
 function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' = 'en'): string {
+  const countryName = COUNTRY_NAMES[prefs.country] ?? 'the selected Nordic country'
   const parts: string[] = [
-    `Create a ${prefs.tripDays}-day Nordic road trip itinerary.`,
+    `Create a ${prefs.tripDays}-day Nordic road trip itinerary in ${countryName}.`,
+    `All stops must be within ${countryName} — do not cross international borders.`,
     `Start city: ${prefs.startCity}`,
     `End city: ${prefs.endCity}`,
   ]

@@ -8,9 +8,17 @@ const cors_1 = require("../lib/cors");
 const identity_1 = require("../lib/identity");
 const rateLimit_1 = require("../lib/rateLimit");
 const schemas_1 = require("../lib/schemas");
+const COUNTRY_NAMES = {
+    SE: 'Sweden',
+    NO: 'Norway',
+    DK: 'Denmark',
+    FI: 'Finland',
+};
 function buildUserMessage(prefs, lang = 'en') {
+    const countryName = COUNTRY_NAMES[prefs.country] ?? 'the selected Nordic country';
     const parts = [
-        `Create a ${prefs.tripDays}-day Nordic road trip itinerary.`,
+        `Create a ${prefs.tripDays}-day Nordic road trip itinerary in ${countryName}.`,
+        `All stops must be within ${countryName} — do not cross international borders.`,
         `Start city: ${prefs.startCity}`,
         `End city: ${prefs.endCity}`,
     ];

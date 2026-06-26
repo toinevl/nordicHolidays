@@ -45,4 +45,18 @@ describe('searchLocalCities', () => {
     expect(searchLocalCities('o')).toEqual([])
     expect(searchLocalCities('Atlantis')).toEqual([])
   })
+
+  it('filters results by country code', () => {
+    // 'os' matches both Oslo (NO) and Oslo-matching cities in Sweden if any
+    const noResults = searchLocalCities('oslo', 'NO')
+    expect(noResults.every(c => c.countryCode === 'NO')).toBe(true)
+    expect(noResults.some(c => c.id === 'oslo-no')).toBe(true)
+
+    const seResults = searchLocalCities('stockholm', 'SE')
+    expect(seResults.every(c => c.countryCode === 'SE')).toBe(true)
+
+    // With a country that has no matching cities, returns empty
+    const fiResults = searchLocalCities('stockholm', 'FI')
+    expect(fiResults).toEqual([])
+  })
 })
