@@ -14,7 +14,12 @@ export class Toast {
     toast.className = `toast toast--${type}`
     toast.textContent = message
     this.container.appendChild(toast)
-    requestAnimationFrame(() => toast.classList.add('toast--visible'))
+    // Force a reflow so the browser registers the initial opacity:0 state
+    // before we add the visible class. A single rAF is not enough — the
+    // browser can batch the append + class change into one paint, skipping
+    // the transition entirely and leaving the toast invisible (opacity:0).
+    void toast.offsetWidth
+    toast.classList.add('toast--visible')
     setTimeout(() => {
       toast.classList.remove('toast--visible')
       setTimeout(() => toast.remove(), 300)
