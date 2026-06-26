@@ -48,6 +48,7 @@ export const nl: LocaleStrings = {
     generated: 'Reisplan gegenereerd',
     generationFailed: 'Genereren mislukt: {msg}',
     loaded: 'Geladen "{name}"',
+    saved: 'Opgeslagen "{name}"',
     shareCopied: 'Link gekopieerd naar klembord',
     shareFailed: 'Delen mislukt',
     sharedItineraryLoaded: 'Gedeeld reisplan geladen',

@@ -23,4 +23,4 @@ statuses:
 - [ ] (C) Profile API hardening and request validation +api +improvement @me #6
 - [x] (C) Default the trip-save name to the current trip name +api +improvement @me #7
 - [ ] (B) Country-aware lookup fields for start/end city +feature +improvement @me #8
-- [ ] (A) Saving a generated itinerary gives no success/failure feedback +bug +ui @me #9
+- [x] (A) Saving a generated itinerary gives no success/failure feedback +bug +ui @me #9

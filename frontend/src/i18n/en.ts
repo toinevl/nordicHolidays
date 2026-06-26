@@ -48,6 +48,7 @@ export const en: LocaleStrings = {
     generated: 'Itinerary generated',
     generationFailed: 'Generation failed: {msg}',
     loaded: 'Loaded "{name}"',
+    saved: 'Saved "{name}"',
     shareCopied: 'Link copied to clipboard',
     shareFailed: 'Share failed',
     sharedItineraryLoaded: 'Shared itinerary loaded',

@@ -48,6 +48,7 @@ export interface LocaleStrings {
     generated: string
     generationFailed: string
     loaded: string
+    saved: string
     shareCopied: string
     shareFailed: string
     sharedItineraryLoaded: string

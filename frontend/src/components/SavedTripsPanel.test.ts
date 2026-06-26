@@ -174,3 +174,57 @@ describe('SavedTripsPanel save form default name', () => {
     expect(input.value).toBe('')
   })
 })
+
+describe('SavedTripsPanel save feedback', () => {
+  let toast: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn>; show: ReturnType<typeof vi.fn> }
+  let store: any
+
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), show: vi.fn() }
+    store = {
+      getState: vi.fn(() => ({
+        unsaved: true,
+        currentItinerary: { title: 'My Trip', stops: [], startCity: 'A', endCity: 'A' },
+        savedItineraries: [],
+      })),
+      setState: vi.fn(),
+      subscribe: vi.fn(),
+    }
+    vi.clearAllMocks()
+  })
+
+  it('shows a success toast (not alert) on successful save', async () => {
+    const { apiClient } = await import('../api/client')
+    ;(apiClient.saveItinerary as any).mockResolvedValueOnce({ id: 'trip-1' })
+    ;(apiClient.listItineraries as any).mockResolvedValueOnce([])
+
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, toast as any)
+    panel.open()
+    const input = document.querySelector('#save-name-input') as HTMLInputElement
+    input.value = 'Summer Trip'
+    const btn = document.querySelector('#btn-save-current') as HTMLButtonElement
+    btn.click()
+    // Wait for the async handler
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalled())
+    expect(alertSpy).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('Summer Trip'))
+  })
+
+  it('shows an error toast (not alert) on save failure', async () => {
+    const { apiClient } = await import('../api/client')
+    ;(apiClient.saveItinerary as any).mockRejectedValueOnce(new Error('Network down'))
+
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, toast as any)
+    panel.open()
+    const input = document.querySelector('#save-name-input') as HTMLInputElement
+    input.value = 'Summer Trip'
+    const btn = document.querySelector('#btn-save-current') as HTMLButtonElement
+    btn.click()
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect(alertSpy).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Network down'))
+  })
+})

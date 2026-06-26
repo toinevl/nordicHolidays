@@ -1,8 +1,9 @@
 import type { Itinerary } from '../types'
 import type { Store } from '../store'
 import { apiClient } from '../api/client'
-import { t } from '../i18n/index'
+import { t, tpl } from '../i18n/index'
 import { escapeHtml, validateThumbnailUrl } from '../lib/escape'
+import type { Toast } from './Toast'
 
 export type LoadItineraryCallback = (itinerary: Itinerary, name: string, id: string) => void
 export type ThumbnailProvider = () => Promise<string | undefined>
@@ -13,12 +14,14 @@ export class SavedTripsPanel {
   private store: Store
   private onLoad: LoadItineraryCallback
   private getThumbnail: ThumbnailProvider
+  private toast: Toast | null
   private lastLocale: string = ''
 
-  constructor(store: Store, onLoad: LoadItineraryCallback, getThumbnail: ThumbnailProvider) {
+  constructor(store: Store, onLoad: LoadItineraryCallback, getThumbnail: ThumbnailProvider, toast: Toast | null = null) {
     this.store = store
     this.onLoad = onLoad
     this.getThumbnail = getThumbnail
+    this.toast = toast
     this.overlay = document.createElement('div')
     this.overlay.className = 'panel-overlay hidden'
     this.panel = document.createElement('div')
@@ -101,9 +104,9 @@ export class SavedTripsPanel {
       nameInput.value = ''
       this.syncSaveForm()
       this.loadList()
-      alert(`Trip \"${name}\" saved`)
+      this.toast?.success(tpl('toast.saved', { name }))
     } catch (err) {
-      alert(`${t('saved.saveFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      this.toast?.error(`${t('saved.saveFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 
@@ -141,7 +144,7 @@ export class SavedTripsPanel {
             this.onLoad(itinerary, summary.name, id)
             this.close()
           } catch (err) {
-            alert(`${t('saved.loadFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+            this.toast?.error(`${t('saved.loadFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
           }
         })
       })
@@ -154,7 +157,7 @@ export class SavedTripsPanel {
             await apiClient.deleteItinerary(id)
             this.loadList()
           } catch (err) {
-            alert(`${t('saved.deleteFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+            this.toast?.error(`${t('saved.deleteFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
           }
         })
       })
