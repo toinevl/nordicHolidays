@@ -230,9 +230,12 @@ export async function updateItineraryHandler(
       partitionKey: owner.ownerId,
       rowKey: id,
       eTag: entity.etag as string | undefined,
+      name: entity.name as string,
+      createdAt: entity.createdAt as string,
       startCity: (itinerary.startCity ?? entity.startCity) as string,
       endCity: (itinerary.endCity ?? entity.endCity) as string,
       itineraryJson: JSON.stringify(itinerary),
+      thumbnail: entity.thumbnail as string | undefined,
     })
 
     // updateEntity returns only response headers/etag, not the entity body.
