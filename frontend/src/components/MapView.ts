@@ -64,9 +64,12 @@ export class MapView {
       ctx.font = 'bold 18px sans-serif'
       ctx.textAlign = 'center'
 
-      ctx.fillText(startCity, 80, 60)
+      const displayStart = startCity.startsWith('Select') ? 'Start' : startCity
+      const displayEnd = endCity.startsWith('Select') ? 'Finish' : endCity
+
+      ctx.fillText(displayStart, 80, 60)
       ctx.fillText('→', 160, 60)
-      ctx.fillText(endCity, 240, 60)
+      ctx.fillText(displayEnd, 240, 60)
 
       ctx.font = '12px sans-serif'
       ctx.fillStyle = '#94a3b8'

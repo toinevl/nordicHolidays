@@ -324,8 +324,18 @@ export class GeneratorPanel {
 
   private async handleGenerate(): Promise<void> {
     const btn = this.panel.querySelector('#btn-generate') as HTMLButtonElement
-    const startCity = (this.panel.querySelector('#gen-start') as HTMLInputElement)?.value.trim() || 'Amsterdam'
-    const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim() || 'Amsterdam'
+    const startCity = (this.panel.querySelector('#gen-start') as HTMLInputElement)?.value.trim()
+    const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim()
+
+    if (!startCity || startCity.startsWith('Select')) {
+      this.onError('Please select a start city')
+      return
+    }
+    if (!endCity || endCity.startsWith('Select')) {
+      this.onError('Please select a finish city')
+      return
+    }
+
     const tripDays = parseInt((this.panel.querySelector('#gen-days') as HTMLInputElement)?.value ?? '21', 10)
     const prefs: Preferences = { ...this.store.getState().preferences, startCity, endCity, tripDays }
 

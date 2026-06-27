@@ -53,8 +53,8 @@ export type CitySuggestion = {
 export const DEFAULT_PREFERENCES: Preferences = {
   mustVisit: [],
   avoid: [],
-  startCity: 'Amsterdam',
-  endCity: 'Amsterdam',
+  startCity: 'Select a start city',
+  endCity: 'Select a finish city',
   tripDays: 21,
   country: 'SE',
 }
