@@ -20,7 +20,6 @@ import {
   listItinerariesHandler,
   getItineraryHandler,
   saveItineraryHandler,
-  deleteItineraryHandler,
 } from './itineraries'
 import { getTableClient } from '../lib/tableClient'
 
@@ -213,19 +212,6 @@ describe('POST /api/itineraries', () => {
     expect(result.status).toBe(400)
     const body = JSON.parse(result.body as string)
     expect(body.error).toBe('Invalid JSON body')
-  })
-})
-
-describe('DELETE /api/itineraries/:id', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('deletes itinerary and returns 204', async () => {
-    const client = makeClient()
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { params: { id: 'id1' }, method: 'DELETE', headers: new Map() } as any
-    const result = await deleteItineraryHandler(req, makeContext())
-    expect(result.status).toBe(204)
-    expect(client.deleteEntity).toHaveBeenCalledWith('owner-123', 'id1')
   })
 })
 

@@ -25,13 +25,10 @@ export const en: LocaleStrings = {
     save: 'Save',
     saving: 'Saving...',
     load: 'Load',
-    delete: 'Delete',
     empty: 'No saved trips yet',
     loading: 'Loading...',
     errorLoading: 'Error loading trips',
     saveFailed: 'Save failed',
-    confirmDelete: 'Delete this trip?',
-    deleteFailed: 'Delete failed',
     loadFailed: 'Load failed',
   },
   status: {

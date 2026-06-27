@@ -25,14 +25,11 @@ export interface LocaleStrings {
     save: string
     saving: string
     load: string
-    delete: string
     empty: string
     loading: string
     errorLoading: string
-    confirmDelete: string
     saveFailed: string
     loadFailed: string
-    deleteFailed: string
   }
   status: {
     myTrips: string

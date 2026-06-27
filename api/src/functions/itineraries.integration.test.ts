@@ -115,7 +115,6 @@ import {
   getItineraryHandler,
   saveItineraryHandler,
   updateItineraryHandler,
-  deleteItineraryHandler,
 } from './itineraries'
 import { getTableClient } from '../lib/tableClient'
 import { resolveOwnerId } from '../lib/identity'
@@ -195,7 +194,7 @@ describe('anonymous (guest) save/load flow — integration', () => {
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(store)
   })
 
-  describe('full save → list → get → delete round-trip', () => {
+  describe('full save → list → get round-trip', () => {
     it('persists a guest itinerary so it appears in list and is retrievable by id', async () => {
       const ctx = makeContext()
       const headers = { 'X-Owner-Id': GUEST_A }
@@ -227,21 +226,11 @@ describe('anonymous (guest) save/load flow — integration', () => {
       const got = await getItineraryHandler(makeRequest({ headers, params: { id: 'id-1' } }), ctx)
       expect(got.status).toBe(200)
       expect(parseBody(got).title).toBe('Stockholm Weekend')
-
-      // 5. Delete
-      const deleted = await deleteItineraryHandler(makeRequest({ method: 'DELETE', headers, params: { id: 'id-1' } }), ctx)
-      expect(deleted.status).toBe(204)
-
-      // 6. List is empty again, get returns 404
-      const listAfter = await listItinerariesHandler(makeRequest({ headers }), ctx)
-      expect(parseBody(listAfter)).toEqual([])
-      const getAfter = await getItineraryHandler(makeRequest({ headers, params: { id: 'id-1' } }), ctx)
-      expect(getAfter.status).toBe(404)
     })
   })
 
   describe('owner isolation between guests', () => {
-    it('guest B cannot see, fetch, update, or delete guest A itinerary', async () => {
+    it('guest B cannot see, fetch, or update guest A itinerary', async () => {
       const ctx = makeContext()
 
       // Guest A saves a trip
@@ -267,13 +256,6 @@ describe('anonymous (guest) save/load flow — integration', () => {
         ctx,
       )
       expect(bPatch.status).toBe(404)
-
-      // Guest B cannot delete it
-      const bDelete = await deleteItineraryHandler(
-        makeRequest({ method: 'DELETE', headers: { 'X-Owner-Id': GUEST_B }, params: { id: 'id-1' } }),
-        ctx,
-      )
-      expect(bDelete.status).toBe(404)
 
       // Guest A still sees it intact
       const aList = await listItinerariesHandler(makeRequest({ headers: { 'X-Owner-Id': GUEST_A } }), ctx)

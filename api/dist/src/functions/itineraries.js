@@ -4,7 +4,6 @@ exports.listItinerariesHandler = listItinerariesHandler;
 exports.getItineraryHandler = getItineraryHandler;
 exports.saveItineraryHandler = saveItineraryHandler;
 exports.updateItineraryHandler = updateItineraryHandler;
-exports.deleteItineraryHandler = deleteItineraryHandler;
 const functions_1 = require("@azure/functions");
 const nanoid_1 = require("nanoid");
 const data_tables_1 = require("@azure/data-tables");
@@ -43,14 +42,14 @@ function normalizeSummary(values) {
         thumbnail: values.thumbnail ?? undefined,
     };
 }
-function entityToSummary(e) {
+function entityToSummary(e, includeThumbnail = true) {
     return normalizeSummary({
         id: e.rowKey,
         name: e.name,
         createdAt: e.createdAt,
         startCity: e.startCity,
         endCity: e.endCity,
-        thumbnail: e.thumbnail ?? null,
+        thumbnail: includeThumbnail ? (e.thumbnail ?? null) : undefined,
     });
 }
 function successResponse(origin, data, status = 200) {
@@ -69,7 +68,7 @@ async function listItinerariesHandler(req, ctx) {
         const client = (0, tableClient_1.getTableClient)('Itineraries');
         const summaries = [];
         for await (const entity of client.listEntities({ queryOptions: { filter: (0, data_tables_1.odata) `PartitionKey eq ${owner.ownerId}` } })) {
-            summaries.push(entityToSummary(entity));
+            summaries.push(entityToSummary(entity, false));
         }
         summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         return successResponse(origin, summaries);
@@ -208,9 +207,12 @@ async function updateItineraryHandler(req, ctx) {
             partitionKey: owner.ownerId,
             rowKey: id,
             eTag: entity.etag,
+            name: entity.name,
+            createdAt: entity.createdAt,
             startCity: (itinerary.startCity ?? entity.startCity),
             endCity: (itinerary.endCity ?? entity.endCity),
             itineraryJson: JSON.stringify(itinerary),
+            thumbnail: entity.thumbnail,
         });
         // updateEntity returns only response headers/etag, not the entity body.
         // The merged `itinerary` object above is exactly what we persisted, so
@@ -227,27 +229,6 @@ async function updateItineraryHandler(req, ctx) {
         return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
 }
-async function deleteItineraryHandler(req, ctx) {
-    const origin = req.headers.get('origin') ?? undefined;
-    if (req.method === 'OPTIONS')
-        return (0, cors_1.corsPreflightResponse)(origin);
-    try {
-        const owner = await (0, identity_1.resolveOwnerId)(req, ctx);
-        const id = req.params.id;
-        const client = (0, tableClient_1.getTableClient)('Itineraries');
-        await client.deleteEntity(owner.ownerId, id);
-        return (0, cors_1.withCors)({ status: 204 }, origin);
-    }
-    catch (err) {
-        if (err instanceof Error && err.name === 'AuthError') {
-            return (0, identity_1.authErrorResponse)(err, origin);
-        }
-        if (err?.statusCode === 404)
-            return (0, cors_1.withCors)({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin);
-        (0, schemas_1.logError)(ctx, 'deleteItineraryHandler: internal error', err);
-        return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
-    }
-}
 functions_1.app.http('itineraries', {
     methods: ['GET', 'POST', 'OPTIONS'],
     authLevel: 'anonymous',
@@ -259,14 +240,12 @@ functions_1.app.http('itineraries', {
     },
 });
 functions_1.app.http('itineraryById', {
-    methods: ['GET', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'PATCH', 'OPTIONS'],
     authLevel: 'anonymous',
     route: 'itineraries/{id}',
     handler: (req, ctx) => {
         if (req.method === 'PATCH')
             return updateItineraryHandler(req, ctx);
-        if (req.method === 'DELETE')
-            return deleteItineraryHandler(req, ctx);
         return getItineraryHandler(req, ctx);
     },
 });

@@ -17,7 +17,6 @@ vi.mock('../api/client', () => ({
     listItineraries: vi.fn(() => Promise.resolve([])),
     saveItinerary: vi.fn(),
     getItinerary: vi.fn(),
-    deleteItinerary: vi.fn(),
   },
 }))
 

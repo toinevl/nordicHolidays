@@ -172,7 +172,6 @@ export class SavedTripsPanel {
           <div class="saved-card-meta">${escapeHtml(item.startCity)} → ${escapeHtml(item.endCity)} · ${item.createdAt.slice(0, 10)}</div>
           <div class="saved-card-actions">
             <button class="btn btn--small btn--secondary btn-load" data-id="${item.id}">${t('saved.load')}</button>
-            <button class="btn btn--small btn--danger btn-delete" data-id="${item.id}">${t('saved.delete')}</button>
           </div>
         </div>
       `
@@ -188,19 +187,6 @@ export class SavedTripsPanel {
             this.close()
           } catch (err) {
             this.toast?.error(`${t('saved.loadFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
-          }
-        })
-      })
-
-      container.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = (btn as HTMLElement).dataset.id!
-          if (!confirm(t('saved.confirmDelete'))) return
-          try {
-            await apiClient.deleteItinerary(id)
-            this.loadList()
-          } catch (err) {
-            this.toast?.error(`${t('saved.deleteFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
           }
         })
       })

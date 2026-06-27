@@ -251,28 +251,6 @@ export async function updateItineraryHandler(
   }
 }
 
-export async function deleteItineraryHandler(
-  req: HttpRequest,
-  ctx: InvocationContext,
-): Promise<HttpResponseInit> {
-  const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
-
-  try {
-    const owner = await resolveOwnerId(req, ctx)
-    const id = req.params.id
-    const client = getTableClient('Itineraries')
-    await client.deleteEntity(owner.ownerId, id)
-    return withCors({ status: 204 }, origin)
-  } catch (err: any) {
-    if (err instanceof Error && err.name === 'AuthError') {
-      return authErrorResponse(err, origin)
-    }
-    if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
-    logError(ctx, 'deleteItineraryHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
-  }
-}
 
 app.http('itineraries', {
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -285,12 +263,11 @@ app.http('itineraries', {
 })
 
 app.http('itineraryById', {
-  methods: ['GET', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'PATCH', 'OPTIONS'],
   authLevel: 'anonymous',
   route: 'itineraries/{id}',
   handler: (req, ctx) => {
     if (req.method === 'PATCH') return updateItineraryHandler(req, ctx)
-    if (req.method === 'DELETE') return deleteItineraryHandler(req, ctx)
     return getItineraryHandler(req, ctx)
   },
 })

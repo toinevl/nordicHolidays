@@ -60,7 +60,6 @@ export const apiClient = {
         ],
       }),
     }),
-  deleteItinerary: (id: string) => request<void>(`/api/itineraries/${id}`, { method: 'DELETE' }),
   searchCities: (query: string, limit?: number) => {
     const url = new URL('/api/city-search', import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net')
     url.searchParams.set('q', query)
