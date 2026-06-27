@@ -17,6 +17,7 @@ export class MapView {
   private markerEls = new Map<number, HTMLElement>()
   private onStopSelect: StopSelectCallback
   private _animRafId = 0
+  private stops: Stop[] = []
 
   constructor(containerId: string, onStopSelect: StopSelectCallback, options?: MapViewOptions) {
     this.onStopSelect = onStopSelect
@@ -106,6 +107,7 @@ export class MapView {
   }
 
   addStops(stops: Stop[]): void {
+    this.stops = stops
     stops.forEach(stop => {
       const el = document.createElement('div')
       el.className = 'map-marker'
@@ -142,6 +144,7 @@ export class MapView {
   }
 
   replaceStops(stops: Stop[]): void {
+    this.stops = stops
     this.markerEls.forEach(el => el.remove())
     this.markerEls.clear()
 
@@ -201,6 +204,13 @@ export class MapView {
       this._animRafId = requestAnimationFrame(step)
     }
     this._animRafId = requestAnimationFrame(step)
+  }
+
+  flyRoute(): void {
+    if (!this.stops.length) return
+    this.stops.forEach((stop, i) => {
+      setTimeout(() => this.flyTo(stop), i * 2200)
+    })
   }
 
   flyTo(stop: Stop): void {

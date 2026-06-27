@@ -76,7 +76,11 @@ function onRemoveStopForMain(stopId: number): void {
 
 function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
   const state = store.getState()
-  if (!state.currentItinerary || !state.activeTripId || !Array.isArray(state.currentItinerary.stops)) {
+  if (!state.currentItinerary || !Array.isArray(state.currentItinerary.stops)) {
+    return Promise.resolve()
+  }
+  if (!state.activeTripId) {
+    toast.info('Save your trip first before notes can be persisted.')
     return Promise.resolve()
   }
 
@@ -151,6 +155,10 @@ handleMapPage()
 
 document.getElementById('btn-close-map')?.addEventListener('click', () => {
   window.location.hash = '#hero'
+})
+
+document.getElementById('btn-fly')?.addEventListener('click', () => {
+  mapView.flyRoute()
 })
 
 const statusBarEl = document.getElementById('status-bar')!
