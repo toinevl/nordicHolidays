@@ -35,3 +35,4 @@ azure_part.sh
 scripts/.worktrees/
 .worktrees/
 frontend/dist/
+api/api.zip

@@ -201,7 +201,7 @@ const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: strin
   store.setState({ currentItinerary: itinerary, activeTripName: name, activeTripId: id, unsaved: false })
   applyItinerary(itinerary)
   toast.success(tpl('toast.loaded', { name }))
-}, () => mapView.captureThumbnail().catch(() => undefined), toast)
+}, () => mapView.captureThumbnail().catch(() => undefined), (start: string, end: string) => mapView.generateMetadataThumbnail(start, end), toast)
 
 const generatorPanel = new GeneratorPanel(
   store,

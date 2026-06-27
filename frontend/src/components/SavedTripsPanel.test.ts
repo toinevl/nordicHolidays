@@ -30,7 +30,7 @@ describe('SavedTripsPanel XSS Prevention', () => {
     panelDiv = document.createElement('div')
     document.body.appendChild(panelDiv)
 
-    panel = new SavedTripsPanel(mockStore as any, () => {}, async () => undefined)
+    panel = new SavedTripsPanel(mockStore as any, () => {}, async () => undefined, async () => '', null)
     vi.clearAllMocks()
   })
 
@@ -151,7 +151,7 @@ describe('SavedTripsPanel save form default name', () => {
       setState: vi.fn(),
       subscribe: vi.fn(),
     }
-    const panel = new SavedTripsPanel(store as any, () => {}, async () => undefined)
+    const panel = new SavedTripsPanel(store as any, () => {}, async () => undefined, async () => '', null)
     ;(panel as any).syncSaveForm()
     const input = document.querySelector('#save-name-input') as HTMLInputElement
     expect(input.value).toBe('Scandinavia Summer')
@@ -168,7 +168,7 @@ describe('SavedTripsPanel save form default name', () => {
       setState: vi.fn(),
       subscribe: vi.fn(),
     }
-    const panel = new SavedTripsPanel(store as any, () => {}, async () => undefined)
+    const panel = new SavedTripsPanel(store as any, () => {}, async () => undefined, async () => '', null)
     ;(panel as any).syncSaveForm()
     const input = document.querySelector('#save-name-input') as HTMLInputElement
     expect(input.value).toBe('')
@@ -200,7 +200,7 @@ describe('SavedTripsPanel save feedback', () => {
     ;(apiClient.listItineraries as any).mockResolvedValueOnce([])
 
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, toast as any)
+    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, async () => '', toast as any)
     panel.open()
     const input = document.querySelector('#save-name-input') as HTMLInputElement
     input.value = 'Summer Trip'
@@ -217,7 +217,7 @@ describe('SavedTripsPanel save feedback', () => {
     ;(apiClient.saveItinerary as any).mockRejectedValueOnce(new Error('Network down'))
 
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, toast as any)
+    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, async () => '', toast as any)
     panel.open()
     const input = document.querySelector('#save-name-input') as HTMLInputElement
     input.value = 'Summer Trip'

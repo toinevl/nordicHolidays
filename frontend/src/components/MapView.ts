@@ -44,6 +44,38 @@ export class MapView {
     })
   }
 
+  generateMetadataThumbnail(startCity: string, endCity: string): Promise<string> {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 320
+      canvas.height = 220
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return resolve('')
+
+      ctx.fillStyle = '#0f172a'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      ctx.fillStyle = '#64748b'
+      ctx.fillRect(0, 0, canvas.width, 4)
+      ctx.fillRect(0, 216, canvas.width, 4)
+
+      ctx.fillStyle = '#e2e8f0'
+      ctx.font = 'bold 18px sans-serif'
+      ctx.textAlign = 'center'
+
+      ctx.fillText(startCity, 80, 60)
+      ctx.fillText('→', 160, 60)
+      ctx.fillText(endCity, 240, 60)
+
+      ctx.font = '12px sans-serif'
+      ctx.fillStyle = '#94a3b8'
+      ctx.fillText('Nordic Holidays', 160, 110)
+
+      resolve(canvas.toDataURL('image/jpeg', 0.6))
+    })
+  }
+
   private _routeReady(): boolean {
     const mapCanvas = this.map.getCanvas()
     if (!mapCanvas || mapCanvas.width === 0 || mapCanvas.height === 0) return false

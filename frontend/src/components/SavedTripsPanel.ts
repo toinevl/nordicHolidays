@@ -7,6 +7,7 @@ import type { Toast } from './Toast'
 
 export type LoadItineraryCallback = (itinerary: Itinerary, name: string, id: string) => void
 export type ThumbnailProvider = () => Promise<string | undefined>
+export type MetadataThumbnailProvider = (startCity: string, endCity: string) => Promise<string>
 
 export class SavedTripsPanel {
   private overlay: HTMLElement
@@ -14,14 +15,16 @@ export class SavedTripsPanel {
   private store: Store
   private onLoad: LoadItineraryCallback
   private getThumbnail: ThumbnailProvider
+  private getMetadataThumbnail: MetadataThumbnailProvider
   private toast: Toast | null
   private lastLocale: string = ''
   private cachedThumbnail: string | undefined
 
-  constructor(store: Store, onLoad: LoadItineraryCallback, getThumbnail: ThumbnailProvider, toast: Toast | null = null) {
+  constructor(store: Store, onLoad: LoadItineraryCallback, getThumbnail: ThumbnailProvider, getMetadataThumbnail: MetadataThumbnailProvider, toast: Toast | null = null) {
     this.store = store
     this.onLoad = onLoad
     this.getThumbnail = getThumbnail
+    this.getMetadataThumbnail = getMetadataThumbnail
     this.toast = toast
     this.overlay = document.createElement('div')
     this.overlay.className = 'panel-overlay hidden'
@@ -110,9 +113,11 @@ export class SavedTripsPanel {
     try {
       let thumbnail = this.cachedThumbnail
       if (!thumbnail) {
-        thumbnail = await this.getThumbnail()
-        if (thumbnail) this.cachedThumbnail = thumbnail
+        const startCity = currentItinerary.stops[0]?.city ?? 'Start'
+        const endCity = currentItinerary.stops[currentItinerary.stops.length - 1]?.city ?? 'End'
+        thumbnail = await this.getMetadataThumbnail(startCity, endCity)
       }
+
       const { id } = await apiClient.saveItinerary(name, currentItinerary, thumbnail)
       this.store.setState({ unsaved: false, activeTripName: name, activeTripId: id })
       history.replaceState(null, '', `?id=${id}`)
@@ -120,11 +125,31 @@ export class SavedTripsPanel {
       this.syncSaveForm()
       this.loadList()
       this.toast?.success(tpl('toast.saved', { name }))
+
+      this._captureRealThumbnailInBackground()
     } catch (err) {
       this.toast?.error(`${t('saved.saveFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       saveBtn.disabled = false
       saveBtn.textContent = originalText
+    }
+  }
+
+  private async _captureRealThumbnailInBackground(): Promise<void> {
+    const { currentItinerary } = this.store.getState()
+    if (!currentItinerary) return
+
+    try {
+      const realThumbnail = await this.getThumbnail()
+      if (realThumbnail) {
+        this.cachedThumbnail = realThumbnail
+        const thumbCards = this.panel.querySelectorAll('.saved-thumb')
+        if (thumbCards.length > 0) {
+          const latestCard = thumbCards[0] as HTMLImageElement
+          latestCard.src = realThumbnail
+        }
+      }
+    } catch {
     }
   }
 
