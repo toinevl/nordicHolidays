@@ -28,4 +28,4 @@ statuses:
 - [ ] (A) Validate whether itineraries are actually saved in Azure Table Storage +bug +testing @me #11
 - [ ] (B) Remove delete option from saved itineraries UI — deletion is a management task, not user-facing +feature +ui @me #12
 - [x] (A) Save button has perceptible delay with no loading state — user doubts it worked, navigates away or double-clicks +bug +ui @me #13
-- [ ] (B) Loading saved itineraries takes 10+ seconds — investigate performance bottleneck and optimize +bug +perf @me #14
+- [r] (B) Loading saved itineraries takes 10+ seconds — investigate performance bottleneck and optimize +bug +perf @me #14
