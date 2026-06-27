@@ -337,6 +337,10 @@ export class GeneratorPanel {
     }
 
     const tripDays = parseInt((this.panel.querySelector('#gen-days') as HTMLInputElement)?.value ?? '21', 10)
+    if (isNaN(tripDays) || tripDays < 7) {
+      this.onError('Minimum trip duration is 7 days')
+      return
+    }
     const prefs: Preferences = { ...this.store.getState().preferences, startCity, endCity, tripDays }
 
     this.store.setState({ preferences: prefs })

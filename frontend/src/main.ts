@@ -230,6 +230,27 @@ store.subscribe(() => {
 })
 
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
+store.setState({
+  currentItinerary: {
+    title: 'Nordic Holidays',
+    totalDays: STOPS.reduce((sum, s) => sum + s.nights, 0),
+    startCity: STOPS[0]?.dest ?? '',
+    endCity: STOPS[STOPS.length - 1]?.dest ?? '',
+    generatedAt: '',
+    stops: STOPS.map(s => ({
+      day: s.id,
+      city: s.dest,
+      region: s.region,
+      lat: s.coords[1],
+      lng: s.coords[0],
+      nights: s.nights,
+      highlights: s.highlights,
+      accommodation: '',
+      culinaryNotes: '',
+      tags: s.tags,
+    })),
+  },
+})
 mapView.addStops(STOPS)
 
 const urlId = new URLSearchParams(window.location.search).get('id')
