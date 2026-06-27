@@ -42,7 +42,7 @@ statuses:
 
 ## Security
 
-- [r] (A) Auth stub: frontend auth.ts returns null/false for all methods — no user ever authenticates via Entra, all are guests +security +bug @me #15 [quick]
+- [c] (A) Auth stub: frontend auth.ts returns null/false for all methods — no user ever authenticates via Entra, all are guests +security +bug @me #15 [quick]
 - [ ] (A) JWT issuer misconfiguration: verifyAccessToken uses '/common' issuer but Entra v2 tokens carry tenant-specific issuers, jose rejects every real token +security +bug @me #16 [quick]
 - [ ] (B) Guest identity UUID has no expiry, rotation or revocation — a leaked UUID gives permanent access to all user data +security +improvement @me #17 [medium]
 - [r] (B) Profile PUT response exposes internal Azure Table Storage fields (partitionKey, rowKey, etag) that should not be client-visible +security +bug @me #18 [quick]
