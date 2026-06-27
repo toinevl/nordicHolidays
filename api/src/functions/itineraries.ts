@@ -49,14 +49,14 @@ function normalizeSummary(values: {
   }
 }
 
-function entityToSummary(e: Record<string, unknown>): SavedItinerarySummary {
+function entityToSummary(e: Record<string, unknown>, includeThumbnail = true): SavedItinerarySummary {
   return normalizeSummary({
     id: e.rowKey as string | null,
     name: e.name as string | null,
     createdAt: e.createdAt as string | null,
     startCity: e.startCity as string | null,
     endCity: e.endCity as string | null,
-    thumbnail: (e.thumbnail as string | undefined) ?? null,
+    thumbnail: includeThumbnail ? ((e.thumbnail as string | undefined) ?? null) : undefined,
   })
 }
 
@@ -83,7 +83,7 @@ export async function listItinerariesHandler(
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
     for await (const entity of client.listEntities({ queryOptions: { filter: odata`PartitionKey eq ${owner.ownerId}` } })) {
-      summaries.push(entityToSummary(entity as Record<string, unknown>))
+      summaries.push(entityToSummary(entity as Record<string, unknown>, false))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return successResponse(origin, summaries)
