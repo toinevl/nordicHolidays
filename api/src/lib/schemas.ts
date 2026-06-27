@@ -111,5 +111,7 @@ export const ItineraryPatchBodySchema = z.object({
 export const ProfilePutBodySchema = z.object({
   displayName: z.string().max(500).optional(),
   email: z.string().email().max(500).optional(),
-  extensions: z.record(z.unknown()).optional(),
+  extensions: z.record(
+    z.union([z.string().max(500), z.number(), z.boolean()])
+  ).refine(obj => Object.keys(obj).length <= 20, 'Too many extension fields').optional(),
 }).strict()

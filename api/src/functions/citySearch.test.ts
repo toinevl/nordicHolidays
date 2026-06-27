@@ -2,10 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { citySearchHandler } from './citySearch'
 import type { CitySuggestion } from '../types'
 
+const GUEST_ID = 'owner-12345678-1234-1234-1234-123456789012'
+
 function requestWithQuery(q?: string): any {
+  const headers = new Map<string, string>([['X-Owner-Id', GUEST_ID]])
   return {
     method: 'GET',
-    headers: new Map(),
+    headers,
     query: new URLSearchParams(q === undefined ? '' : { q }),
   }
 }

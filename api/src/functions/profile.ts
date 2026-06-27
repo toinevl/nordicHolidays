@@ -116,10 +116,17 @@ export async function putProfileHandler(
       throw err
     }
 
+    const INTERNAL_FIELDS = new Set([
+      'partitionKey', 'rowKey', 'etag', 'odata.etag', 'timestamp',
+      '_rid', '_self', '_attachments', '_ts',
+    ])
+    const safeEntity = Object.fromEntries(
+      Object.entries(entity as Record<string, unknown>).filter(([k]) => !INTERNAL_FIELDS.has(k))
+    )
     return withCors({
       status: isNew ? 201 : 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entity),
+      body: JSON.stringify(safeEntity),
     }, origin)
   } catch (err) {
     if (err instanceof Error && err.name === 'AuthError') {

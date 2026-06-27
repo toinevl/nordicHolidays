@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import type { CitySuggestion } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { logError } from '../lib/schemas'
+import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 
 type ProviderRecord = Record<string, unknown>
 
@@ -124,6 +125,14 @@ export async function citySearchHandler(
 ): Promise<HttpResponseInit> {
   const origin = req?.headers.get('origin') ?? undefined
   if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
+
+  if (req) {
+    try {
+      await resolveOwnerId(req, ctx)
+    } catch (err) {
+      return authErrorResponse(err, origin)
+    }
+  }
 
   const q = getQuery(req)
   if (q.length < 2) return jsonResponse([], origin)
