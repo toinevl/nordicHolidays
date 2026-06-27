@@ -16,6 +16,7 @@ export class SavedTripsPanel {
   private getThumbnail: ThumbnailProvider
   private toast: Toast | null
   private lastLocale: string = ''
+  private cachedThumbnail: string | undefined
 
   constructor(store: Store, onLoad: LoadItineraryCallback, getThumbnail: ThumbnailProvider, toast: Toast | null = null) {
     this.store = store
@@ -31,14 +32,19 @@ export class SavedTripsPanel {
     this.renderShell()
     this.lastLocale = this.store.getState().locale
     this.store.subscribe(() => {
-      const currentLocale = this.store.getState().locale
-      if (currentLocale !== this.lastLocale) {
-        this.lastLocale = currentLocale
+      const { locale, currentItinerary } = this.store.getState()
+      if (locale !== this.lastLocale) {
+        this.lastLocale = locale
         this.renderShell()
         this.syncSaveForm()
       }
+      if (currentItinerary && currentItinerary !== this._lastCachedForItinerary) {
+        this.cachedThumbnail = undefined
+        this._lastCachedForItinerary = currentItinerary
+      }
     })
   }
+  private _lastCachedForItinerary: any
 
   private renderShell(): void {
     this.panel.innerHTML = `
@@ -102,7 +108,11 @@ export class SavedTripsPanel {
     saveBtn.textContent = t('saved.saving')
 
     try {
-      const thumbnail = await this.getThumbnail()
+      let thumbnail = this.cachedThumbnail
+      if (!thumbnail) {
+        thumbnail = await this.getThumbnail()
+        if (thumbnail) this.cachedThumbnail = thumbnail
+      }
       const { id } = await apiClient.saveItinerary(name, currentItinerary, thumbnail)
       this.store.setState({ unsaved: false, activeTripName: name, activeTripId: id })
       history.replaceState(null, '', `?id=${id}`)
