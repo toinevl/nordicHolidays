@@ -41,13 +41,19 @@ export class MapView {
       if (!this._routeReady()) return reject(new Error('Map canvas not rendered'))
 
       let renders = 0
+      let timeoutId: number | undefined
       const onRender = () => {
         renders++
         if (renders < 2) return
         this.map.off('render', onRender)
+        if (timeoutId) clearTimeout(timeoutId)
         this._setThumbnail(canvasRef, resolve, reject)
       }
       this.map.on('render', onRender)
+      timeoutId = setTimeout(() => {
+        this.map.off('render', onRender)
+        reject(new Error('Timeout waiting for map render'))
+      }, 2000)
     })
   }
 
