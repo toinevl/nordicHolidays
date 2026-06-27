@@ -1,5 +1,7 @@
 # NordicHolidays
 
+[![CI](https://github.com/toinevl/nordicHolidays/actions/workflows/ci.yml/badge.svg)](https://github.com/toinevl/nordicHolidays/actions/workflows/ci.yml)
+
 Plan your Nordic holiday by selecting a start and end point — we’ll generate the rest with AI.
 
 **Live app:** https://nordicholidays.azurestaticapps.net
