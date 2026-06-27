@@ -78,10 +78,12 @@ nav.scrolled { background: rgba(11,22,16,0.96); backdrop-filter: blur(10px); }
   border: 1px solid var(--forest-border);
 }
 .hero-overlay {
-  position: absolute; inset: 0; z-index: 5;
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
   display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
-  padding: 4rem 4rem 5rem; pointer-events: none;
-  background: linear-gradient(to top, rgba(11,22,16,0.92) 0%, rgba(11,22,16,0.18) 58%, transparent 100%);
+  padding: 2rem 4rem 3rem; pointer-events: none;
+  background: linear-gradient(to top, rgba(11,22,16,0.92) 0%, rgba(11,22,16,0.4) 100%);
+  max-height: 25vh;
+  overflow: hidden;
 }
 .hero-badge {
   display: inline-block; background: var(--amber); color: var(--forest-deep);
@@ -89,11 +91,11 @@ nav.scrolled { background: rgba(11,22,16,0.96); backdrop-filter: blur(10px); }
   letter-spacing: 0.1em; text-transform: uppercase;
   padding: 0.38rem 0.9rem; border-radius: var(--r); margin-bottom: 1rem;
 }
-.hero-title { font-size: clamp(3rem, 7vw, 5.5rem); font-weight: 700; color: #fff; margin-bottom: 0.4rem; }
+.hero-title { font-size: clamp(1.5rem, 4vw, 2.5rem); font-weight: 700; color: #fff; margin-bottom: 0.3rem; line-height: 1.2; }
 .hero-sub   { font-size: clamp(1rem,2vw,1.2rem); color: rgba(212,202,176,0.7); font-style: italic; margin-bottom: 0.75rem; }
 .hero-meta  {
-  display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 2rem;
-  font-family: 'DM Mono', monospace; font-size: 0.75rem; letter-spacing: 0.06em;
+  display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1rem;
+  font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.06em;
   color: rgba(212,202,176,0.55);
 }
 .hero-actions { display: flex; gap: 0.85rem; flex-wrap: wrap; pointer-events: all; }
@@ -384,7 +386,7 @@ footer { background: #070f0a; color: var(--text-on-dark-muted); text-align: cent
 @media (max-width: 580px) {
   #hero { height: 85vh; }
   nav { padding: 0 1rem; }
-  .hero-overlay { padding: 1.5rem 1.5rem 3rem; }
+  .hero-overlay { padding: 1rem 1.5rem 2rem; max-height: 20vh; }
   .hero-meta { flex-direction: column; gap: 0.35rem; }
   .hero-actions { flex-direction: column; align-items: flex-start; }
   .route-summary { grid-template-columns: 1fr; }
