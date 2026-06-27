@@ -90,11 +90,16 @@ export class SavedTripsPanel {
 
   private async handleSave(): Promise<void> {
     const nameInput = this.panel.querySelector('#save-name-input') as HTMLInputElement
+    const saveBtn = this.panel.querySelector('#btn-save-current') as HTMLButtonElement
     const name = nameInput?.value.trim()
     if (!name) { nameInput?.focus(); return }
 
     const { currentItinerary } = this.store.getState()
     if (!currentItinerary) return
+
+    const originalText = saveBtn.textContent
+    saveBtn.disabled = true
+    saveBtn.textContent = t('saved.saving')
 
     try {
       const thumbnail = await this.getThumbnail()
@@ -107,6 +112,9 @@ export class SavedTripsPanel {
       this.toast?.success(tpl('toast.saved', { name }))
     } catch (err) {
       this.toast?.error(`${t('saved.saveFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      saveBtn.disabled = false
+      saveBtn.textContent = originalText
     }
   }
 

@@ -23,6 +23,7 @@ export const en: LocaleStrings = {
     close: 'Close',
     namePlaceholder: 'Trip name...',
     save: 'Save',
+    saving: 'Saving...',
     load: 'Load',
     delete: 'Delete',
     empty: 'No saved trips yet',

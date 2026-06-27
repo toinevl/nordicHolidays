@@ -23,6 +23,7 @@ export const nl: LocaleStrings = {
     close: 'Sluiten',
     namePlaceholder: 'Reisnaam...',
     save: 'Opslaan',
+    saving: 'Opslaan...',
     load: 'Laden',
     delete: 'Verwijderen',
     empty: 'Nog geen opgeslagen reizen',

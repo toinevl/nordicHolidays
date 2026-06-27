@@ -23,6 +23,7 @@ export interface LocaleStrings {
     close: string
     namePlaceholder: string
     save: string
+    saving: string
     load: string
     delete: string
     empty: string

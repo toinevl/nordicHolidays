@@ -27,3 +27,4 @@ statuses:
 - [x] (A) Can the country of travel be limited to the one selected so travels do not cross boarders +bug +ui @me #10
 - [ ] (A) Validate whether itineraries are actually saved in Azure Table Storage +bug +testing @me #11
 - [ ] (B) Remove delete option from saved itineraries UI — deletion is a management task, not user-facing +feature +ui @me #12
+- [x] (A) Save button has perceptible delay with no loading state — user doubts it worked, navigates away or double-clicks +bug +ui @me #13
