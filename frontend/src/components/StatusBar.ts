@@ -38,7 +38,7 @@ export class StatusBar {
       this.onOpenSaved()
     })
 
-    this.bindButtons(null, 'en')
+    this.bindButtons(null)
   }
 
   render(tripName: string, badge: 'saved' | 'unsaved' | null, activeTripId: string | null, locale: Locale): void {
@@ -89,10 +89,15 @@ export class StatusBar {
 
       this.el.querySelector('#btn-locale-nl')?.classList.toggle('locale-btn--active', locale === 'nl')
       this.el.querySelector('#btn-locale-en')?.classList.toggle('locale-btn--active', locale === 'en')
+
+      const savedBtn = this.el.querySelector('#btn-open-saved')
+      if (savedBtn instanceof HTMLElement) savedBtn.textContent = t('status.myTrips')
+      const genBtn = this.el.querySelector('#btn-open-generator')
+      if (genBtn instanceof HTMLElement) genBtn.textContent = t('status.generate')
     }
   }
 
-  private bindButtons(activeTripId: string | null, locale: Locale): void {
+  private bindButtons(activeTripId: string | null): void {
     this.el.querySelector('#btn-open-saved')?.addEventListener('click', this.onOpenSaved)
     this.el.querySelector('#btn-open-generator')?.addEventListener('click', this.onOpenGenerator)
     const onShare = (target: EventTarget | null) => {
@@ -102,12 +107,8 @@ export class StatusBar {
       if (current) this.onShare(current)
     }
     this.el.addEventListener('click', (event) => onShare(event.target))
-    this.el.querySelector('#btn-locale-nl')?.addEventListener('click', () => {
-      if (locale !== 'nl') this.onLocaleChange('nl')
-    })
-    this.el.querySelector('#btn-locale-en')?.addEventListener('click', () => {
-      if (locale !== 'en') this.onLocaleChange('en')
-    })
+    this.el.querySelector('#btn-locale-nl')?.addEventListener('click', () => this.onLocaleChange('nl'))
+    this.el.querySelector('#btn-locale-en')?.addEventListener('click', () => this.onLocaleChange('en'))
   }
 
   syncFromStore(store: Store): void {
