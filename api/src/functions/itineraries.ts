@@ -1,7 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { nanoid } from 'nanoid'
 import { odata } from '@azure/data-tables'
-import { getTableClient } from '../lib/tableClient'
+import { getTableClient, ensureTable } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
@@ -87,9 +87,13 @@ export async function listItinerariesHandler(
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return successResponse(origin, summaries)
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof Error && err.name === 'AuthError') {
       return authErrorResponse(err, origin)
+    }
+    // Table doesn't exist yet (fresh deployment / first use) → no itineraries saved
+    if (err?.statusCode === 404 || err?.errorCode === 'TableNotFound') {
+      return successResponse(origin, [])
     }
     logError(ctx, 'listItinerariesHandler: internal error', err)
     return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
@@ -161,7 +165,7 @@ export async function saveItineraryHandler(
 
     const body = parseResult.data
     const id = nanoid()
-    const client = getTableClient('Itineraries')
+    const client = await ensureTable('Itineraries')
     // Validate thumbnail: if provided, must be a valid data: URL with correct size. Invalid thumbnails are stripped.
     const thumb = validateThumbnail(body.thumbnail)
     await client.createEntity({

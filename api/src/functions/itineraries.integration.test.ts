@@ -102,6 +102,7 @@ function createInMemoryStore() {
 
 vi.mock('../lib/tableClient', () => ({
   getTableClient: vi.fn(),
+  ensureTable: vi.fn(),
 }))
 
 // We mock nanoid to keep rowKeys deterministic within a test, but reset the
@@ -116,7 +117,7 @@ import {
   saveItineraryHandler,
   updateItineraryHandler,
 } from './itineraries'
-import { getTableClient } from '../lib/tableClient'
+import { getTableClient, ensureTable } from '../lib/tableClient'
 import { resolveOwnerId } from '../lib/identity'
 
 // ---------------------------------------------------------------------------
@@ -192,6 +193,7 @@ describe('anonymous (guest) save/load flow — integration', () => {
     idCounter = 0
     vi.clearAllMocks()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(store)
+    ;(ensureTable as ReturnType<typeof vi.fn>).mockResolvedValue(store)
   })
 
   describe('full save → list → get round-trip', () => {

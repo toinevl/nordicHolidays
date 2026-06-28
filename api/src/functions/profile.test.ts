@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getTableClient } from '../lib/tableClient'
 
-vi.mock('../lib/tableClient', () => ({
-  getTableClient: vi.fn(() => ({
+vi.mock('../lib/tableClient', () => {
+  const getTableClient = vi.fn(() => ({
     getEntity: vi.fn(),
     upsertEntity: vi.fn().mockResolvedValue(undefined),
-  })),
-}))
+    createTable: vi.fn().mockResolvedValue(undefined),
+  }))
+  return {
+    getTableClient,
+    ensureTable: vi.fn(async () => getTableClient()),
+  }
+})
 vi.mock('../lib/identity', () => ({
   resolveOwnerId: vi.fn().mockResolvedValue({ ownerId: 'entra-sub-1', isGuest: false, subject: 'sub-1' }),
   authErrorResponse: vi.fn((err, origin) => ({ status: 401, body: JSON.stringify({ error: (err as Error).message }), headers: {}, } as any)),
@@ -14,6 +18,7 @@ vi.mock('../lib/identity', () => ({
 
 import { getProfileHandler, putProfileHandler } from '../functions/profile'
 import { resolveOwnerId } from '../lib/identity'
+import { getTableClient } from '../lib/tableClient'
 
 const mockResolveOwnerId = resolveOwnerId as ReturnType<typeof vi.fn>
 const mockGetTableClient = getTableClient as ReturnType<typeof vi.fn>
@@ -140,6 +145,67 @@ describe('PUT /api/profile', () => {
       makeContext(),
     )
     expect(result.status).toBe(400)
+  })
+
+  it('returns 400 when displayName is an empty string', async () => {
+    mockResolveOwnerId.mockResolvedValue(ownerA)
+    const result = await putProfileHandler(
+      { method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => ({ displayName: '' }) } as any,
+      makeContext(),
+    )
+    expect(result.status).toBe(400)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toMatch(/invalid/i)
+  })
+
+  it('returns 400 when email format is invalid', async () => {
+    mockResolveOwnerId.mockResolvedValue(ownerA)
+    const result = await putProfileHandler(
+      { method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => ({ email: 'not-an-email' }) } as any,
+      makeContext(),
+    )
+    expect(result.status).toBe(400)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toMatch(/invalid/i)
+  })
+
+  it('returns 400 when extensions exceeds 20 keys', async () => {
+    mockResolveOwnerId.mockResolvedValue(ownerA)
+    const bigExt = Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`k${i}`, 'v']))
+    const result = await putProfileHandler(
+      { method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => ({ extensions: bigExt }) } as any,
+      makeContext(),
+    )
+    expect(result.status).toBe(400)
+  })
+
+  it('returns 400 when an extension string value exceeds 500 chars', async () => {
+    mockResolveOwnerId.mockResolvedValue(ownerA)
+    const result = await putProfileHandler(
+      { method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => ({ extensions: { key: 'a'.repeat(501) } }) } as any,
+      makeContext(),
+    )
+    expect(result.status).toBe(400)
+  })
+
+  it('PUT response does not include internal Azure Table Storage fields', async () => {
+    mockResolveOwnerId.mockResolvedValue(ownerA)
+    mockGetTableClient.mockReturnValue({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+      createEntity: vi.fn().mockResolvedValue(undefined),
+      updateEntity: vi.fn().mockResolvedValue(undefined),
+    })
+    const result = await putProfileHandler(
+      { method: 'PUT', headers: new Map([['origin', 'http://localhost']]), json: async () => ({ displayName: 'Test' }) } as any,
+      makeContext(),
+    )
+    expect(result.status).toBe(201)
+    const body = JSON.parse(result.body as string)
+    for (const field of ['partitionKey', 'rowKey', 'etag', 'odata.etag', 'timestamp']) {
+      expect(body).not.toHaveProperty(field)
+    }
+    expect(body.ownerId).toBeDefined()
+    expect(body.displayName).toBe('Test')
   })
 
   it('PUT then GET round-trip works for same owner', async () => {

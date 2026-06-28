@@ -109,7 +109,7 @@ export const ItineraryPatchBodySchema = z.object({
  * Only allows specific updatable fields; strips everything else via .strict().
  */
 export const ProfilePutBodySchema = z.object({
-  displayName: z.string().max(500).optional(),
+  displayName: z.string().min(1).max(500).optional(),
   email: z.string().email().max(500).optional(),
   extensions: z.record(
     z.union([z.string().max(500), z.number(), z.boolean()])

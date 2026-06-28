@@ -1,14 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 
-vi.mock('../lib/tableClient', () => ({
-  getTableClient: vi.fn(() => ({
+vi.mock('../lib/tableClient', () => {
+  const getTableClient = vi.fn(() => ({
     listEntities: vi.fn(),
     getEntity: vi.fn(),
     createEntity: vi.fn(),
     deleteEntity: vi.fn(),
-  })),
-}))
+  }))
+  return {
+    getTableClient,
+    ensureTable: vi.fn(async (name: string) => getTableClient(name)),
+  }
+})
 vi.mock('../lib/identity', () => ({
   resolveOwnerId: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: true, subject: '' }),
   ownerFromBearer: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: false, subject: 'sub-123' }),
