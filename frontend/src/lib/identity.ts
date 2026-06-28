@@ -1,9 +1,15 @@
 const OWNER_KEY = 'ownerId'
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 // In-memory fallback for when localStorage is unavailable (private browsing,
 // quota exceeded, disabled cookies). Ensures the app never crashes on identity
 // access — each tab gets a stable ID for its lifetime.
 let memoryFallback: string | null = null
+
+interface StoredOwner {
+  id: string
+  expires: number // Unix timestamp in milliseconds
+}
 
 function isLocalStorageAvailable(): boolean {
   try {
@@ -16,14 +22,46 @@ function isLocalStorageAvailable(): boolean {
   }
 }
 
+/**
+ * Read the stored owner ID from localStorage, returning null if absent, expired,
+ * or stored in the legacy plain-string format (treated as missing so a fresh entry
+ * with expiry is written on the next getOwnerId() call).
+ */
+function readStoredOwner(): string | null {
+  const raw = localStorage.getItem(OWNER_KEY)
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as StoredOwner
+    if (!parsed.id || !parsed.expires) return null
+    if (Date.now() > parsed.expires) return null // expired
+    return parsed.id
+  } catch {
+    // Old format (plain string) or corrupt data — treat as missing.
+    return null
+  }
+}
+
+/**
+ * Persist the owner ID with a fresh 30-day expiry timestamp.
+ */
+function writeStoredOwner(id: string): void {
+  const entry: StoredOwner = { id, expires: Date.now() + THIRTY_DAYS_MS }
+  localStorage.setItem(OWNER_KEY, JSON.stringify(entry))
+}
+
 export function getOwnerId(): string {
   // Try localStorage first
   if (isLocalStorageAvailable()) {
     try {
-      const existing = localStorage.getItem(OWNER_KEY)
-      if (existing) return existing
+      const existing = readStoredOwner()
+      if (existing) {
+        // Refresh expiry on every read — rolling 30-day window so active users
+        // never lose their data.
+        writeStoredOwner(existing)
+        return existing
+      }
       const id = `owner-${crypto.randomUUID()}`
-      localStorage.setItem(OWNER_KEY, id)
+      writeStoredOwner(id)
       return id
     } catch {
       // localStorage failed mid-operation (quota, etc.) — fall through to memory
@@ -61,7 +99,14 @@ export function onOwnerIdChange(callback: (newOwnerId: string) => void): () => v
   }
   const handler = (e: StorageEvent) => {
     if (e.key === OWNER_KEY && e.newValue) {
-      callback(e.newValue)
+      try {
+        const parsed = JSON.parse(e.newValue) as StoredOwner
+        if (parsed?.id) {
+          callback(parsed.id)
+        }
+      } catch {
+        // Old format or corrupt value from another tab — skip.
+      }
     }
   }
   window.addEventListener('storage', handler)
