@@ -33,12 +33,12 @@ statuses:
 ## QA Findings (Playwright audit 2026-06-27)
 
 - [x] (A) "FLY THE ROUTE" hero button (#btn-fly) has no event listener anywhere in src/ — clicking it is a complete no-op +bug +ui @me #23
-- [r] (A) Reorder and Remove stops silently fail on the default itinerary — store.currentItinerary is null at startup because defaults are loaded via render() not renderFromItinerary(); no error shown to user +bug +ui @me #24
+- [x] (A) Reorder and Remove stops silently fail on the default itinerary — store.currentItinerary is null at startup because defaults are loaded via render() not renderFromItinerary(); no error shown to user +bug +ui @me #24
 - [x] (B) Note save silently skips the API call when no trip is saved (activeTripId is null) — no feedback given to user that the note was not persisted +bug +ui @me #25
 - [x] (B) Status bar "My Trips" and "Generate" button labels do not translate on locale switch — text is set once in the constructor, render() never updates them +bug +i18n @me #26
 - [x] (A) Cannot switch back to EN after switching to NL — bindButtons() closes over stale locale='en' so the EN click guard (locale !== 'en') is permanently false; EN button is a no-op +bug +i18n @me #27
 - [x] (C) My Trips panel does not close after loading a saved trip +ux @me #28
-- [r] (B) Trip days minimum (7) not validated client-side — entering 0 sends a request to the API which returns an unhelpful "400: Invalid request body" error +bug +ui @me #29
+- [x] (B) Trip days minimum (7) not validated client-side — entering 0 sends a request to the API which returns an unhelpful "400: Invalid request body" error +bug +ui @me #29
 
 ## Security
 
