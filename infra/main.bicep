@@ -30,8 +30,15 @@ param storageAccountSku string = 'Standard_LRS'
 @description('Static Web App SKU - Free tier')
 param staticWebAppSku string = 'Free'
 
+@description('Allowed origins for browser CORS preflight (platform-level, enforced on the Function App). The Static Web App default hostname is appended automatically.')
+param allowedCorsOrigins array = [
+  'https://sweden.van-vliet.eu'
+  'http://localhost:5173'
+]
+
 // Variables
 var serverFarmName = 'ASP-${resourceGroup().name}-846d'
+var corsAllowedOrigins = union(allowedCorsOrigins, ['https://${staticWebApp.properties.defaultHostname}'])
 
 // Storage Account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
@@ -149,6 +156,10 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
       netFrameworkVersion: 'v4.0'
       http20Enabled: true
       alwaysOn: false
+      cors: {
+        allowedOrigins: corsAllowedOrigins
+        supportCredentials: false
+      }
     }
     functionAppConfig: {
       deployment: {

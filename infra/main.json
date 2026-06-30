@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "9767759333655809370"
+      "templateHash": "4153584919629576100"
     }
   },
   "parameters": {
@@ -72,6 +72,16 @@
       "defaultValue": "Free",
       "metadata": {
         "description": "Static Web App SKU - Free tier"
+      }
+    },
+    "allowedCorsOrigins": {
+      "type": "array",
+      "defaultValue": [
+        "https://sweden.van-vliet.eu",
+        "http://localhost:5173"
+      ],
+      "metadata": {
+        "description": "Allowed origins for browser CORS preflight (platform-level, enforced on the Function App). The Static Web App default hostname is appended automatically."
       }
     }
   },
@@ -210,7 +220,11 @@
           "defaultDocuments": [],
           "netFrameworkVersion": "v4.0",
           "http20Enabled": true,
-          "alwaysOn": false
+          "alwaysOn": false,
+          "cors": {
+            "allowedOrigins": "[union(parameters('allowedCorsOrigins'), createArray(format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2024-04-01').defaultHostname)))]",
+            "supportCredentials": false
+          }
         },
         "functionAppConfig": {
           "deployment": {
@@ -238,6 +252,7 @@
       "dependsOn": [
         "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
         "[resourceId('Microsoft.Web/serverfarms', variables('serverFarmName'))]",
+        "[resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
       ]
     },
