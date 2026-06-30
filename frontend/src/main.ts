@@ -9,8 +9,7 @@ import { Toast } from './components/Toast'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
 import type { Itinerary, ItineraryStop, Locale } from './types'
 import { apiClient } from './api/client'
-import { setLocale } from './i18n/index'
-import { t, tpl } from './i18n/index'
+import { setLocale, getLocale, t, tpl } from './i18n/index'
 import { initialize, handleRedirect } from './lib/auth'
 const store = createStore()
 const toast = new Toast()
@@ -19,9 +18,63 @@ const toast = new Toast()
   await handleRedirect()
 })()
 
+function setText(selector: string, text: string): void {
+  const el = document.querySelector(selector)
+  if (el) el.textContent = text
+}
+function applyStaticI18n(): void {
+  document.documentElement.lang = getLocale()
+  // Nav links
+  setText('nav [href="#itinerary"]', t('nav.itinerary'))
+  setText('nav [href="#culinary-section"]', t('nav.food'))
+  setText('nav [href="#accom-section"]', t('nav.stay'))
+  setText('nav [href="#map-page"]', t('nav.map3d'))
+  // Hero buttons
+  setText('#btn-fly', t('hero.flyRoute'))
+  setText('.hero-actions [href="#itinerary"]', t('hero.viewItinerary'))
+  // Itinerary section chrome
+  setText('#itinerary .section-label', t('sections.itineraryLabel'))
+  setText('#itinerary .section-title', t('sections.itineraryTitle'))
+  setText('.filter-title', t('sections.filterTitle'))
+  // Culinary section chrome
+  setText('#culinary-section .section-label', t('sections.culinaryLabel'))
+  setText('#culinary-section .section-title', t('sections.culinaryTitle'))
+  // Accommodation section chrome
+  setText('#accom-section .section-label', t('sections.accomLabel'))
+  setText('#accom-section .section-title', t('sections.accomTitle'))
+  // Accommodation table headers (order matches index.html thead)
+  const accomHeaders = [
+    t('accom.colDestination'),
+    t('accom.colType'),
+    t('accom.colCancellation'),
+    t('accom.colBathroom'),
+    t('accom.colTerrace'),
+    t('accom.colNotes'),
+  ]
+  document.querySelectorAll('#accom-section thead th').forEach((th, i) => {
+    if (accomHeaders[i] !== undefined) th.textContent = accomHeaders[i]!
+  })
+  // 3D map hint
+  setText('.map-hint', t('map3d.hint'))
+  // Footer stat labels (order matches index.html .stat-lbl elements)
+  const footerLabels = [
+    t('footer.days'),
+    t('footer.kilometres'),
+    t('footer.destinations'),
+    t('footer.foodRegions'),
+  ]
+  document.querySelectorAll('.stat-lbl').forEach((el, i) => {
+    if (footerLabels[i] !== undefined) el.textContent = footerLabels[i]!
+  })
+  // Loading spinner label
+  setText('.spinner-label', t('loading.generating'))
+}
 function changeLocale(lang: Locale): void {
   setLocale(lang)
   store.setState({ locale: lang })
+  applyStaticI18n()
+  const { currentItinerary } = store.getState()
+  if (currentItinerary) itineraryView.renderFromItinerary(currentItinerary)
 }
 
 const loadingOverlay = document.createElement('div')
@@ -29,7 +82,7 @@ loadingOverlay.className = 'loading-overlay hidden'
 loadingOverlay.innerHTML = `
   <div class="loading-spinner">
     <div class="spinner-ring"></div>
-    <p class="spinner-label">Generating your itinerary...</p>
+    <p class="spinner-label">${t('loading.generating')}</p>
   </div>
 `
 document.body.appendChild(loadingOverlay)
@@ -80,7 +133,7 @@ function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
     return Promise.resolve()
   }
   if (!state.activeTripId) {
-    toast.info('Save your trip first before notes can be persisted.')
+    toast.info(t('toast.saveNoteFirst'))
     return Promise.resolve()
   }
 
@@ -98,7 +151,7 @@ function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
   return Promise.resolve(
     apiClient.saveStopNote(state.activeTripId, stop.day, note)
   ).then(() => undefined).catch((error) => {
-    toast.error(error instanceof Error ? error.message : 'Failed to save note')
+    toast.error(error instanceof Error ? error.message : t('toast.saveNoteFailed'))
     throw error
   })
 }
@@ -263,3 +316,5 @@ if (urlId) {
     })
     .catch(() => toast.error(t('toast.sharedItineraryFailed')))
 }
+
+applyStaticI18n()
