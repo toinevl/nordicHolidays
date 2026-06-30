@@ -42,8 +42,8 @@ statuses:
 
 ## Bilingual Support (NL/EN)
 
-- [ ] (B) Extend i18n catalogue — add nav, hero, sections, accom, map3d, footer, loading key groups to types.ts, en.ts, nl.ts, and add locale completeness test +i18n +feature @me #30
-- [ ] (B) Wire applyStaticI18n() into main.ts for full bilingual static HTML chrome coverage — fix 3 hardcoded strings, call on boot and locale switch +i18n +feature @me #31
+- [x] (B) Extend i18n catalogue — add nav, hero, sections, accom, map3d, footer, loading key groups to types.ts, en.ts, nl.ts, and add locale completeness test +i18n +feature @me #30
+- [x] (B) Wire applyStaticI18n() into main.ts for full bilingual static HTML chrome coverage — fix 3 hardcoded strings, call on boot and locale switch +i18n +feature @me #31
 
 ## Security
 
