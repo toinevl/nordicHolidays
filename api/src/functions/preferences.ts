@@ -1,5 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getTableClient } from '../lib/tableClient'
+import { getTableClient, ensureTable } from '../lib/tableClient'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
@@ -83,12 +83,12 @@ export async function putPreferencesHandler(
     }
 
     const prefs = parseResult.data
-    const client = getTableClient('Preferences')
+    const client = await ensureTable('Preferences')
     let existing: any
     try {
       existing = await client.getEntity(owner.ownerId, ROW_KEY)
     } catch (err: any) {
-      if (err.code !== 'ResourceNotFound') throw err
+      if (err?.statusCode !== 404) throw err
       existing = null
     }
 
@@ -141,7 +141,7 @@ app.http('getPreferences', {
 })
 
 app.http('putPreferences', {
-  methods: ['PUT', 'OPTIONS'],
+  methods: ['PUT'],
   authLevel: 'anonymous',
   route: 'preferences',
   handler: putPreferencesHandler,

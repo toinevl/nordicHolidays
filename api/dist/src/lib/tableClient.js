@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getTableClient = getTableClient;
+exports.ensureTable = ensureTable;
 const data_tables_1 = require("@azure/data-tables");
 const identity_1 = require("@azure/identity");
 // Cache the credential instance at module level to avoid recreating it per call.
@@ -20,8 +21,27 @@ function getTableClient(tableName) {
         return new data_tables_1.TableClient(endpoint, tableName, getCredential());
     }
     if (conn) {
-        return data_tables_1.TableClient.fromConnectionString(conn, tableName);
+        return data_tables_1.TableClient.fromConnectionString(conn, tableName, {
+            allowInsecureConnection: conn.startsWith('DefaultEndpointsProtocol=http;'),
+        });
     }
     throw new Error('Table Storage authentication failed: neither TABLES_ENDPOINT nor STORAGE_CONNECTION_STRING is configured. ' +
         'Set TABLES_ENDPOINT for managed identity (production) or STORAGE_CONNECTION_STRING (local dev).');
+}
+/**
+ * Ensure a table exists before writing to it. Safe to call repeatedly —
+ * ignores the "table already exists" conflict. This is needed because the
+ * PUT handlers fall back to createEntity when no existing row is found,
+ * and createEntity fails if the table itself does not exist yet.
+ */
+async function ensureTable(tableName) {
+    const client = getTableClient(tableName);
+    try {
+        await client.createTable();
+    }
+    catch (err) {
+        if (err?.statusCode !== 409 && err?.code !== 'TableAlreadyExists')
+            throw err;
+    }
+    return client;
 }

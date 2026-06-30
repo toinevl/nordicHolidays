@@ -69,7 +69,9 @@ describe('getTableClient', () => {
     process.env.STORAGE_CONNECTION_STRING = connString
     const client = getTableClient('Preferences')
 
-    expect(fromConnectionStringMock).toHaveBeenCalledWith(connString, 'Preferences')
+    expect(fromConnectionStringMock).toHaveBeenCalledWith(connString, 'Preferences', expect.objectContaining({
+      allowInsecureConnection: false,
+    }))
     expect(tableClientMock).not.toHaveBeenCalled()
     expect(client).toBeDefined()
   })

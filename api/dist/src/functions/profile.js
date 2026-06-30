@@ -8,8 +8,29 @@ const cors_1 = require("../lib/cors");
 const identity_1 = require("../lib/identity");
 const schemas_1 = require("../lib/schemas");
 const ROW_KEY = 'profile';
+function safeJsonParse(s) {
+    try {
+        return JSON.parse(s);
+    }
+    catch {
+        return {};
+    }
+}
 function entityToProfile(entity) {
     const raw = entity;
+    let extensions = {};
+    const rawExt = raw.extensions;
+    if (typeof rawExt === 'string') {
+        try {
+            extensions = JSON.parse(rawExt);
+        }
+        catch {
+            extensions = {};
+        }
+    }
+    else if (rawExt && typeof rawExt === 'object') {
+        extensions = rawExt;
+    }
     return {
         partitionKey: raw.partitionKey || '',
         rowKey: raw.rowKey || '',
@@ -18,7 +39,7 @@ function entityToProfile(entity) {
         email: raw.email || '',
         createdAt: raw.createdAt || new Date().toISOString(),
         updatedAt: raw.updatedAt || new Date().toISOString(),
-        extensions: raw.extensions || {},
+        extensions,
     };
 }
 async function getProfileHandler(req, ctx) {
@@ -72,17 +93,22 @@ async function putProfileHandler(req, ctx) {
             }, origin);
         }
         const updates = parseResult.data;
-        const client = (0, tableClient_1.getTableClient)('Profiles');
+        const client = await (0, tableClient_1.ensureTable)('Profiles');
         let existing;
         try {
             existing = await client.getEntity(owner.ownerId, ROW_KEY);
         }
         catch (err) {
-            if (err.code !== 'ResourceNotFound')
+            if (err?.statusCode !== 404)
                 throw err;
             existing = null;
         }
         const isNew = !existing;
+        // Build the stored entity — extensions must be JSON-stringified for Table Storage
+        const existingExtensions = existing?.extensions
+            ? safeJsonParse(typeof existing.extensions === 'string' ? existing.extensions : JSON.stringify(existing.extensions))
+            : {};
+        const storedExtensions = updates.extensions ?? existingExtensions;
         const entity = {
             partitionKey: owner.ownerId,
             rowKey: ROW_KEY,
@@ -91,7 +117,7 @@ async function putProfileHandler(req, ctx) {
             email: updates.email ?? existing?.email ?? '',
             createdAt: existing?.createdAt ?? new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            extensions: updates.extensions ?? existing?.extensions ?? {},
+            extensions: JSON.stringify(storedExtensions),
             ...(existing && { etag: existing.etag }),
         };
         try {
@@ -108,10 +134,17 @@ async function putProfileHandler(req, ctx) {
             }
             throw err;
         }
+        const INTERNAL_FIELDS = new Set([
+            'partitionKey', 'rowKey', 'etag', 'odata.etag', 'timestamp',
+            '_rid', '_self', '_attachments', '_ts',
+        ]);
+        const safeEntity = Object.fromEntries(Object.entries(entity)
+            .filter(([k]) => !INTERNAL_FIELDS.has(k))
+            .map(([k, v]) => [k, k === 'extensions' ? safeJsonParse(v) : v]));
         return (0, cors_1.withCors)({
             status: isNew ? 201 : 200,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entity),
+            body: JSON.stringify(safeEntity),
         }, origin);
     }
     catch (err) {
@@ -129,7 +162,7 @@ functions_1.app.http('getProfile', {
     handler: getProfileHandler,
 });
 functions_1.app.http('putProfile', {
-    methods: ['PUT', 'OPTIONS'],
+    methods: ['PUT'],
     authLevel: 'anonymous',
     route: 'profile',
     handler: putProfileHandler,

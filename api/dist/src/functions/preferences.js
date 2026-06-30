@@ -75,13 +75,13 @@ async function putPreferencesHandler(req, ctx) {
             }, origin);
         }
         const prefs = parseResult.data;
-        const client = (0, tableClient_1.getTableClient)('Preferences');
+        const client = await (0, tableClient_1.ensureTable)('Preferences');
         let existing;
         try {
             existing = await client.getEntity(owner.ownerId, ROW_KEY);
         }
         catch (err) {
-            if (err.code !== 'ResourceNotFound')
+            if (err?.statusCode !== 404)
                 throw err;
             existing = null;
         }
@@ -133,7 +133,7 @@ functions_1.app.http('getPreferences', {
     handler: getPreferencesHandler,
 });
 functions_1.app.http('putPreferences', {
-    methods: ['PUT', 'OPTIONS'],
+    methods: ['PUT'],
     authLevel: 'anonymous',
     route: 'preferences',
     handler: putPreferencesHandler,

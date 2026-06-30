@@ -40,6 +40,11 @@ statuses:
 - [x] (C) My Trips panel does not close after loading a saved trip +ux @me #28
 - [x] (B) Trip days minimum (7) not validated client-side — entering 0 sends a request to the API which returns an unhelpful "400: Invalid request body" error +bug +ui @me #29
 
+## Bilingual Support (NL/EN)
+
+- [ ] (B) Extend i18n catalogue — add nav, hero, sections, accom, map3d, footer, loading key groups to types.ts, en.ts, nl.ts, and add locale completeness test +i18n +feature @me #30
+- [ ] (B) Wire applyStaticI18n() into main.ts for full bilingual static HTML chrome coverage — fix 3 hardcoded strings, call on boot and locale switch +i18n +feature @me #31
+
 ## Security
 
 - [c] (A) Auth stub: frontend auth.ts returns null/false for all methods — no user ever authenticates via Entra, all are guests +security +bug @me #15 [quick]

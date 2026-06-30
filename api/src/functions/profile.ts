@@ -1,5 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getTableClient } from '../lib/tableClient'
+import { getTableClient, ensureTable } from '../lib/tableClient'
 import type { Profile } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
@@ -7,8 +7,19 @@ import { ProfilePutBodySchema, logError } from '../lib/schemas'
 
 const ROW_KEY = 'profile'
 
+function safeJsonParse(s: string): Record<string, unknown> {
+  try { return JSON.parse(s) } catch { return {} }
+}
+
 function entityToProfile(entity: Record<string, unknown>): Profile {
   const raw = entity as Record<string, unknown>
+  let extensions: Record<string, unknown> = {}
+  const rawExt = raw.extensions
+  if (typeof rawExt === 'string') {
+    try { extensions = JSON.parse(rawExt) } catch { extensions = {} }
+  } else if (rawExt && typeof rawExt === 'object') {
+    extensions = rawExt as Record<string, unknown>
+  }
   return {
     partitionKey: (raw.partitionKey as string) || '',
     rowKey: (raw.rowKey as string) || '',
@@ -17,7 +28,7 @@ function entityToProfile(entity: Record<string, unknown>): Profile {
     email: (raw.email as string) || '',
     createdAt: (raw.createdAt as string) || new Date().toISOString(),
     updatedAt: (raw.updatedAt as string) || new Date().toISOString(),
-    extensions: (raw.extensions as Record<string, unknown>) || {},
+    extensions,
   }
 }
 
@@ -81,17 +92,22 @@ export async function putProfileHandler(
 
     const updates = parseResult.data
 
-    const client = getTableClient('Profiles')
+    const client = await ensureTable('Profiles')
     let existing: any
     try {
       existing = await client.getEntity(owner.ownerId, ROW_KEY)
     } catch (err: any) {
-      if (err.code !== 'ResourceNotFound') throw err
+      if (err?.statusCode !== 404) throw err
       existing = null
     }
 
     const isNew = !existing
-    const entity: Profile = {
+    // Build the stored entity — extensions must be JSON-stringified for Table Storage
+    const existingExtensions = existing?.extensions
+      ? safeJsonParse(typeof existing.extensions === 'string' ? existing.extensions : JSON.stringify(existing.extensions))
+      : {}
+    const storedExtensions = updates.extensions ?? existingExtensions
+    const entity: Profile & { extensions: string } = {
       partitionKey: owner.ownerId,
       rowKey: ROW_KEY,
       ownerId: owner.ownerId,
@@ -99,7 +115,7 @@ export async function putProfileHandler(
       email: updates.email ?? existing?.email ?? '',
       createdAt: existing?.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      extensions: updates.extensions ?? existing?.extensions ?? {},
+      extensions: JSON.stringify(storedExtensions),
       ...(existing && { etag: existing.etag }),
     }
 
@@ -121,7 +137,9 @@ export async function putProfileHandler(
       '_rid', '_self', '_attachments', '_ts',
     ])
     const safeEntity = Object.fromEntries(
-      Object.entries(entity as Record<string, unknown>).filter(([k]) => !INTERNAL_FIELDS.has(k))
+      Object.entries(entity as Record<string, unknown>)
+        .filter(([k]) => !INTERNAL_FIELDS.has(k))
+        .map(([k, v]) => [k, k === 'extensions' ? safeJsonParse(v as string) : v])
     )
     return withCors({
       status: isNew ? 201 : 200,
@@ -145,7 +163,7 @@ app.http('getProfile', {
 })
 
 app.http('putProfile', {
-  methods: ['PUT', 'OPTIONS'],
+  methods: ['PUT'],
   authLevel: 'anonymous',
   route: 'profile',
   handler: putProfileHandler,

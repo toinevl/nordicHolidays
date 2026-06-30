@@ -106,7 +106,7 @@ exports.ItineraryPatchBodySchema = zod_1.z.object({
  * Only allows specific updatable fields; strips everything else via .strict().
  */
 exports.ProfilePutBodySchema = zod_1.z.object({
-    displayName: zod_1.z.string().max(500).optional(),
+    displayName: zod_1.z.string().min(1).max(500).optional(),
     email: zod_1.z.string().email().max(500).optional(),
-    extensions: zod_1.z.record(zod_1.z.unknown()).optional(),
+    extensions: zod_1.z.record(zod_1.z.union([zod_1.z.string().max(500), zod_1.z.number(), zod_1.z.boolean()])).refine(obj => Object.keys(obj).length <= 20, 'Too many extension fields').optional(),
 }).strict();

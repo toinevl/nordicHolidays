@@ -77,6 +77,10 @@ async function listItinerariesHandler(req, ctx) {
         if (err instanceof Error && err.name === 'AuthError') {
             return (0, identity_1.authErrorResponse)(err, origin);
         }
+        // Table doesn't exist yet (fresh deployment / first use) → no itineraries saved
+        if (err?.statusCode === 404 || err?.errorCode === 'TableNotFound') {
+            return successResponse(origin, []);
+        }
         (0, schemas_1.logError)(ctx, 'listItinerariesHandler: internal error', err);
         return (0, cors_1.withCors)({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin);
     }
@@ -139,7 +143,7 @@ async function saveItineraryHandler(req, ctx) {
         }
         const body = parseResult.data;
         const id = (0, nanoid_1.nanoid)();
-        const client = (0, tableClient_1.getTableClient)('Itineraries');
+        const client = await (0, tableClient_1.ensureTable)('Itineraries');
         // Validate thumbnail: if provided, must be a valid data: URL with correct size. Invalid thumbnails are stripped.
         const thumb = validateThumbnail(body.thumbnail);
         await client.createEntity({

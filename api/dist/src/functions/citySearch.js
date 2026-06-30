@@ -4,6 +4,7 @@ exports.citySearchHandler = citySearchHandler;
 const functions_1 = require("@azure/functions");
 const cors_1 = require("../lib/cors");
 const schemas_1 = require("../lib/schemas");
+const identity_1 = require("../lib/identity");
 function jsonResponse(suggestions, origin) {
     return (0, cors_1.withCors)({
         status: 200,
@@ -118,6 +119,14 @@ async function citySearchHandler(req, ctx) {
     const origin = req?.headers.get('origin') ?? undefined;
     if (req?.method === 'OPTIONS')
         return (0, cors_1.corsPreflightResponse)(origin);
+    if (req) {
+        try {
+            await (0, identity_1.resolveOwnerId)(req, ctx);
+        }
+        catch (err) {
+            return (0, identity_1.authErrorResponse)(err, origin);
+        }
+    }
     const q = getQuery(req);
     if (q.length < 2)
         return jsonResponse([], origin);

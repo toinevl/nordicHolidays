@@ -34,9 +34,29 @@ function getOrCreateJwks(issuerUrl) {
     return jwksCache.get(issuerUrl);
 }
 async function verifyAccessToken(token, ctx) {
+    // NOTE: In the current app, verifyAccessToken is never reached — the frontend uses a
+    // guest-only stub (frontend/src/auth.ts) that never produces bearer tokens. This code
+    // path is prepared for when real Entra authentication is eventually enabled.
     const issuerHost = process.env.ENTRA_ISSUER_HOST ?? 'login.microsoftonline.com';
-    const issuer = `https://${issuerHost}/common`;
-    const jwksUrl = `${issuer}/discovery/v2.0/keys`;
+    const tenantId = process.env.AZURE_TENANT_ID;
+    // Entra v2 tokens carry a tenant-specific issuer: https://{host}/{tenantId}/v2.0
+    // Using /common here would cause jose to reject every real token because the iss
+    // claim in the token never matches a /common URL.
+    let issuer;
+    if (tenantId) {
+        issuer = `https://${issuerHost}/${tenantId}/v2.0`;
+    }
+    else {
+        // AZURE_TENANT_ID is not configured — skip jose's built-in issuer check and rely
+        // on the secondary iss validation in ownerFromBearer. Set AZURE_TENANT_ID in
+        // production to enable strict issuer checking.
+        (0, schemas_1.logError)(ctx, 'verifyAccessToken: AZURE_TENANT_ID is not set; strict issuer validation will be skipped. Set AZURE_TENANT_ID in production.');
+    }
+    // Use tenant-specific JWKS URL when tenant is known; fall back to /common.
+    const jwksBaseUrl = tenantId
+        ? `https://${issuerHost}/${tenantId}/v2.0`
+        : `https://${issuerHost}/common`;
+    const jwksUrl = `${jwksBaseUrl}/discovery/v2.0/keys`;
     const jwks = getOrCreateJwks(jwksUrl);
     // Require non-empty ENTRA_API_AUDIENCE when bearer token is presented
     const audience = process.env.ENTRA_API_AUDIENCE;
@@ -45,7 +65,7 @@ async function verifyAccessToken(token, ctx) {
         throw new AuthError('API configuration error: missing audience');
     }
     const result = await (0, jose_1.jwtVerify)(token, jwks, {
-        issuer,
+        ...(issuer !== undefined ? { issuer } : {}),
         audience,
         algorithms: ['RS256'],
     });

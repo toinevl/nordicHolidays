@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Preferences } from '../types'
 
-vi.mock('../lib/tableClient', () => ({
-  getTableClient: vi.fn(() => ({
+vi.mock('../lib/tableClient', () => {
+  const getTableClient = vi.fn(() => ({
     getEntity: vi.fn(),
     upsertEntity: vi.fn(),
-  })),
-}))
+    createTable: vi.fn().mockResolvedValue(undefined),
+  }))
+  return {
+    getTableClient,
+    ensureTable: vi.fn(async () => getTableClient()),
+  }
+})
 vi.mock('../lib/identity', () => ({
   resolveOwnerId: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: true, subject: '' }),
   ownerFromBearer: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: false, subject: 'sub-123' }),

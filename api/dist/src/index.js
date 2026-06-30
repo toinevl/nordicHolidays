@@ -5,3 +5,4 @@ require("./functions/preferences");
 require("./functions/itineraries");
 require("./functions/generate");
 require("./functions/citySearch.js");
+require("./functions/profile");
