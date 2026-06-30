@@ -51,6 +51,8 @@ export interface LocaleStrings {
     shareFailed: string
     sharedItineraryLoaded: string
     sharedItineraryFailed: string
+    saveNoteFirst: string
+    saveNoteFailed: string
   }
   itinerary: {
     plannedNights: string
@@ -102,6 +104,45 @@ export interface LocaleStrings {
     dk: string
     fi: string
   }
+  nav: {
+    itinerary: string
+    food: string
+    stay: string
+    map3d: string
+  }
+  hero: {
+    flyRoute: string
+    viewItinerary: string
+  }
+  sections: {
+    itineraryLabel: string
+    itineraryTitle: string
+    culinaryLabel: string
+    culinaryTitle: string
+    accomLabel: string
+    accomTitle: string
+    filterTitle: string
+  }
+  accom: {
+    colDestination: string
+    colType: string
+    colCancellation: string
+    colBathroom: string
+    colTerrace: string
+    colNotes: string
+  }
+  map3d: {
+    hint: string
+  }
+  footer: {
+    days: string
+    kilometres: string
+    destinations: string
+    foodRegions: string
+  }
+  loading: {
+    generating: string
+  }
 }
 
 export type LocaleKey =
@@ -113,3 +154,10 @@ export type LocaleKey =
   | `season.${keyof LocaleStrings['season']}`
   | `auth.${keyof LocaleStrings['auth']}`
   | `country.${keyof LocaleStrings['country']}`
+  | `nav.${keyof LocaleStrings['nav']}`
+  | `hero.${keyof LocaleStrings['hero']}`
+  | `sections.${keyof LocaleStrings['sections']}`
+  | `accom.${keyof LocaleStrings['accom']}`
+  | `map3d.${keyof LocaleStrings['map3d']}`
+  | `footer.${keyof LocaleStrings['footer']}`
+  | `loading.${keyof LocaleStrings['loading']}`

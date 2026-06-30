@@ -51,6 +51,8 @@ export const en: LocaleStrings = {
     shareFailed: 'Share failed',
     sharedItineraryLoaded: 'Shared itinerary loaded',
     sharedItineraryFailed: 'Failed to load shared itinerary',
+    saveNoteFirst: 'Save your trip first before notes can be persisted.',
+    saveNoteFailed: 'Failed to save note',
   },
   itinerary: {
     plannedNights: 'Planned nights',
@@ -101,5 +103,44 @@ export const en: LocaleStrings = {
     no: 'Norway',
     dk: 'Denmark',
     fi: 'Finland',
+  },
+  nav: {
+    itinerary: 'Itinerary',
+    food: 'Food',
+    stay: 'Stay',
+    map3d: '3D Map',
+  },
+  hero: {
+    flyRoute: '▶ Fly the Route',
+    viewItinerary: 'View Itinerary ↓',
+  },
+  sections: {
+    itineraryLabel: 'Day by Day',
+    itineraryTitle: 'The Full Route',
+    culinaryLabel: 'Eat & Drink',
+    culinaryTitle: 'Culinary Highlights',
+    accomLabel: 'Where to Sleep',
+    accomTitle: 'Accommodation Guide',
+    filterTitle: 'Route Focus',
+  },
+  accom: {
+    colDestination: 'Destination',
+    colType: 'Accommodation Type',
+    colCancellation: 'Cancellation',
+    colBathroom: 'Private Bathroom',
+    colTerrace: 'Terrace / Balcony',
+    colNotes: 'Notes',
+  },
+  map3d: {
+    hint: '3D map — drag to rotate · scroll to zoom',
+  },
+  footer: {
+    days: 'Days',
+    kilometres: 'Kilometres',
+    destinations: 'Destinations',
+    foodRegions: 'Food Regions',
+  },
+  loading: {
+    generating: 'Generating your itinerary...',
   },
 }

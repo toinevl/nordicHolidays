@@ -51,6 +51,8 @@ export const nl: LocaleStrings = {
     shareFailed: 'Delen mislukt',
     sharedItineraryLoaded: 'Gedeeld reisplan geladen',
     sharedItineraryFailed: 'Laden van gedeeld reisplan mislukt',
+    saveNoteFirst: 'Sla je reis eerst op voordat notities bewaard kunnen worden.',
+    saveNoteFailed: 'Notitie opslaan mislukt',
   },
   itinerary: {
     plannedNights: 'Geplande nachten',
@@ -101,5 +103,44 @@ export const nl: LocaleStrings = {
     no: 'Noorwegen',
     dk: 'Denemarken',
     fi: 'Finland',
+  },
+  nav: {
+    itinerary: 'Reisplan',
+    food: 'Eten',
+    stay: 'Verblijf',
+    map3d: '3D Kaart',
+  },
+  hero: {
+    flyRoute: '▶ Vlieg de Route',
+    viewItinerary: 'Bekijk Reisplan ↓',
+  },
+  sections: {
+    itineraryLabel: 'Dag voor Dag',
+    itineraryTitle: 'De Volledige Route',
+    culinaryLabel: 'Eten & Drinken',
+    culinaryTitle: 'Culinaire Hoogtepunten',
+    accomLabel: 'Waar te Slapen',
+    accomTitle: 'Accommodatiegids',
+    filterTitle: 'Route Focus',
+  },
+  accom: {
+    colDestination: 'Bestemming',
+    colType: 'Accommodatietype',
+    colCancellation: 'Annulering',
+    colBathroom: 'Eigen Badkamer',
+    colTerrace: 'Terras / Balkon',
+    colNotes: 'Opmerkingen',
+  },
+  map3d: {
+    hint: '3D kaart — sleep om te draaien · scroll om in te zoomen',
+  },
+  footer: {
+    days: 'Dagen',
+    kilometres: 'Kilometers',
+    destinations: 'Bestemmingen',
+    foodRegions: "Voedselregio's",
+  },
+  loading: {
+    generating: 'Reisplan genereren...',
   },
 }
