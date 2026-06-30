@@ -60,7 +60,7 @@ statuses:
 
 Grounded in gaps found during the CORS hotfix and the architecture review. A = ship soon (correctness / recreate risk), B = this milestone, C = nice-to-have.
 
-- [ ] (A) Persist platform CORS allow-list in Bicep — recreating the Function App from IaC silently drops `sweden.van-vliet.eu` and breaks the live site with "NetworkError" (today's bug); only `az functionapp cors` knows the origin today +security +ci @me #32
+- [x] (A) Persist platform CORS allow-list in Bicep — recreating the Function App from IaC silently drops `sweden.van-vliet.eu` and breaks the live site with "NetworkError" (today's bug); only `az functionapp cors` knows the origin today +security +ci @me #32
 - [ ] (B) Reconcile the two CORS layers — `ALLOWED_ORIGINS` app setting is unset in prod so `cors.ts` falls back to localhost-only while platform CORS actually governs; set `ALLOWED_ORIGINS` or remove the app-level path so code and prod agree +security +improvement @me #33
 - [ ] (B) Code-split the JS bundle (1.1 MB / 308 KB gzip) — `manualChunks` or dynamic-import MapLibre to cut initial load +perf @me #34
 - [ ] (C) Lazy-init the 3D MapView on first `#map-page` visit instead of at boot +perf @me #35
