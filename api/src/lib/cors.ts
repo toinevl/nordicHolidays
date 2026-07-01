@@ -20,28 +20,29 @@ const SECURITY_HEADERS = {
 }
 
 export function withCors(response: HttpResponseInit, origin?: string): HttpResponseInit {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  return {
-    ...response,
-    headers: {
-      ...SECURITY_HEADERS,
-      'Access-Control-Allow-Origin': allowedOrigin,
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Owner-Id',
-      ...(response.headers ?? {}),
-    },
+  const headers: Record<string, string> = {
+    ...SECURITY_HEADERS,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Owner-Id',
+    ...((response.headers as Record<string, string>) ?? {}),
   }
+  // Only echo a recognized origin; never leak a fallback ACAO for unknown origins.
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+  } else {
+    delete headers['Access-Control-Allow-Origin']
+  }
+  return { ...response, headers }
 }
 
 export function corsPreflightResponse(origin?: string): HttpResponseInit {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  return {
-    status: 204,
-    headers: {
-      ...SECURITY_HEADERS,
-      'Access-Control-Allow-Origin': allowedOrigin,
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Owner-Id',
-    },
+  const headers: Record<string, string> = {
+    ...SECURITY_HEADERS,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Owner-Id',
   }
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+  return { status: 204, headers }
 }
