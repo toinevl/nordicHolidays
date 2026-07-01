@@ -126,6 +126,24 @@ describe('POST /api/generate', () => {
     expect(userMessage).toContain('Genereer de reisroute in het Nederlands')
   })
 
+  it('appends German language instruction when lang is "de"', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Amsterdam', endCity: 'Amsterdam', tripDays: 7, lang: 'de' }),
+    } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(200)
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('Erstelle die Reiseroute auf Deutsch')
+  })
+
   it('appends English language instruction by default (no lang field)', async () => {
     const itin = makeItinerary()
     const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))

@@ -87,7 +87,7 @@ export const GenerateRequestBodySchema = z.object({
   endCity: z.string().max(200),
   tripDays: z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
   country: z.string().max(2).default('SE'),
-  lang: z.enum(['en', 'nl']).default('en'),
+  lang: z.enum(['en', 'nl', 'de']).default('en'),
 }).strict()
 
 export const ItineraryPutBodySchema = z.object({

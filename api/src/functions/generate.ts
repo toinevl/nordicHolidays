@@ -14,7 +14,7 @@ const COUNTRY_NAMES: Record<string, string> = {
   FI: 'Finland',
 }
 
-function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' = 'en'): string {
+function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' | 'de' = 'en'): string {
   const countryName = COUNTRY_NAMES[prefs.country] ?? 'the selected Nordic country'
   const parts: string[] = [
     `Create a ${prefs.tripDays}-day Nordic road trip itinerary in ${countryName}.`,
@@ -25,9 +25,11 @@ function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' = 'en'): string 
   if (prefs.mustVisit.length > 0) parts.push(`Must include: ${prefs.mustVisit.join(', ')}`)
   if (prefs.avoid.length > 0) parts.push(`Avoid: ${prefs.avoid.join(', ')}`)
   parts.push('Plan logical routing, mix of famous and off-the-beaten-track stops, with authentic local recommendations.')
-  parts.push(lang === 'nl'
-    ? 'Genereer de reisroute in het Nederlands.'
-    : 'Generate the itinerary in English.')
+  const langInstruction =
+    lang === 'nl' ? 'Genereer de reisroute in het Nederlands.'
+    : lang === 'de' ? 'Erstelle die Reiseroute auf Deutsch.'
+    : 'Generate the itinerary in English.'
+  parts.push(langInstruction)
   return parts.join('\n')
 }
 
@@ -88,7 +90,7 @@ export async function generateHandler(
     tripDays: body.tripDays,
     country: body.country,
   }
-  const lang = body.lang as 'en' | 'nl'
+  const lang = body.lang as 'en' | 'nl' | 'de'
 
   // Check rate limits
   const rateLimitResult = await checkAndIncrementRateLimit(req, ownerId, ctx)
