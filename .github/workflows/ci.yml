@@ -30,3 +30,8 @@ jobs:
 
       - name: Run API tests
         run: cd api && npm test
+
+      - name: Verify IaC platform CORS includes prod origin (#36)
+        run: |
+          az bicep build --file infra/main.bicep --outfile /tmp/main.json
+          node infra/scripts/verify-cors.mjs /tmp/main.json
