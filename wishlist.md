@@ -61,10 +61,10 @@ statuses:
 Grounded in gaps found during the CORS hotfix and the architecture review. A = ship soon (correctness / recreate risk), B = this milestone, C = nice-to-have.
 
 - [x] (A) Persist platform CORS allow-list in Bicep — recreating the Function App from IaC silently drops `sweden.van-vliet.eu` and breaks the live site with "NetworkError" (today's bug); only `az functionapp cors` knows the origin today +security +ci @me #32
-- [ ] (B) Reconcile the two CORS layers — `ALLOWED_ORIGINS` app setting is unset in prod so `cors.ts` falls back to localhost-only while platform CORS actually governs; set `ALLOWED_ORIGINS` or remove the app-level path so code and prod agree +security +improvement @me #33
+- [x] (B) Reconcile the two CORS layers — `ALLOWED_ORIGINS` app setting is unset in prod so `cors.ts` falls back to localhost-only while platform CORS actually governs; set `ALLOWED_ORIGINS` or remove the app-level path so code and prod agree +security +improvement @me #33
 - [ ] (B) Code-split the JS bundle (1.1 MB / 308 KB gzip) — `manualChunks` or dynamic-import MapLibre to cut initial load +perf @me #34
 - [ ] (C) Lazy-init the 3D MapView on first `#map-page` visit instead of at boot +perf @me #35
-- [ ] (B) IaC drift test — assert the Function App platform CORS includes the prod origin, so a missing allow-list fails CI instead of prod +testing +ci @me #36
+- [x] (B) IaC drift test — assert the Function App platform CORS includes the prod origin, so a missing allow-list fails CI instead of prod +testing +ci @me #36
 - [ ] (C) Playwright e2e for locale switch — exercise `applyStaticI18n` end-to-end (only structurally verified today; Chrome wasn't available for the live click) +testing +i18n @me #37
 - [ ] (B) Unsigned owner-id spoofing — a guest's `owner-<uuid>` is sent as a plain header, so anyone who learns it can read/write that guest's data; document the accepted risk or add an HMAC-signed owner token +security @me #38
 - [ ] (C) `cors.ts` echoes `ALLOWED_ORIGINS[0]` for unrecognized origins — tighten to return no ACAO (refuse) instead +security @me #39
