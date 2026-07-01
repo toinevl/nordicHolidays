@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "4153584919629576100"
+      "templateHash": "15457398152458003947"
     }
   },
   "parameters": {
@@ -267,6 +267,7 @@
         "DEPLOYMENT_STORAGE_CONNECTION_STRING": "[format('DefaultEndpointsProtocol=https;EndpointSuffix={0};AccountName={1};AccountKey={2}', environment().suffixes.storage, parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]",
         "STORAGE_CONNECTION_STRING": "[format('DefaultEndpointsProtocol=https;EndpointSuffix={0};AccountName={1};AccountKey={2};BlobEndpoint={3};FileEndpoint={4};QueueEndpoint={5};TableEndpoint={6}', environment().suffixes.storage, parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.blob, reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.file, reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.queue, reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.table)]",
         "TABLES_ENDPOINT": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.table]",
+        "ALLOWED_ORIGINS": "[join(union(parameters('allowedCorsOrigins'), createArray(format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2024-04-01').defaultHostname))), ',')]",
         "LLM_MODEL": "gpt-5.4-nano",
         "ENTRA_ISSUER_HOST": "[format('https://{0}', environment().authentication.loginEndpoint)]",
         "ENTRA_API_AUDIENCE": "46d45892-55e5-4bd4-ad30-bd9fb9b4950b",
@@ -278,6 +279,7 @@
         "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
         "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
       ]
     },

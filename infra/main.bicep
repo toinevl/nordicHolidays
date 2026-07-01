@@ -201,6 +201,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2024-04-01' = {
     DEPLOYMENT_STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;EndpointSuffix=${environment().suffixes.storage};AccountName=${storageAccountName};AccountKey=${listKeys(storageAccount.id, '2023-01-01').keys[0].value}'
     STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;EndpointSuffix=${environment().suffixes.storage};AccountName=${storageAccountName};AccountKey=${listKeys(storageAccount.id, '2023-01-01').keys[0].value};BlobEndpoint=${storageAccount.properties.primaryEndpoints.blob};FileEndpoint=${storageAccount.properties.primaryEndpoints.file};QueueEndpoint=${storageAccount.properties.primaryEndpoints.queue};TableEndpoint=${storageAccount.properties.primaryEndpoints.table}'
     TABLES_ENDPOINT: storageAccount.properties.primaryEndpoints.table
+    ALLOWED_ORIGINS: join(corsAllowedOrigins, ',')
     LLM_MODEL: 'gpt-5.4-nano'
     ENTRA_ISSUER_HOST: 'https://${environment().authentication.loginEndpoint}'
     ENTRA_API_AUDIENCE: '46d45892-55e5-4bd4-ad30-bd9fb9b4950b'
