@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { t, tpl, setLocale, getLocale } from './index'
 import { en } from './en'
 import { nl } from './nl'
+import { de } from './de'
 
 describe('i18n module', () => {
   beforeEach(() => {
@@ -57,16 +58,20 @@ describe('i18n module', () => {
     expect(result).toContain('&quot;')
   })
 
+  function collectKeys(obj: Record<string, unknown>, prefix = ''): string[] {
+    return Object.entries(obj).flatMap(([k, v]) =>
+      typeof v === 'object' && v !== null
+        ? collectKeys(v as Record<string, unknown>, `${prefix}${k}.`)
+        : [`${prefix}${k}`]
+    )
+  }
+  const enKeys = collectKeys(en as unknown as Record<string, unknown>)
+
   it('nl has every key that en has', () => {
-    function collectKeys(obj: Record<string, unknown>, prefix = ''): string[] {
-      return Object.entries(obj).flatMap(([k, v]) =>
-        typeof v === 'object' && v !== null
-          ? collectKeys(v as Record<string, unknown>, `${prefix}${k}.`)
-          : [`${prefix}${k}`]
-      )
-    }
-    const enKeys = collectKeys(en as unknown as Record<string, unknown>)
-    const nlKeys = collectKeys(nl as unknown as Record<string, unknown>)
-    expect(nlKeys).toEqual(expect.arrayContaining(enKeys))
+    expect(collectKeys(nl as unknown as Record<string, unknown>)).toEqual(expect.arrayContaining(enKeys))
+  })
+
+  it('de has every key that en has', () => {
+    expect(collectKeys(de as unknown as Record<string, unknown>)).toEqual(expect.arrayContaining(enKeys))
   })
 })

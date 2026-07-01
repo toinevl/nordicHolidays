@@ -1,17 +1,18 @@
 import type { Locale, LocaleKey, LocaleStrings } from './types'
 import { en } from './en'
 import { nl } from './nl'
+import { de } from './de'
 import { escapeHtml } from '../lib/escape'
 
 export const LOCALE_STORAGE_KEY = 'nordicholidays_locale'
 
-const locales: Record<Locale, LocaleStrings> = { en, nl }
+const locales: Record<Locale, LocaleStrings> = { en, nl, de }
 
 let currentLocale: Locale = 'en'
 
 try {
   const stored = localStorage.getItem(LOCALE_STORAGE_KEY)
-  if (stored === 'nl' || stored === 'en') currentLocale = stored
+  if (stored === 'nl' || stored === 'en' || stored === 'de') currentLocale = stored
 } catch {
   // localStorage unavailable
 }

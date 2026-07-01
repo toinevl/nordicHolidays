@@ -31,6 +31,7 @@ export class StatusBar {
         <button class="status-btn" id="btn-open-generator">${t('status.generate')}</button>
         <button class="status-btn locale-btn" id="btn-locale-nl">NL</button>
         <button class="status-btn locale-btn" id="btn-locale-en">EN</button>
+        <button class="status-btn locale-btn" id="btn-locale-de">DE</button>
       </span>
     `
 
@@ -89,6 +90,7 @@ export class StatusBar {
 
       this.el.querySelector('#btn-locale-nl')?.classList.toggle('locale-btn--active', locale === 'nl')
       this.el.querySelector('#btn-locale-en')?.classList.toggle('locale-btn--active', locale === 'en')
+      this.el.querySelector('#btn-locale-de')?.classList.toggle('locale-btn--active', locale === 'de')
 
       const savedBtn = this.el.querySelector('#btn-open-saved')
       if (savedBtn instanceof HTMLElement) savedBtn.textContent = t('status.myTrips')
@@ -109,6 +111,7 @@ export class StatusBar {
     this.el.addEventListener('click', (event) => onShare(event.target))
     this.el.querySelector('#btn-locale-nl')?.addEventListener('click', () => this.onLocaleChange('nl'))
     this.el.querySelector('#btn-locale-en')?.addEventListener('click', () => this.onLocaleChange('en'))
+    this.el.querySelector('#btn-locale-de')?.addEventListener('click', () => this.onLocaleChange('de'))
   }
 
   syncFromStore(store: Store): void {

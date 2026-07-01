@@ -1,4 +1,4 @@
-export type Locale = 'en' | 'nl'
+export type Locale = 'en' | 'nl' | 'de'
 
 export interface LocaleStrings {
   generator: {
