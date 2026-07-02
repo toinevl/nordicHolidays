@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "15457398152458003947"
+      "templateHash": "321983169333740195"
     }
   },
   "parameters": {
@@ -82,6 +82,27 @@
       ],
       "metadata": {
         "description": "Allowed origins for browser CORS preflight (platform-level, enforced on the Function App). The Static Web App default hostname is appended automatically."
+      }
+    },
+    "alertEmail": {
+      "type": "string",
+      "defaultValue": "toine@van-vliet.eu",
+      "metadata": {
+        "description": "Email address for Application Insights alert notifications"
+      }
+    },
+    "alertName": {
+      "type": "string",
+      "defaultValue": "generateHandler-errors-alert",
+      "metadata": {
+        "description": "Alert name for generateHandler errors"
+      }
+    },
+    "actionGroupName": {
+      "type": "string",
+      "defaultValue": "nordic-holidays-alerts",
+      "metadata": {
+        "description": "Action group name for alert notifications"
       }
     }
   },
@@ -185,6 +206,63 @@
         "publicNetworkAccessForIngestion": "Enabled",
         "publicNetworkAccessForQuery": "Enabled"
       }
+    },
+    {
+      "type": "Microsoft.Insights/actionGroups",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('actionGroupName')]",
+      "location": "Global",
+      "properties": {
+        "groupShortName": "nordicAlerts",
+        "enabled": true,
+        "emailReceivers": [
+          {
+            "name": "emailReceiver",
+            "emailAddress": "[parameters('alertEmail')]",
+            "useCommonAlertSchema": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "[parameters('alertName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "displayName": "generateHandler Error Alert",
+        "description": "Alert when generateHandler logs errors in Application Insights",
+        "enabled": true,
+        "scopes": [
+          "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+        ],
+        "severity": 3,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT5M",
+        "criteria": {
+          "allOf": [
+            {
+              "query": "traces\n            | where message startswith \"generateHandler:\"\n            | where severityLevel >= 3\n            | summarize Count = count() by bin(TimeGenerated, 5m)\n            | where Count >= 1",
+              "timeAggregation": "Count",
+              "operator": "GreaterThanOrEqual",
+              "threshold": 1,
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": [
+            "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]"
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]",
+        "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+      ]
     },
     {
       "type": "Microsoft.Web/serverfarms",

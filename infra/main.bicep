@@ -36,6 +36,15 @@ param allowedCorsOrigins array = [
   'http://localhost:5173'
 ]
 
+@description('Email address for Application Insights alert notifications')
+param alertEmail string = 'toine@van-vliet.eu'
+
+@description('Alert name for generateHandler errors')
+param alertName string = 'generateHandler-errors-alert'
+
+@description('Action group name for alert notifications')
+param actionGroupName string = 'nordic-holidays-alerts'
+
 // Variables
 var serverFarmName = 'ASP-${resourceGroup().name}-846d'
 var corsAllowedOrigins = union(allowedCorsOrigins, ['https://${staticWebApp.properties.defaultHostname}'])
@@ -119,6 +128,63 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     RetentionInDays: 30
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
+  }
+}
+
+// Action Group for Alert Notifications
+resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
+  name: actionGroupName
+  location: 'Global'
+  properties: {
+    groupShortName: 'nordicAlerts'
+    enabled: true
+    emailReceivers: [
+      {
+        name: 'emailReceiver'
+        emailAddress: alertEmail
+        useCommonAlertSchema: true
+      }
+    ]
+  }
+}
+
+// Scheduled Query Rule for generateHandler Errors
+resource generateHandlerAlertRule 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = {
+  name: alertName
+  location: location
+  properties: {
+    displayName: 'generateHandler Error Alert'
+    description: 'Alert when generateHandler logs errors in Application Insights'
+    enabled: true
+    scopes: [
+      appInsights.id
+    ]
+    severity: 3
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT5M'
+    criteria: {
+      allOf: [
+        {
+          query: '''traces
+            | where message startswith "generateHandler:"
+            | where severityLevel >= 3
+            | summarize Count = count() by bin(TimeGenerated, 5m)
+            | where Count >= 1'''
+          timeAggregation: 'Count'
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+    actions: {
+      actionGroups: [
+        actionGroup.id
+      ]
+    }
   }
 }
 
