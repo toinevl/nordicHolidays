@@ -72,6 +72,8 @@ export interface LocaleStrings {
     notesPlaceholder: string
     saveNote: string
     savingNote: string
+    exportGPX: string
+    exportICS: string
   }
   season: {
     skane: string

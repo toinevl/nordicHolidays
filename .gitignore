@@ -36,6 +36,8 @@ scripts/.worktrees/
 .worktrees/
 frontend/dist/
 api/api.zip
+frontend/playwright-report/
+frontend/test-results/
 
 # Local agent state and settings backups (may contain secrets)
 .claude/

@@ -3,6 +3,7 @@ import { haversineKm } from '../lib/distance'
 import { getSeasonInfo } from '../data/seasonData'
 import { t, tpl } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
+import { itineraryToGPX, itineraryToICS, downloadFile } from '../lib/export'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
@@ -96,6 +97,7 @@ export class ItineraryView {
   private accommodations: Accommodation[] = []
   private currentFilter = 'all'
   private selectedStopId = 1
+  private currentItinerary: Itinerary | null = null
   private onFilterChange: FilterChangeCallback
   private onStopSelect: StopSelectCallback
   private onReorderStop: ReorderStopCallback
@@ -130,20 +132,54 @@ export class ItineraryView {
 
   private injectPrintButton(): void {
     if (document.getElementById('btn-print')) return
-    const btn = document.createElement('button')
-    btn.id = 'btn-print'
-    btn.className = 'btn btn--secondary btn--small'
-    btn.style.cssText = 'position:absolute;top:0;right:0;z-index:1;'
-    btn.textContent = t('itinerary.print')
-    btn.addEventListener('click', () => window.print())
+    const container = document.createElement('div')
+    container.id = 'itinerary-actions'
+    container.style.cssText = 'position:absolute;top:0;right:0;z-index:1;display:flex;gap:8px;'
+
+    const printBtn = document.createElement('button')
+    printBtn.id = 'btn-print'
+    printBtn.className = 'btn btn--secondary btn--small'
+    printBtn.textContent = t('itinerary.print')
+    printBtn.addEventListener('click', () => window.print())
+    container.appendChild(printBtn)
+
+    const gpxBtn = document.createElement('button')
+    gpxBtn.id = 'btn-export-gpx'
+    gpxBtn.className = 'btn btn--secondary btn--small'
+    gpxBtn.textContent = t('itinerary.exportGPX')
+    gpxBtn.addEventListener('click', () => this.exportGPX())
+    container.appendChild(gpxBtn)
+
+    const icsBtn = document.createElement('button')
+    icsBtn.id = 'btn-export-ics'
+    icsBtn.className = 'btn btn--secondary btn--small'
+    icsBtn.textContent = t('itinerary.exportICS')
+    icsBtn.addEventListener('click', () => this.exportICS())
+    container.appendChild(icsBtn)
+
     const wrap = document.querySelector('#itinerary .section-wrap') as HTMLElement | null
     if (wrap) {
       wrap.style.position = 'relative'
-      wrap.appendChild(btn)
+      wrap.appendChild(container)
     }
   }
 
+  private exportGPX(): void {
+    if (!this.currentItinerary) return
+    const content = itineraryToGPX(this.currentItinerary)
+    const filename = `${this.currentItinerary.title.toLowerCase().replace(/\s+/g, '-')}.gpx`
+    downloadFile(filename, content, 'application/gpx+xml')
+  }
+
+  private exportICS(): void {
+    if (!this.currentItinerary) return
+    const content = itineraryToICS(this.currentItinerary)
+    const filename = `${this.currentItinerary.title.toLowerCase().replace(/\s+/g, '-')}.ics`
+    downloadFile(filename, content, 'text/calendar')
+  }
+
   renderFromItinerary(itinerary: Itinerary): void {
+    this.currentItinerary = itinerary
     const stops: Stop[] = itinerary.stops.map((s, i) => {
       const prev = itinerary.stops[i - 1]
       const km = prev ? haversineKm([prev.lng, prev.lat], [s.lng, s.lat]) : 0

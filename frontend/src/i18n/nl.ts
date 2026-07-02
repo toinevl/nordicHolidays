@@ -72,6 +72,8 @@ export const nl: LocaleStrings = {
     notesPlaceholder: 'Voeg je eigen notities toe',
     saveNote: 'Opslaan',
     savingNote: 'Opslaan...',
+    exportGPX: 'Exporteer GPX',
+    exportICS: 'Exporteer iCal',
   },
   season: {
     skane: 'Mild klimaat. Warme zomers, kleurrijke herfsten.',

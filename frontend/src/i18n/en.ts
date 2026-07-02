@@ -72,6 +72,8 @@ export const en: LocaleStrings = {
     notesPlaceholder: 'Add your own notes',
     saveNote: 'Save',
     savingNote: 'Saving...',
+    exportGPX: 'Export GPX',
+    exportICS: 'Export iCal',
   },
   season: {
     skane: 'Mild climate. Warm summers, colourful autumns.',

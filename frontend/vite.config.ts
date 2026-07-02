@@ -1,6 +1,56 @@
 import { defineConfig } from 'vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  plugins: [
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'Nordic Holidays',
+        short_name: 'Nordic Holidays',
+        description: 'Road trip from the Øresund Bridge to the High Coast',
+        theme_color: '#2C5F8D',
+        background_color: '#FFFFFF',
+        display: 'standalone',
+        scope: '/',
+        start_url: '/',
+        icons: [
+          {
+            src: 'icon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any',
+          },
+        ],
+      },
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/unpkg\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'unpkg-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+            },
+          },
+        ],
+      },
+    }),
+  ],
   root: '.',
   build: {
     outDir: 'dist',
@@ -21,5 +71,6 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
   },
 })
