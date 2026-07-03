@@ -72,3 +72,7 @@ Grounded in gaps found during the CORS hotfix and the architecture review. A = s
 - [x] (C) PWA: installable + offline-cached assets +feature @me #41
 - [x] (C) Add German (DE) locale — Nordic trips are popular with DE travelers; the catalogue is structured for it now +i18n +feature @me #42
 - [x] (C) App Insights: add a dashboard / alert on generate-handler failures (`logError` exists, nobody's watching) +improvement @me #43
+
+## v1.2 — Visual Refresh (seeded 2026-07-03)
+
+- [ ] (B) Replace dark "Nordic forest" default theme with light-by-default "Nordic Daylight" palette (azure primary, coral accent); hero and fullscreen map stay dark/immersive — see docs/superpowers/specs/2026-07-03-nordic-daylight-theme-design.md +ui +improvement @me #44
