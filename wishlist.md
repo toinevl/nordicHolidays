@@ -75,4 +75,5 @@ Grounded in gaps found during the CORS hotfix and the architecture review. A = s
 
 ## v1.2 — Visual Refresh (seeded 2026-07-03)
 
+- [ ] (B) Define a warmer, higher-contrast light theme informed by engagement/accessibility research and warm-palette trends (warm neutrals, deeper ink, stricter contrast); hero and fullscreen map stay dark/immersive +ui +improvement @me #46
 - [x] (B) Replace dark "Nordic forest" default theme with light-by-default "Nordic Daylight" palette (azure primary, coral accent); hero and fullscreen map stay dark/immersive — see docs/superpowers/specs/2026-07-03-nordic-daylight-theme-design.md +ui +improvement @me #44

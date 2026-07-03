@@ -9,7 +9,7 @@ export default defineConfig({
         name: 'Nordic Holidays',
         short_name: 'Nordic Holidays',
         description: 'Road trip from the Øresund Bridge to the High Coast',
-        theme_color: '#3D6FE0',
+        theme_color: '#2f6fe0',
         background_color: '#FFFFFF',
         display: 'standalone',
         scope: '/',
