@@ -1,11 +1,11 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { nanoid } from 'nanoid'
-import { odata } from '@azure/data-tables'
 import { getTableClient, ensureTable } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
-import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 import { SaveItineraryBodySchema, ItineraryPatchBodySchema, logError } from '../lib/schemas'
+
+const SHARED_PARTITION_KEY = 'shared'
 
 /**
  * Validate and sanitize a thumbnail URL.
@@ -79,18 +79,14 @@ export async function listItinerariesHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req, ctx)
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
-    for await (const entity of client.listEntities({ queryOptions: { filter: odata`PartitionKey eq ${owner.ownerId}` } })) {
+    for await (const entity of client.listEntities()) {
       summaries.push(entityToSummary(entity as Record<string, unknown>, false))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return successResponse(origin, summaries)
   } catch (err: any) {
-    if (err instanceof Error && err.name === 'AuthError') {
-      return authErrorResponse(err, origin)
-    }
     // Table doesn't exist yet (fresh deployment / first use) → no itineraries saved
     if (err?.statusCode === 404 || err?.errorCode === 'TableNotFound') {
       return successResponse(origin, [])
@@ -108,10 +104,9 @@ export async function getItineraryHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req, ctx)
     const id = req.params.id
     const client = getTableClient('Itineraries')
-    const entity = await client.getEntity(owner.ownerId, id) as Record<string, unknown>
+    const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
     const itinerary = JSON.parse(entity.itineraryJson as string) as Itinerary
     const summary = entityToSummary(entity)
     const response: HttpResponseInit = {
@@ -124,9 +119,6 @@ export async function getItineraryHandler(
     }
     return withCors(response, origin)
   } catch (err: any) {
-    if (err instanceof Error && err.name === 'AuthError') {
-      return authErrorResponse(err, origin)
-    }
     if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
     logError(ctx, 'getItineraryHandler: internal error', err)
     return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
@@ -141,8 +133,6 @@ export async function saveItineraryHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   try {
-    const owner = await resolveOwnerId(req, ctx)
-
     let rawBody: unknown
     try {
       rawBody = await req.json()
@@ -169,7 +159,7 @@ export async function saveItineraryHandler(
     // Validate thumbnail: if provided, must be a valid data: URL with correct size. Invalid thumbnails are stripped.
     const thumb = validateThumbnail(body.thumbnail)
     await client.createEntity({
-      partitionKey: owner.ownerId,
+      partitionKey: SHARED_PARTITION_KEY,
       rowKey: id,
       name: body.name,
       createdAt: new Date().toISOString(),
@@ -180,9 +170,6 @@ export async function saveItineraryHandler(
     })
     return successResponse(origin, { id }, 201)
   } catch (err) {
-    if (err instanceof Error && err.name === 'AuthError') {
-      return authErrorResponse(err, origin)
-    }
     logError(ctx, 'saveItineraryHandler: internal error', err)
     return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
@@ -197,7 +184,6 @@ export async function updateItineraryHandler(
   if (req.method !== 'PATCH') return withCors({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
 
   try {
-    const owner = await resolveOwnerId(req, ctx)
     const id = req.params.id
     if (!id) return withCors({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
 
@@ -222,7 +208,7 @@ export async function updateItineraryHandler(
 
     const patch = parseResult.data
     const client = getTableClient('Itineraries')
-    const entity = await client.getEntity(owner.ownerId, id) as Record<string, unknown>
+    const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
 
     const itinerary = JSON.parse(entity.itineraryJson as string) as Record<string, unknown>
     if (typeof patch.title === 'string') itinerary.title = patch.title
@@ -231,7 +217,7 @@ export async function updateItineraryHandler(
     if (Array.isArray(patch.stops)) itinerary.stops = patch.stops
 
     const updatedEntity = await client.updateEntity({
-      partitionKey: owner.ownerId,
+      partitionKey: SHARED_PARTITION_KEY,
       rowKey: id,
       eTag: entity.etag as string | undefined,
       name: entity.name as string,
@@ -248,7 +234,6 @@ export async function updateItineraryHandler(
     // (which would throw on JSON.parse(undefined) → 500).
     return withCors({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinerary) }, origin)
   } catch (err: any) {
-    if (err instanceof Error && err.name === 'AuthError') return authErrorResponse(err, origin)
     if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
     logError(ctx, 'updateItineraryHandler: internal error', err)
     return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)

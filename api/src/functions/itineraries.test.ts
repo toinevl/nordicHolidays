@@ -13,11 +13,6 @@ vi.mock('../lib/tableClient', () => {
     ensureTable: vi.fn(async (name: string) => getTableClient(name)),
   }
 })
-vi.mock('../lib/identity', () => ({
-  resolveOwnerId: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: true, subject: '' }),
-  ownerFromBearer: vi.fn().mockResolvedValue({ ownerId: 'owner-123', isGuest: false, subject: 'sub-123' }),
-  authErrorResponse: vi.fn((err, origin) => ({ status: 400, body: JSON.stringify({ error: (err as Error).message }), headers: {}, } as any)),
-}))
 vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-id-123') }))
 
 import {
@@ -219,43 +214,33 @@ describe('POST /api/itineraries', () => {
   })
 })
 
-describe('OData filter security', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('uses odata helper to escape PartitionKey filter values', async () => {
+describe('odata helper escaping (generic)', () => {
+  it('escapes single quotes by doubling them (OData standard escaping)', async () => {
     const { odata } = require('@azure/data-tables')
-
-    // Test that odata escapes malicious input by replacing single quotes with pairs of quotes
     const maliciousOwnerId = "owner-x' or PartitionKey ne '"
     const filter = odata`PartitionKey eq ${maliciousOwnerId}`
-
-    // The odata helper escapes single quotes by doubling them (OData standard escaping)
-    // So the malicious syntax becomes part of a string literal, not executable OData
     expect(filter).toBe("PartitionKey eq 'owner-x'' or PartitionKey ne '''")
-    // The injection attempt is now just part of the string value
     expect(filter).toContain("owner-x''")
   })
 
-  it('normal ownerId works correctly with odata helper', async () => {
+  it('passes normal values through unchanged', async () => {
     const { odata } = require('@azure/data-tables')
-
-    const normalOwnerId = "entra-user-123"
+    const normalOwnerId = 'entra-user-123'
     const filter = odata`PartitionKey eq ${normalOwnerId}`
-
-    // Normal IDs are passed through unchanged
     expect(filter).toBe("PartitionKey eq 'entra-user-123'")
   })
+})
 
-  it('listItinerariesHandler passes filter through odata helper', async () => {
+describe('GET /api/itineraries — no owner filter', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('calls listEntities with no filter (scans the whole — now single-partition — table)', async () => {
     const client = makeClient()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
 
     const req = { method: 'GET', headers: new Map() } as any
     await listItinerariesHandler(req, makeContext())
 
-    // Verify listEntities was called with queryOptions that include a filter
-    const listCall = (client.listEntities as ReturnType<typeof vi.fn>).mock.calls[0]
-    expect(listCall).toBeDefined()
-    expect(listCall[0]?.queryOptions?.filter).toBeDefined()
+    expect(client.listEntities).toHaveBeenCalledWith()
   })
 })
