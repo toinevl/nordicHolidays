@@ -77,3 +77,7 @@ Grounded in gaps found during the CORS hotfix and the architecture review. A = s
 
 - [ ] (B) Define a warmer, higher-contrast light theme informed by engagement/accessibility research and warm-palette trends (warm neutrals, deeper ink, stricter contrast); hero and fullscreen map stay dark/immersive +ui +improvement @me #46
 - [x] (B) Replace dark "Nordic forest" default theme with light-by-default "Nordic Daylight" palette (azure primary, coral accent); hero and fullscreen map stay dark/immersive — see docs/superpowers/specs/2026-07-03-nordic-daylight-theme-design.md +ui +improvement @me #44
+
+## v1.3 — Public Itineraries (seeded 2026-07-07)
+
+- [ ] (A) Make itineraries fully public — remove per-browser owner isolation so anyone can create, view, and edit any itinerary; migrate existing rows to a shared partition; reword saved-trips panel copy to reflect a shared list — see docs/superpowers/specs/2026-07-07-public-shared-itineraries-design.md +feature +api @me #47
