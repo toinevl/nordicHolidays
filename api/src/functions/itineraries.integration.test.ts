@@ -1,15 +1,15 @@
 /**
- * Integration tests for the anonymous (guest) save/load flow.
+ * Integration tests for the itineraries save/list/get/patch flow.
  *
- * Unlike itineraries.test.ts (which mocks both identity and storage), these
- * tests wire the REAL `resolveOwnerId` against a STATEFUL in-memory table
- * store so that a save actually persists and can be retrieved by a later
- * list/get. This exercises the complete guest round-trip end-to-end inside the
- * process: header → identity → schema → storage → list → get → patch → delete.
+ * Itineraries are fully public: there is no ownership check tying a saved
+ * itinerary to the caller who created it. These tests wire a STATEFUL
+ * in-memory table store (mimicking @azure/data-tables semantics) so that a
+ * save actually persists and can be retrieved by a later list/get/patch —
+ * including by callers who sent a different (or no) X-Owner-Id header.
  *
  * The store mimics @azure/data-tables semantics: partitionKey/rowKey keyed
- * entities, async-iterable listEntities with an OData-style filter, 404 on
- * missing entity, and ETag handling for updates.
+ * entities, async-iterable listEntities, 404 on missing entity, and ETag
+ * handling for updates.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Itinerary, SavedItinerarySummary } from '../types'
@@ -118,7 +118,6 @@ import {
   updateItineraryHandler,
 } from './itineraries'
 import { getTableClient, ensureTable } from '../lib/tableClient'
-import { resolveOwnerId } from '../lib/identity'
 
 // ---------------------------------------------------------------------------
 // Request / context helpers — build real-ish HttpRequest objects.
@@ -231,37 +230,47 @@ describe('anonymous (guest) save/load flow — integration', () => {
     })
   })
 
-  describe('owner isolation between guests', () => {
-    it('guest B cannot see, fetch, or update guest A itinerary', async () => {
+  describe('shared access between different callers', () => {
+    it('a save by one caller is visible, gettable, and editable by a completely different caller', async () => {
       const ctx = makeContext()
 
-      // Guest A saves a trip
-      await saveItineraryHandler(
+      // Caller A saves a trip. The frontend still always sends an X-Owner-Id
+      // header, but the API no longer uses it for access control.
+      const saved = await saveItineraryHandler(
         makeRequest({ method: 'POST', headers: { 'X-Owner-Id': GUEST_A }, json: { name: 'A Trip', itinerary: aValidItinerary() } }),
         ctx,
       )
+      expect(saved.status).toBe(201)
+      const id = parseBody(saved).id as string
 
-      // Guest B lists → empty
+      // Caller B, with a totally different owner id, sees it in the list.
       const bList = await listItinerariesHandler(makeRequest({ headers: { 'X-Owner-Id': GUEST_B } }), ctx)
-      expect(parseBody(bList)).toEqual([])
+      const bSummaries = parseBody(bList) as SavedItinerarySummary[]
+      expect(bSummaries).toHaveLength(1)
+      expect(bSummaries[0].id).toBe(id)
 
-      // Guest B cannot fetch guest A's id
+      // Caller B can fetch it directly.
       const bGet = await getItineraryHandler(
-        makeRequest({ headers: { 'X-Owner-Id': GUEST_B }, params: { id: 'id-1' } }),
+        makeRequest({ headers: { 'X-Owner-Id': GUEST_B }, params: { id } }),
         ctx,
       )
-      expect(bGet.status).toBe(404)
+      expect(bGet.status).toBe(200)
+      expect(parseBody(bGet).title).toBe('Stockholm Weekend')
 
-      // Guest B cannot patch it
+      // Caller B can patch it.
       const bPatch = await updateItineraryHandler(
-        makeRequest({ method: 'PATCH', headers: { 'X-Owner-Id': GUEST_B }, params: { id: 'id-1' }, json: { title: 'Hacked' } }),
+        makeRequest({ method: 'PATCH', headers: { 'X-Owner-Id': GUEST_B }, params: { id }, json: { title: 'Edited by B' } }),
         ctx,
       )
-      expect(bPatch.status).toBe(404)
+      expect(bPatch.status).toBe(200)
+      expect(parseBody(bPatch).title).toBe('Edited by B')
 
-      // Guest A still sees it intact
-      const aList = await listItinerariesHandler(makeRequest({ headers: { 'X-Owner-Id': GUEST_A } }), ctx)
-      expect(parseBody(aList)).toHaveLength(1)
+      // Caller A sees B's edit too.
+      const aGet = await getItineraryHandler(
+        makeRequest({ headers: { 'X-Owner-Id': GUEST_A }, params: { id } }),
+        ctx,
+      )
+      expect(parseBody(aGet).title).toBe('Edited by B')
     })
   })
 
@@ -288,40 +297,29 @@ describe('anonymous (guest) save/load flow — integration', () => {
     })
   })
 
-  describe('real identity validation (resolveOwnerId)', () => {
-    it('these tests use the real resolveOwnerId — a valid guest header resolves to isGuest=true', async () => {
-      // Prove the integration wiring is real: resolveOwnerId is not mocked here.
-      const owner = await resolveOwnerId(makeRequest({ headers: { 'X-Owner-Id': GUEST_A } }) as any)
-      expect(owner.ownerId).toBe(GUEST_A)
-      expect(owner.isGuest).toBe(true)
-    })
-
-    it('rejects save with no identity headers (returns 400/401 error)', async () => {
+  describe('itineraries endpoints require no identity', () => {
+    it('accepts save/list/get/patch with no identity headers at all', async () => {
       const ctx = makeContext()
-      const result = await saveItineraryHandler(
-        makeRequest({ method: 'POST', headers: {}, json: { name: 'X', itinerary: aValidItinerary() } }),
+
+      const saved = await saveItineraryHandler(
+        makeRequest({ method: 'POST', headers: {}, json: { name: 'No Header Trip', itinerary: aValidItinerary() } }),
         ctx,
       )
-      // resolveOwnerId throws AuthError (statusCode 401); authErrorResponse maps it.
-      const status = result.status
-      expect(status === 400 || status === 401).toBe(true)
-      const body = parseBody(result)
-      expect(body.error).toMatch(/identity|Authorization|Owner-Id/i)
-      // Nothing persisted
-      const list = await listItinerariesHandler(makeRequest({ headers: { 'X-Owner-Id': GUEST_A } }), ctx)
-      expect(parseBody(list)).toEqual([])
-    })
+      expect(saved.status).toBe(201)
+      const id = parseBody(saved).id as string
 
-    it('rejects save with a malformed X-Owner-Id (not owner-<uuid>)', async () => {
-      const ctx = makeContext()
-      const result = await saveItineraryHandler(
-        makeRequest({ method: 'POST', headers: { 'X-Owner-Id': 'not-a-uuid' }, json: { name: 'X', itinerary: aValidItinerary() } }),
+      const list = await listItinerariesHandler(makeRequest({ headers: {} }), ctx)
+      expect(parseBody(list)).toHaveLength(1)
+
+      const got = await getItineraryHandler(makeRequest({ headers: {}, params: { id } }), ctx)
+      expect(got.status).toBe(200)
+
+      const patched = await updateItineraryHandler(
+        makeRequest({ method: 'PATCH', headers: {}, params: { id }, json: { title: 'Renamed' } }),
         ctx,
       )
-      expect([400, 401]).toContain(result.status)
-      // The malformed id must not have leaked any data into a valid partition
-      const list = await listItinerariesHandler(makeRequest({ headers: { 'X-Owner-Id': GUEST_A } }), ctx)
-      expect(parseBody(list)).toEqual([])
+      expect(patched.status).toBe(200)
+      expect(parseBody(patched).title).toBe('Renamed')
     })
   })
 
