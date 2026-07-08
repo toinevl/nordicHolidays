@@ -81,3 +81,5 @@ Grounded in gaps found during the CORS hotfix and the architecture review. A = s
 ## v1.3 — Public Itineraries (seeded 2026-07-07)
 
 - [x] (A) Make itineraries fully public — remove per-browser owner isolation so anyone can create, view, and edit any itinerary; migrate existing rows to a shared partition; reword saved-trips panel copy to reflect a shared list — see docs/superpowers/specs/2026-07-07-public-shared-itineraries-design.md +feature +api @me #47
+- [x] (A) Loading any itinerary with a non-ASCII city name (i.e. any real Nordic trip) 500'd — dead `X-Itinerary-Summary` response header embedded raw city/trip names, and the Azure Functions host's HTTP layer rejects non-ASCII header values; header was unused by the frontend, removed +bug +api @me #48
+- [x] (B) Post-deploy API smoke test was stale (still asserted the pre-#47 401-without-owner contract, failing every deploy since) and never exercised `GET /itineraries/{id}` — the one path that would have caught #48 before users hit it; updated assertion and added a real get-by-id check through the live host +ci +testing @me #49
