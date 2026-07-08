@@ -105,6 +105,10 @@ vi.mock('../lib/tableClient', () => ({
   ensureTable: vi.fn(),
 }))
 
+vi.mock('../lib/rateLimit', () => ({
+  checkAndIncrementItineraryWriteRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
+}))
+
 // We mock nanoid to keep rowKeys deterministic within a test, but reset the
 // counter per test via makeIdGenerator so different saves still get distinct ids.
 let idCounter = 0
