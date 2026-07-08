@@ -13,14 +13,19 @@ vi.mock('../lib/tableClient', () => {
     ensureTable: vi.fn(async (name: string) => getTableClient(name)),
   }
 })
+vi.mock('../lib/rateLimit', () => ({
+  checkAndIncrementItineraryWriteRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
+}))
 vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-id-123') }))
 
 import {
   listItinerariesHandler,
   getItineraryHandler,
   saveItineraryHandler,
+  updateItineraryHandler,
 } from './itineraries'
 import { getTableClient } from '../lib/tableClient'
+import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
 
 function makeClient(overrides: Record<string, unknown> = {}) {
   const base = {
@@ -237,6 +242,44 @@ describe('POST /api/itineraries', () => {
     expect(result.status).toBe(400)
     const body = JSON.parse(result.body as string)
     expect(body.error).toBe('Invalid JSON body')
+  })
+
+  it('returns 429 with Retry-After when itinerary-write rate limit is exceeded', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    ;(checkAndIncrementItineraryWriteRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 120,
+    })
+    const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] }
+    const req = { json: async () => ({ name: 'My Trip', itinerary: itin }), method: 'POST', headers: new Map() } as any
+    const result = await saveItineraryHandler(req, makeContext())
+    expect(result.status).toBe(429)
+    expect(result.headers).toHaveProperty('Retry-After', '120')
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('Rate limit exceeded')
+    expect(body.retryAfterSeconds).toBe(120)
+    expect(client.createEntity).not.toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/itineraries/:id — rate limiting', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 429 with Retry-After when itinerary-write rate limit is exceeded', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    ;(checkAndIncrementItineraryWriteRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 45,
+    })
+    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'New' }), headers: new Map() } as any
+    const result = await updateItineraryHandler(req, makeContext())
+    expect(result.status).toBe(429)
+    expect(result.headers).toHaveProperty('Retry-After', '45')
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('Rate limit exceeded')
+    expect(client.getEntity).not.toHaveBeenCalled()
   })
 })
 

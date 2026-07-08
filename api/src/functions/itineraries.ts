@@ -4,6 +4,7 @@ import { getTableClient, ensureTable } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { SaveItineraryBodySchema, ItineraryPatchBodySchema, logError } from '../lib/schemas'
+import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
 
 const SHARED_PARTITION_KEY = 'shared'
 
@@ -130,6 +131,20 @@ export async function saveItineraryHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
+  const rateLimitOwnerId = req.headers?.get('X-Owner-Id') ?? 'unknown'
+  const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, rateLimitOwnerId, ctx)
+  if (!rateLimitResult.allowed) {
+    const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
+    return withCors(
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+        body: JSON.stringify({ error: 'Rate limit exceeded', retryAfterSeconds: retryAfter }),
+      },
+      origin,
+    )
+  }
+
   try {
     let rawBody: unknown
     try {
@@ -180,6 +195,20 @@ export async function updateItineraryHandler(
   const origin = req.headers.get('origin') ?? undefined
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
   if (req.method !== 'PATCH') return withCors({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
+
+  const rateLimitOwnerId = req.headers?.get('X-Owner-Id') ?? 'unknown'
+  const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, rateLimitOwnerId, ctx)
+  if (!rateLimitResult.allowed) {
+    const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
+    return withCors(
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+        body: JSON.stringify({ error: 'Rate limit exceeded', retryAfterSeconds: retryAfter }),
+      },
+      origin,
+    )
+  }
 
   try {
     const id = req.params.id
