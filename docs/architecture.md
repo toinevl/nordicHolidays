@@ -1,6 +1,6 @@
 # NordicHolidays Architecture
 
-> NordicHolidays is an AI-generated Nordic road-trip itinerary app: a Vite + TypeScript SPA hosted on Azure Static Web Apps, calling an Azure Functions (Flex Consumption) API that generates itineraries via Azure AI Foundry and persists them in Azure Table Storage. It is anonymous — no user accounts — and isolates each guest's data by a client-generated owner id. Production frontend: **https://sweden.van-vliet.eu**.
+> NordicHolidays is an AI-generated Nordic road-trip itinerary app: a Vite + TypeScript SPA hosted on Azure Static Web Apps, calling an Azure Functions (Flex Consumption) API that generates itineraries via Azure AI Foundry and persists them in Azure Table Storage. It is anonymous — no user accounts. **Saved itineraries are fully public** (anyone can create, view, and edit any itinerary — see #47); Preferences, Profile, and generation rate-limiting remain isolated by a client-generated owner id. Production frontend: **https://sweden.van-vliet.eu**.
 
 This document is organised into four articles: [Communication Flow](#1-communication-flow) · [Data Flow](#2-data-flow) · [Cloud Resources](#3-cloud-resources) · [Security & Identity](#4-security--identity). A repository map and state-management reference are in the [Appendix](#appendix).
 
@@ -37,7 +37,7 @@ sequenceDiagram
 - API → Storage: `@azure/data-tables` `TableClient` over HTTPS (connection string in app settings, or managed identity via `TABLES_ENDPOINT`).
 - API → AI Foundry: OpenAI SDK at `{AZURE_FOUNDRY_ENDPOINT}/deployments/{LLM_MODEL}`, `api-key` auth.
 
-**Endpoints** (`authLevel: anonymous`, registered in `api/src/index.ts`): `GET /api/health`, `POST /api/generate`, `GET|POST /api/itineraries`, `GET|PATCH|DELETE /api/itineraries/:id`, `GET|PUT /api/preferences`, `GET|PUT /api/profile`, `GET /api/city-search`.
+**Endpoints** (`authLevel: anonymous`, registered per function file): `GET /api/health`, `POST /api/generate`, `GET|POST /api/itineraries`, `GET|PATCH /api/itineraries/:id` (no `DELETE` — removed with the delete-from-UI change, #12), `GET|PUT /api/preferences`, `GET|PUT /api/profile`, `GET /api/city-search`.
 
 **Generate request lifecycle** (detailed):
 ```
@@ -56,24 +56,24 @@ User fills GeneratorPanel (country, start/end city, days, must-visit, avoid)
 
 ## 2. Data Flow
 
-Data is small and per-owner. Four entities, all in Table Storage, all partitioned by the guest owner id. The generated itinerary is **ephemeral until the user saves** — generation writes nothing; only an explicit save persists.
+Data is small. Itineraries are a single shared pool; Preferences, Profile, and RateLimits remain per-owner. The generated itinerary is **ephemeral until the user saves** — generation writes nothing; only an explicit save persists.
 
 ```mermaid
 flowchart LR
   Gen([LLM itinerary]) -->|validated by Zod| Mem[In-memory Store]
-  Mem -->|Save| T1[(Itineraries<br/>PK=owner-uuid)]
+  Mem -->|Save| T1[(Itineraries<br/>PK='shared' — public)]
   Prefs([Preferences]) --> T2[(Preferences<br/>PK=owner-uuid)]
   Prof([Profile]) --> T3[(Profiles<br/>PK=owner-uuid)]
-  Rate([per-request]) --> T4[(RateLimits<br/>PK=owner-uuid)]
+  Rate([per-generate-request]) --> T4[(RateLimits<br/>PK=owner-uuid)]
   T1 -.GET /api/itineraries/:id.-> Share([Share URL ?id=])
 ```
 
 | Entity | Store | Partition key | Lifecycle |
 |---|---|---|---|
-| Itinerary | `Itineraries` table | `owner-<uuid>` | durable once saved; generated-but-unsaved is ephemeral |
+| Itinerary | `Itineraries` table | constant `'shared'` — **public, no owner scoping** (#47) | durable once saved; generated-but-unsaved is ephemeral; visible/editable by anyone |
 | Preferences | `Preferences` table | `owner-<uuid>` | durable, PUT-upserted |
 | Profile | `Profiles` table | `owner-<uuid>` | durable; `extensions` stored as a JSON string |
-| RateLimit | `RateLimits` table | `owner-<uuid>` | rolling counter |
+| RateLimit | `RateLimits` table | `owner-<uuid>` | rolling counter, checked only by `/api/generate` |
 
 **Transformations**
 - Generate: the LLM returns a `create_itinerary` tool call; its arguments are parsed, validated (`validateItinerary` + Zod `GenerateRequestBodySchema`), then returned to the browser (ephemeral) or, on save, written as a Table entity.
@@ -89,7 +89,7 @@ RELOAD: GET /api/itineraries       (summary list)
         GET /api/itineraries/:id   (full itinerary) → store re-renders Map + Timeline
 ```
 
-**Isolation:** partitioning by `owner-<uuid>` is the only tenant boundary. The API resolves the owner server-side and scopes every query to that partition; a guest cannot address another guest's partition key. There is no shared/admin read path.
+**Isolation:** `owner-<uuid>` partitioning still isolates Preferences, Profile, and RateLimits — the API resolves the owner server-side and scopes every query to that partition, and a guest cannot address another guest's partition key there. **Itineraries have no isolation at all** (#47): every itinerary lives under one constant partition key, `list`/`get`/`save`/`patch` never check who's asking, and there is no owner or attribution field on the entity. This is an intentional design choice (anyone can create and share trips), not a bug — but it means anyone can also overwrite or vandalize any other visitor's saved trip, and there is currently no rate limit on itinerary writes (unlike `/api/generate`, which is rate-limited per owner).
 
 **Client state** (`frontend/src/store.ts`) — a plain object with mutation helpers; no framework reactivity, UI re-renders via explicit `render()` calls:
 
@@ -132,10 +132,9 @@ All resources live in resource group **`rgNordicHolidays`**, subscription `2dbeb
 
 **⚠ Managed manually — not in Bicep (drift / recreate risk):**
 1. The Entra app registration `nordicHolidays-github-deploy` + its OIDC federated credential (Graph-managed).
-2. The **platform-level CORS allow-list** on the Function App (`az functionapp cors`) — see §4.
-3. The SWA custom domain `sweden.van-vliet.eu`.
+2. The SWA custom domain `sweden.van-vliet.eu`.
 
-Recreating the Function App from Bicep alone would silently drop items 1–3 and break the live site.
+The platform-level CORS allow-list (`az functionapp cors`) is now persisted in `infra/main.bicep` (`corsAllowedOrigins` param, wishlist #32) — no longer a drift risk. Recreating the Function App from Bicep alone would still silently drop items 1–2 above and break the live site.
 
 ---
 
@@ -143,15 +142,15 @@ Recreating the Function App from Bicep alone would silently drop items 1–3 and
 
 **User authentication — anonymous guest.** There are no accounts. On first load the browser generates `owner-<uuid>`, stores it in `localStorage` with a **rolling 30-day expiry**, and sends it as the `X-Owner-Id` header on every API call. Entra/MSAL sign-in and JWT verification (`jose`, `api/src/lib/identity.ts`) are **implemented but disabled** — the frontend auth stub (`frontend/src/lib/auth.ts`) returns `null`/`false` for every method, so no bearer token is ever produced and `verifyAccessToken` is never reached. The code is staged for a future Entra rollout.
 
-**Authorization & isolation (soft, not cryptographic).** The API resolves the owner from the **client-supplied `X-Owner-Id` header** (`resolveOwnerId`) and uses it as the Table partition key for every read/write. This isolates guests *by default* — there is no shared or admin read path, and no endpoint takes an arbitrary partition key directly — but it is **not** a cryptographic boundary: anyone who learns a guest's `owner-<uuid>` (e.g. a leaked `localStorage` or shared URL) can send that header and read/write that guest's data. This is an accepted risk for this app: the data is low-sensitivity (travel itineraries/preferences, no PII or payment), the uuid is 128-bit random (practically unguessable), and every request is rate-limited per owner. The proper hardening is **server-issued signed tokens** (the API would mint `owner-<uuid>` + an HMAC/JWT on first contact and verify the signature on every subsequent request); that is deferred until the data model grows sensitive fields or real multi-device sync lands. A client-side HMAC alone would be security theater, since the secret would ship in the JS bundle (#38).
+**Authorization & isolation — two different models now (#47).**
+- **Preferences / Profile / RateLimits (soft, not cryptographic):** the API resolves the owner from the **client-supplied `X-Owner-Id` header** (`resolveOwnerId`) and uses it as the Table partition key for every read/write. This isolates guests *by default* — there is no shared or admin read path — but it is **not** a cryptographic boundary: anyone who learns a guest's `owner-<uuid>` (e.g. a leaked `localStorage` or shared URL) can send that header and read/write that guest's data. Accepted risk: the data is low-sensitivity, the uuid is 128-bit random, and `/api/generate` is rate-limited per owner. Proper hardening (server-issued signed tokens) is deferred (#38).
+- **Itineraries (intentionally public, #47):** `resolveOwnerId` is not called at all. `list`/`get`/`save`/`patch` have **no access control whatsoever** — every itinerary lives under one shared partition key, and any visitor can view, create, or edit any itinerary. This is a deliberate product decision (the app is a public trip-sharing tool, not an account system), not an oversight. Consequences worth naming plainly: (a) any visitor can silently overwrite or vandalize any other visitor's saved trip — there is no versioning, undo, or attribution to detect or revert this; (b) itinerary writes have **no rate limit** (unlike `/api/generate`), so the table has no defense against write-spam or storage-cost abuse; (c) `POST`/`PATCH` bodies are Zod-validated for shape but not for content, so this is also an unmoderated public content surface — anyone can write arbitrary trip names/city text (persisted, later rendered to other visitors; XSS risk is mitigated by output escaping — see Hardening below — but a determined abuser has no rate or identity friction to work through first).
 
 **Service identity & secrets.** The Function App authenticates to Storage and Key Vault via its system-assigned **managed identity** + RBAC (no stored credentials). `AZURE_FOUNDRY_API_KEY`, `AZURE_FOUNDRY_ENDPOINT`, `STORAGE_CONNECTION_STRING`, and `LLM_MODEL` live in app settings; the Foundry key is sourced from Key Vault. Secrets are never committed (`.gitignore` covers `api/local.settings.json*`).
 
-**CORS — two independent layers (the subtle part):**
-- **Platform CORS** on the Function App (`az functionapp cors`) — **this is what actually governs** the browser preflight. Allow-list: `https://sweden.van-vliet.eu`, `http://localhost:5173`, `https://agreeable-island-03429a403.7.azurestaticapps.net`, and the dead `https://nordicholidays.azurestaticapps.net`. It is configured manually, survives code redeploys, but **not** a Function-App recreate.
-- **App-level CORS** in `api/src/lib/cors.ts`, driven by an `ALLOWED_ORIGINS` env var — which is **unset in production**, so the app code silently falls back to `localhost`-only. It is effectively a no-op today because platform CORS handles preflight first. This layering is a latent footgun: the code and the prod config disagree.
-
-> **Honest gap (the most useful sentence in this doc):** the prod origin `https://sweden.van-vliet.eu` is allow-listed only in the manually-configured platform CORS, not in IaC. If the Function App is ever recreated from Bicep, the live site breaks with *"NetworkError when attempting to fetch resource"* until the origin is re-added. Persist platform CORS in Bicep to close this.
+**CORS — two independent layers, now reconciled (#32, #33):**
+- **Platform CORS** on the Function App (`az functionapp cors`) — **this is what actually governs** the browser preflight. Allow-list: `https://sweden.van-vliet.eu`, `http://localhost:5173`, `https://agreeable-island-03429a403.7.azurestaticapps.net`, and the dead `https://nordicholidays.azurestaticapps.net`. Persisted in `infra/main.bicep` (`corsAllowedOrigins`), so a Function-App recreate no longer drops it.
+- **App-level CORS** in `api/src/lib/cors.ts`, driven by `ALLOWED_ORIGINS` — now **set in production** (`https://sweden.van-vliet.eu,http://localhost:5173`, via the same Bicep param) so code and prod config agree. Still effectively a no-op for preflight itself (platform CORS answers OPTIONS first), but it now matches rather than contradicts prod.
 
 **Hardening controls**
 - Response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'` (API responses).
@@ -160,7 +159,7 @@ Recreating the Function App from Bicep alone would silently drop items 1–3 and
 - Rate limiting: per-owner counter in the `RateLimits` table (`checkAndIncrementRateLimit`) → 429 with `Retry-After`.
 - Guest id 30-day rolling expiry; profile schema hardening strips internal fields on PUT.
 
-**Open items:** (a) persist platform CORS in Bicep; (b) reconcile the two CORS layers (set `ALLOWED_ORIGINS` or remove the app-level path); (c) fix dead `nordicholidays.azurestaticapps.net` references in docs.
+**Open items:** (a) itineraries have no rate limit or abuse protection despite being fully open to writes (#47, follow-up not yet scheduled); (b) no versioning/undo for itinerary edits, so one visitor's overwrite of another's trip is unrecoverable; (c) the dead `nordicholidays.azurestaticapps.net` origin is still allow-listed and could be removed.
 
 ---
 
@@ -177,7 +176,7 @@ nordicHolidays/
 │   │   ├── api/client.ts       # fetch wrappers for all API endpoints
 │   │   ├── components/         # MapView, ItineraryView, GeneratorPanel, SavedTripsPanel, StatusBar, Toast
 │   │   ├── lib/                # auth (guest stub), identity, citySearch, distance, escape
-│   │   ├── i18n/               # types, en, nl, index (t/tpl/setLocale)
+│   │   ├── i18n/               # types, en, nl, de, index (t/tpl/setLocale)
 │   │   ├── data/               # cities, defaultItinerary, seasonData
 │   │   └── styles/
 │   ├── index.html · vite.config.ts · package.json
