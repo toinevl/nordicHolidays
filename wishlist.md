@@ -80,4 +80,4 @@ Grounded in gaps found during the CORS hotfix and the architecture review. A = s
 
 ## v1.3 — Public Itineraries (seeded 2026-07-07)
 
-- [ ] (A) Make itineraries fully public — remove per-browser owner isolation so anyone can create, view, and edit any itinerary; migrate existing rows to a shared partition; reword saved-trips panel copy to reflect a shared list — see docs/superpowers/specs/2026-07-07-public-shared-itineraries-design.md +feature +api @me #47
+- [x] (A) Make itineraries fully public — remove per-browser owner isolation so anyone can create, view, and edit any itinerary; migrate existing rows to a shared partition; reword saved-trips panel copy to reflect a shared list — see docs/superpowers/specs/2026-07-07-public-shared-itineraries-design.md +feature +api @me #47
