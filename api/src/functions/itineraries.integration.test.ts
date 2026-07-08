@@ -97,7 +97,7 @@ function createInMemoryStore() {
 }
 
 // ---------------------------------------------------------------------------
-// Mocks: real identity, real @azure/data-tables `odata`, in-memory store.
+// Mocks: real identity, in-memory store.
 // ---------------------------------------------------------------------------
 
 vi.mock('../lib/tableClient', () => ({
