@@ -91,6 +91,32 @@ describe('GET /api/itineraries/:id', () => {
     const result = await getItineraryHandler(req, makeContext())
     expect(result.status).toBe(404)
   })
+
+  it('does not set X-Itinerary-Summary header for itineraries with non-ASCII city names (regression: Azure Functions host rejects non-ASCII header values with a 500)', async () => {
+    const itin = { title: 'T', totalDays: 21, startCity: 'A', endCity: 'A', stops: [] }
+    const entity = {
+      partitionKey: 'shared',
+      rowKey: 'id1',
+      name: 'Roadtrip Zweden (Malmö → Helsingborg)',
+      createdAt: '2026-06-01',
+      startCity: 'Stockholm (Gärdet/Ladugårdsgärdet), Zweden',
+      endCity: 'Västra Götaland',
+      itineraryJson: JSON.stringify(itin),
+    }
+    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const req = { params: { id: 'id1' }, method: 'GET', headers: new Map() } as any
+    const result = await getItineraryHandler(req, makeContext())
+    expect(result.status).toBe(200)
+    expect(result.headers).not.toHaveProperty('X-Itinerary-Summary')
+    // Defense in depth: no header value we set may contain a character outside
+    // the ASCII range the Azure Functions host's HTTP layer accepts. A future
+    // header addition that embeds free-text content would otherwise reproduce
+    // this exact production bug.
+    for (const value of Object.values(result.headers ?? {})) {
+      expect(String(value)).toMatch(/^[\x00-\x7f]*$/)
+    }
+  })
 })
 
 describe('POST /api/itineraries', () => {

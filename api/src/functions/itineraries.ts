@@ -108,12 +108,10 @@ export async function getItineraryHandler(
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
     const itinerary = JSON.parse(entity.itineraryJson as string) as Itinerary
-    const summary = entityToSummary(entity)
     const response: HttpResponseInit = {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'X-Itinerary-Summary': JSON.stringify(summary),
       },
       body: JSON.stringify(itinerary),
     }
