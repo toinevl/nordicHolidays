@@ -5,6 +5,8 @@ import { logError } from './schemas'
 // Rate limit constants
 export const RATE_LIMIT_PER_OWNER_PER_HOUR = 5
 export const RATE_LIMIT_PER_IP_PER_HOUR = 20
+export const RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR = 10
+export const RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_TABLE_NAME = 'RateLimits'
 
 // Lazy initialization for table creation
@@ -171,6 +173,95 @@ export async function checkAndIncrementRateLimit(
   } catch (err) {
     // Outer error; fail open
     logError(logger, `Rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    return { allowed: true }
+  }
+}
+
+/**
+ * Check and increment rate limit for itinerary writes (save/patch).
+ * Itineraries have no identity check at all (#47), so `ownerId` here is a
+ * best-effort signal read directly from the X-Owner-Id header by the caller
+ * — never validated, and easily spoofed. IP is the primary, harder-to-bypass
+ * signal. Uses distinct partition-key prefixes from checkAndIncrementRateLimit
+ * so the two limiters' counters never share a bucket.
+ */
+export async function checkAndIncrementItineraryWriteRateLimit(
+  req: HttpRequest,
+  ownerId: string,
+  logger?: any
+): Promise<RateLimitResult> {
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const hourWindow = getCurrentHourWindow()
+    const ip = extractIp(req)
+    const retryAfter = getSecondsUntilHourEnd()
+
+    const ownerPartitionKey = `itinerary-owner:${ownerId}`
+    try {
+      const ownerEntity = await client.getEntity(ownerPartitionKey, hourWindow)
+      const ownerCount = (ownerEntity.count as number) ?? 0
+      if (ownerCount >= RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR) {
+        return { allowed: false, retryAfterSeconds: retryAfter }
+      }
+      await client.updateEntity(
+        {
+          partitionKey: ownerEntity.partitionKey as string,
+          rowKey: ownerEntity.rowKey as string,
+          ...ownerEntity,
+          count: ownerCount + 1,
+        },
+        'Merge'
+      )
+    } catch (err: any) {
+      if (err?.statusCode === 404) {
+        await client.createEntity({
+          partitionKey: ownerPartitionKey,
+          rowKey: hourWindow,
+          count: 1,
+          timestamp: now.toISOString(),
+        })
+      } else {
+        logError(logger, `Itinerary-write rate limit check failed for owner ${ownerId}: ${err instanceof Error ? err.message : String(err)}`)
+        return { allowed: true }
+      }
+    }
+
+    const ipPartitionKey = `itinerary-ip:${ip}`
+    try {
+      const ipEntity = await client.getEntity(ipPartitionKey, hourWindow)
+      const ipCount = (ipEntity.count as number) ?? 0
+      if (ipCount >= RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR) {
+        return { allowed: false, retryAfterSeconds: retryAfter }
+      }
+      await client.updateEntity(
+        {
+          partitionKey: ipEntity.partitionKey as string,
+          rowKey: ipEntity.rowKey as string,
+          ...ipEntity,
+          count: ipCount + 1,
+        },
+        'Merge'
+      )
+    } catch (err: any) {
+      if (err?.statusCode === 404) {
+        await client.createEntity({
+          partitionKey: ipPartitionKey,
+          rowKey: hourWindow,
+          count: 1,
+          timestamp: now.toISOString(),
+        })
+      } else {
+        logError(logger, `Itinerary-write rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`)
+        return { allowed: true }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    logError(logger, `Itinerary-write rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
     return { allowed: true }
   }
 }

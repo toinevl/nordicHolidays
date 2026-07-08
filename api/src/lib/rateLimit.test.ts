@@ -4,7 +4,14 @@ vi.mock('./tableClient', () => ({
   getTableClient: vi.fn(),
 }))
 
-import { checkAndIncrementRateLimit, RATE_LIMIT_PER_OWNER_PER_HOUR, RATE_LIMIT_PER_IP_PER_HOUR } from './rateLimit'
+import {
+  checkAndIncrementRateLimit,
+  checkAndIncrementItineraryWriteRateLimit,
+  RATE_LIMIT_PER_OWNER_PER_HOUR,
+  RATE_LIMIT_PER_IP_PER_HOUR,
+  RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR,
+  RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR,
+} from './rateLimit'
 import { getTableClient } from './tableClient'
 
 function makeRequest(ip?: string): any {
@@ -178,5 +185,93 @@ describe('table creation', () => {
     const result = await checkAndIncrementRateLimit(req, 'owner-123')
 
     expect(result.allowed).toBe(true)
+  })
+})
+
+describe('checkAndIncrementItineraryWriteRateLimit', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('allows a request when under both limits', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = makeRequest('192.168.1.1')
+    const result = await checkAndIncrementItineraryWriteRateLimit(req, 'owner-123')
+
+    expect(result.allowed).toBe(true)
+    expect(client.createEntity).toHaveBeenCalledTimes(2) // one for owner, one for IP
+  })
+
+  it('rejects when owner exceeds the itinerary-write owner limit', async () => {
+    const client = makeClient({
+      getEntity: vi.fn((pk: string) => {
+        if (pk.startsWith('itinerary-owner:')) {
+          return Promise.resolve({ count: RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR })
+        }
+        return Promise.reject({ statusCode: 404 })
+      }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = makeRequest('192.168.1.1')
+    const result = await checkAndIncrementItineraryWriteRateLimit(req, 'owner-123')
+
+    expect(result.allowed).toBe(false)
+    expect(result.retryAfterSeconds).toBeGreaterThan(0)
+    expect(result.retryAfterSeconds).toBeLessThanOrEqual(3600)
+  })
+
+  it('rejects when IP exceeds the itinerary-write IP limit', async () => {
+    const client = makeClient({
+      getEntity: vi.fn((pk: string) => {
+        if (pk.startsWith('itinerary-ip:')) {
+          return Promise.resolve({ count: RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR })
+        }
+        return Promise.reject({ statusCode: 404 })
+      }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = makeRequest('192.168.1.1')
+    const result = await checkAndIncrementItineraryWriteRateLimit(req, 'owner-123')
+
+    expect(result.allowed).toBe(false)
+    expect(result.retryAfterSeconds).toBeGreaterThan(0)
+  })
+
+  it('uses partition-key prefixes that cannot collide with the generate rate limiter', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = makeRequest('192.168.1.1')
+    await checkAndIncrementItineraryWriteRateLimit(req, 'owner-123')
+
+    const partitionKeys = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls.map(
+      (call) => call[0]?.partitionKey as string
+    )
+    expect(partitionKeys).toContain('itinerary-owner:owner-123')
+    expect(partitionKeys.some((pk) => pk.startsWith('itinerary-ip:'))).toBe(true)
+    // Must never produce the generate-limiter's own prefixes
+    expect(partitionKeys.some((pk) => pk === 'owner:owner-123')).toBe(false)
+    expect(partitionKeys.some((pk) => pk.startsWith('ip:') && !pk.startsWith('itinerary-ip:'))).toBe(false)
+  })
+
+  it('fails open on table client errors', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
+      createEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const mockLogger = { log: { error: vi.fn() } }
+    const req = makeRequest('192.168.1.1')
+    const result = await checkAndIncrementItineraryWriteRateLimit(req, 'owner-123', mockLogger as any)
+
+    expect(result.allowed).toBe(true)
+    expect(mockLogger.log.error).toHaveBeenCalled()
   })
 })
