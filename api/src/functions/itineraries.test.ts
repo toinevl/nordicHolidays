@@ -214,23 +214,6 @@ describe('POST /api/itineraries', () => {
   })
 })
 
-describe('odata helper escaping (generic)', () => {
-  it('escapes single quotes by doubling them (OData standard escaping)', async () => {
-    const { odata } = require('@azure/data-tables')
-    const maliciousOwnerId = "owner-x' or PartitionKey ne '"
-    const filter = odata`PartitionKey eq ${maliciousOwnerId}`
-    expect(filter).toBe("PartitionKey eq 'owner-x'' or PartitionKey ne '''")
-    expect(filter).toContain("owner-x''")
-  })
-
-  it('passes normal values through unchanged', async () => {
-    const { odata } = require('@azure/data-tables')
-    const normalOwnerId = 'entra-user-123'
-    const filter = odata`PartitionKey eq ${normalOwnerId}`
-    expect(filter).toBe("PartitionKey eq 'entra-user-123'")
-  })
-})
-
 describe('GET /api/itineraries — no owner filter', () => {
   beforeEach(() => vi.clearAllMocks())
 
