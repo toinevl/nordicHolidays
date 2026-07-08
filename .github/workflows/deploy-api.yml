@@ -121,12 +121,14 @@ jobs:
             exit 1
           fi
 
-          # Test 2: GET /itineraries with valid owner
+          # Test 2: GET /itineraries with an X-Owner-Id header (still accepted, though
+          # itineraries are public and no longer scoped by it)
           expect 200 "$API_URL/itineraries" \
             -H "X-Owner-Id: owner-00000000-0000-4000-8000-000000000000"
 
-          # Test 3: GET /itineraries without owner (should 401)
-          expect 401 "$API_URL/itineraries"
+          # Test 3: GET /itineraries without any owner header — itineraries are fully
+          # public (#47), so this must be 200, not the old pre-#47 401.
+          expect 200 "$API_URL/itineraries"
 
           # Test 4: POST /itineraries with invalid body (should 400)
           expect 400 "$API_URL/itineraries" \
@@ -134,5 +136,24 @@ jobs:
             -H "Content-Type: application/json" \
             -H "X-Owner-Id: owner-00000000-0000-4000-8000-000000000000" \
             -d '{"bad":"body"}'
+
+          # Test 5: GET /itineraries/{id} for a real saved itinerary. This exercises the
+          # actual HTTP response path through the live Functions host (unlike the Vitest
+          # unit/integration suite, which calls handlers in-process and never serializes
+          # real HTTP headers) — the only way to catch host-level response defects like
+          # the non-ASCII-header 500 this smoke test previously missed.
+          FIRST_ID=$(curl -s "$API_URL/itineraries" | node -e "
+            let data = '';
+            process.stdin.on('data', d => data += d);
+            process.stdin.on('end', () => {
+              const list = JSON.parse(data);
+              if (list.length > 0) process.stdout.write(list[0].id);
+            });
+          ")
+          if [ -n "$FIRST_ID" ]; then
+            expect 200 "$API_URL/itineraries/$FIRST_ID"
+          else
+            echo "⚠ No saved itineraries to test GET /itineraries/{id} against — skipping Test 5"
+          fi
 
           echo "All API smoke tests passed!"
