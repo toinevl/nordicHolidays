@@ -32,7 +32,7 @@ export const en: LocaleStrings = {
     loadFailed: 'Load failed',
   },
   status: {
-    myTrips: 'My Trips',
+    myTrips: 'Saved Trips',
     myTripsTitle: 'View saved trips',
     generate: 'Generate',
     generateTitle: 'Generate itinerary',

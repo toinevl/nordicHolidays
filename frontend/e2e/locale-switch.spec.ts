@@ -11,7 +11,7 @@ test.describe('Locale switching', () => {
     const generateBtn = page.locator('#btn-open-generator')
     const tripName = page.locator('.status-trip-name')
 
-    await expect(myTripsBtn).toContainText('My Trips')
+    await expect(myTripsBtn).toContainText('Saved Trips')
     await expect(generateBtn).toContainText('Generate')
     await expect(tripName).toContainText('My Nordic Trip')
 
@@ -20,7 +20,7 @@ test.describe('Locale switching', () => {
     await nlBtn.click()
 
     // Assert Dutch text is now present
-    await expect(myTripsBtn).toContainText('Mijn Reizen')
+    await expect(myTripsBtn).toContainText('Opgeslagen Reizen')
     await expect(generateBtn).toContainText('Genereren')
     await expect(tripName).toContainText('Mijn Zweden Reis')
 
@@ -29,7 +29,7 @@ test.describe('Locale switching', () => {
     await enBtn.click()
 
     // Assert English text is restored (regression test for #27: "can't switch back to EN")
-    await expect(myTripsBtn).toContainText('My Trips')
+    await expect(myTripsBtn).toContainText('Saved Trips')
     await expect(generateBtn).toContainText('Generate')
     await expect(tripName).toContainText('My Nordic Trip')
   })
@@ -47,7 +47,7 @@ test.describe('Locale switching', () => {
     await deBtn.click()
 
     // Wait for the text to change to German (will retry until timeout if not found)
-    await expect(myTripsBtn).toContainText('Meine Reisen', { timeout: 10000 })
+    await expect(myTripsBtn).toContainText('Gespeicherte Reisen', { timeout: 10000 })
     await expect(tripName).toContainText('Meine Nordische Reise')
   })
 })

@@ -32,7 +32,7 @@ export const nl: LocaleStrings = {
     loadFailed: 'Laden mislukt',
   },
   status: {
-    myTrips: 'Mijn Reizen',
+    myTrips: 'Opgeslagen Reizen',
     myTripsTitle: 'Bekijk opgeslagen reizen',
     generate: 'Genereren',
     generateTitle: 'Reisplan genereren',

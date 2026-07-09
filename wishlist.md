@@ -75,7 +75,7 @@ Grounded in gaps found during the CORS hotfix and the architecture review. A = s
 
 ## v1.2 — Visual Refresh (seeded 2026-07-03)
 
-- [ ] (B) Define a warmer, higher-contrast light theme informed by engagement/accessibility research and warm-palette trends (warm neutrals, deeper ink, stricter contrast); hero and fullscreen map stay dark/immersive +ui +improvement @me #46
+- [x] (B) Define a warmer, higher-contrast light theme informed by engagement/accessibility research and warm-palette trends (warm neutrals, deeper ink, stricter contrast); hero and fullscreen map stay dark/immersive — see docs/superpowers/specs/2026-07-03-nordic-daylight-warm-revision-design.md +ui +improvement @me #46
 - [x] (B) Replace dark "Nordic forest" default theme with light-by-default "Nordic Daylight" palette (azure primary, coral accent); hero and fullscreen map stay dark/immersive — see docs/superpowers/specs/2026-07-03-nordic-daylight-theme-design.md +ui +improvement @me #44
 
 ## v1.3 — Public Itineraries (seeded 2026-07-07)
@@ -87,3 +87,4 @@ Grounded in gaps found during the CORS hotfix and the architecture review. A = s
 - [ ] (C) No versioning or undo for itinerary edits — since itineraries are public with no ownership, one visitor's overwrite of another's saved trip is silent and unrecoverable; see risk R1 in the wiki's Security & Risk Evaluation +feature +api @me #51
 - [ ] (C) `extractIp()` (`api/src/lib/rateLimit.ts`, shared by both the `/api/generate` and itinerary-write limiters, #50) trusts the *first* `X-Forwarded-For` entry, which is typically client-controlled — a script can send a fresh random value per request to land in a new IP bucket every time, bypassing both rate limits. Needs Azure Functions-specific verification of the actual XFF chain format before picking the correct (trustworthy) entry +security +api @me #53
 - [ ] (C) GitHub OIDC app registration and SWA custom domain binding are managed manually, not in Bicep — could drift or vanish on a Function App recreate (platform CORS already fixed this way once); see risk R5 in the wiki's Security & Risk Evaluation +security +ci @me #52
+- [x] (C) Rename "My Trips" to "Saved Trips" throughout the app — reflects that itineraries are public/shared (#47), not owned by "me" +ui +i18n @me #54
