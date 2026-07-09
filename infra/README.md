@@ -17,13 +17,29 @@ The templates in this directory are a **reference implementation** of the existi
   - System-assigned managed identity
   - Application settings (excluding secrets)
 - **Application Insights** (`nordic-holidays-api`)
-- **Static Web App** (`nordicholidays`, Free tier)
+- **Static Web App** (`nordicholidays`, Free tier), including the
+  `sweden.van-vliet.eu` custom domain binding (`customDomains` child resource)
 - **Role Assignments**
   - Function App identity → Storage Table Data Contributor (on storage account)
   - Function App identity → Key Vault Secrets User (on key vault)
 
 ### Out of Scope
-- **Entra App Registration** (`nordicholidays-github-deploy`): Not manageable via Bicep (app registration objects are created/managed separately). The GitHub OIDC federated credential and Contributor role assignment on rgNordicHolidays must be set up manually or via Microsoft Graph.
+- **Entra App Registration** (live display name `swedentravel-github-deploy` — a
+  name inherited from this repo's prior name and never renamed; see
+  [`RECOVERY.md`](./RECOVERY.md) for the verified live details, this doc
+  previously had the wrong name here): Not manageable via Bicep (app
+  registration objects are created/managed separately). The GitHub OIDC
+  federated credential and Contributor role assignment on rgNordicHolidays
+  must be set up manually or via Microsoft Graph. **If this app registration
+  is ever deleted, follow [`RECOVERY.md`](./RECOVERY.md) to reconstruct it
+  step by step** — do not guess at the federated credential subject/issuer
+  format from scratch.
+- **SWA Custom Domain Binding** (`sweden.van-vliet.eu`): now declared as a
+  `Microsoft.Web/staticSites/customDomains` child resource in `main.bicep`
+  (param `customDomainName`), so recreating the Static Web App from this
+  template no longer silently drops it. DNS (the CNAME record itself) is
+  still managed outside Bicep and must already exist for the binding to
+  validate.
 - **Secrets and Sensitive Values**: The actual secret values (e.g., AZURE_FOUNDRY_API_KEY) are not stored in the template. Deploy secrets via Azure Key Vault or CI/CD pipelines.
 
 ## Template Files

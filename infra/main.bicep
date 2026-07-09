@@ -30,6 +30,9 @@ param storageAccountSku string = 'Standard_LRS'
 @description('Static Web App SKU - Free tier')
 param staticWebAppSku string = 'Free'
 
+@description('Custom domain to bind to the Static Web App. Leave empty to skip creating the binding (e.g. for an environment that has no custom domain yet).')
+param customDomainName string = 'sweden.van-vliet.eu'
+
 @description('Allowed origins for browser CORS preflight (platform-level, enforced on the Function App). The Static Web App default hostname is appended automatically.')
 param allowedCorsOrigins array = [
   'https://sweden.van-vliet.eu'
@@ -291,6 +294,19 @@ resource staticWebApp 'Microsoft.Web/staticSites@2024-04-01' = {
   }
 }
 
+// Custom Domain Binding for Static Web App
+// #52: this was previously a manual, undocumented Azure Portal step (bound 2026-06-27).
+// If the Static Web App is ever recreated from this template, DNS for `customDomainName`
+// must already have a CNAME record pointing at the SWA's default hostname before this
+// resource will validate successfully — declaring it here does not itself configure DNS.
+resource staticWebAppCustomDomain 'Microsoft.Web/staticSites/customDomains@2024-04-01' = if (!empty(customDomainName)) {
+  parent: staticWebApp
+  name: customDomainName
+  properties: {
+    validationMethod: 'cname-delegation'
+  }
+}
+
 // Role Assignment: Function App Identity -> Storage Account (Storage Table Data Contributor)
 resource storageTableDataContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: storageAccount
@@ -330,3 +346,4 @@ output appInsightsInstrumentationKey string = appInsights.properties.Instrumenta
 output staticWebAppId string = staticWebApp.id
 output staticWebAppName string = staticWebApp.name
 output staticWebAppDefaultDomain string = staticWebApp.properties.defaultHostname ?? 'Not assigned'
+output staticWebAppCustomDomainName string = customDomainName
