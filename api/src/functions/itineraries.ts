@@ -9,6 +9,19 @@ import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
 const SHARED_PARTITION_KEY = 'shared'
 
 /**
+ * Snapshot of an itinerary entity's pre-patch state, stored as a JSON blob in
+ * the `previousStateJson` column so a single-level undo (#51) can restore it.
+ */
+type PreviousItineraryState = {
+  name: string
+  createdAt: string
+  startCity: string
+  endCity: string
+  thumbnail?: string
+  itineraryJson: string
+}
+
+/**
  * Validate and sanitize a thumbnail URL.
  * Only allows data: URLs with valid image MIME types to prevent XSS via src attributes.
  * Also enforces a 48KB size limit (Table Storage property limit is 64KB).
@@ -109,12 +122,13 @@ export async function getItineraryHandler(
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
     const itinerary = JSON.parse(entity.itineraryJson as string) as Itinerary
+    const hasPreviousVersion = Boolean(entity.previousStateJson)
     const response: HttpResponseInit = {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(itinerary),
+      body: JSON.stringify({ ...itinerary, hasPreviousVersion }),
     }
     return withCors(response, origin)
   } catch (err: any) {
@@ -237,13 +251,24 @@ export async function updateItineraryHandler(
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
 
+    // Snapshot the entity's pre-patch state (single-level undo, #51) before any
+    // fields are overwritten below, so a later POST .../undo can restore it.
+    const previousState: PreviousItineraryState = {
+      name: entity.name as string,
+      createdAt: entity.createdAt as string,
+      startCity: entity.startCity as string,
+      endCity: entity.endCity as string,
+      thumbnail: entity.thumbnail as string | undefined,
+      itineraryJson: entity.itineraryJson as string,
+    }
+
     const itinerary = JSON.parse(entity.itineraryJson as string) as Record<string, unknown>
     if (typeof patch.title === 'string') itinerary.title = patch.title
     if (typeof patch.startCity === 'string') itinerary.startCity = patch.startCity
     if (typeof patch.endCity === 'string') itinerary.endCity = patch.endCity
     if (Array.isArray(patch.stops)) itinerary.stops = patch.stops
 
-    const updatedEntity = await client.updateEntity({
+    await client.updateEntity({
       partitionKey: SHARED_PARTITION_KEY,
       rowKey: id,
       eTag: entity.etag as string | undefined,
@@ -253,16 +278,96 @@ export async function updateItineraryHandler(
       endCity: (itinerary.endCity ?? entity.endCity) as string,
       itineraryJson: JSON.stringify(itinerary),
       thumbnail: entity.thumbnail as string | undefined,
+      previousStateJson: JSON.stringify(previousState),
     })
 
     // updateEntity returns only response headers/etag, not the entity body.
     // The merged `itinerary` object above is exactly what we persisted, so
     // return it directly instead of trying to re-read a non-existent body
     // (which would throw on JSON.parse(undefined) → 500).
-    return withCors({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinerary) }, origin)
+    return withCors({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...itinerary, hasPreviousVersion: true }) }, origin)
   } catch (err: any) {
     if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
     logError(ctx, 'updateItineraryHandler: internal error', err)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  }
+}
+
+/**
+ * Undo the last PATCH to an itinerary (single-level only, #51).
+ *
+ * Itineraries are fully public/shared (#47): any visitor can overwrite any
+ * other visitor's trip via PATCH with no history kept, so one bad edit is
+ * silently unrecoverable. `updateItineraryHandler` now snapshots the
+ * pre-patch state into `previousStateJson` on every PATCH; this endpoint
+ * restores that snapshot and then clears it, so undo can only be applied
+ * once per edit (no multi-level history — that remains a possible future
+ * enhancement).
+ */
+export async function undoItineraryHandler(
+  req: HttpRequest,
+  ctx: InvocationContext,
+): Promise<HttpResponseInit> {
+  const origin = req.headers.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method !== 'POST') return withCors({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
+
+  const rateLimitOwnerId = req.headers?.get('X-Owner-Id') ?? 'unknown'
+  const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, rateLimitOwnerId, ctx)
+  if (!rateLimitResult.allowed) {
+    const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
+    return withCors(
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+        body: JSON.stringify({ error: 'Rate limit exceeded', retryAfterSeconds: retryAfter }),
+      },
+      origin,
+    )
+  }
+
+  try {
+    const id = req.params.id
+    if (!id) return withCors({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
+
+    const client = getTableClient('Itineraries')
+    const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
+
+    const previousStateJson = entity.previousStateJson as string | undefined
+    if (!previousStateJson) {
+      return withCors({ status: 409, body: JSON.stringify({ error: 'No previous version available to undo' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    }
+
+    const previousState = JSON.parse(previousStateJson) as PreviousItineraryState
+
+    await client.updateEntity({
+      partitionKey: SHARED_PARTITION_KEY,
+      rowKey: id,
+      eTag: entity.etag as string | undefined,
+      name: previousState.name,
+      createdAt: previousState.createdAt,
+      startCity: previousState.startCity,
+      endCity: previousState.endCity,
+      itineraryJson: previousState.itineraryJson,
+      thumbnail: previousState.thumbnail,
+      // Clear the snapshot (rather than omitting the property, which would
+      // leave the old value untouched under Merge semantics) so this undo
+      // cannot be reapplied — single-level undo only.
+      previousStateJson: '',
+    })
+
+    const restoredItinerary = JSON.parse(previousState.itineraryJson) as Record<string, unknown>
+    return withCors(
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...restoredItinerary, hasPreviousVersion: false }),
+      },
+      origin,
+    )
+  } catch (err: any) {
+    if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    logError(ctx, 'undoItineraryHandler: internal error', err)
     return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
@@ -286,4 +391,11 @@ app.http('itineraryById', {
     if (req.method === 'PATCH') return updateItineraryHandler(req, ctx)
     return getItineraryHandler(req, ctx)
   },
+})
+
+app.http('itineraryUndo', {
+  methods: ['POST', 'OPTIONS'],
+  authLevel: 'anonymous',
+  route: 'itineraries/{id}/undo',
+  handler: undoItineraryHandler,
 })

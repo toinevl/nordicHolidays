@@ -120,6 +120,7 @@ import {
   getItineraryHandler,
   saveItineraryHandler,
   updateItineraryHandler,
+  undoItineraryHandler,
 } from './itineraries'
 import { getTableClient, ensureTable } from '../lib/tableClient'
 
@@ -298,6 +299,59 @@ describe('anonymous (guest) save/load flow — integration', () => {
       // Persisted: a fresh GET reflects the new title
       const got = await getItineraryHandler(makeRequest({ headers, params: { id: 'id-1' } }), ctx)
       expect(parseBody(got).title).toBe('Renamed Trip')
+    })
+  })
+
+  describe('undo (#51) — single-level restore of the pre-patch state', () => {
+    it('restores the previous title/stops after a PATCH, then blocks a second undo', async () => {
+      const ctx = makeContext()
+      const headers = { 'X-Owner-Id': GUEST_A }
+
+      await saveItineraryHandler(
+        makeRequest({
+          method: 'POST',
+          headers,
+          json: {
+            name: 'Resa till Gärdet',
+            itinerary: aValidItinerary({ title: 'Roadtrip till Malmö', startCity: 'Malmö', endCity: 'Västra Götaland' }),
+          },
+        }),
+        ctx,
+      )
+
+      // Before any edit, there is nothing to undo.
+      const got = await getItineraryHandler(makeRequest({ headers, params: { id: 'id-1' } }), ctx)
+      expect(parseBody(got).hasPreviousVersion).toBe(false)
+
+      // A different (anonymous) visitor overwrites the title — itineraries are
+      // fully public/shared (#47), so this is the exact scenario #51 protects.
+      const patched = await updateItineraryHandler(
+        makeRequest({ method: 'PATCH', headers: { 'X-Owner-Id': GUEST_B }, params: { id: 'id-1' }, json: { title: 'Overwritten by a stranger' } }),
+        ctx,
+      )
+      expect(patched.status).toBe(200)
+      expect(parseBody(patched).title).toBe('Overwritten by a stranger')
+      expect(parseBody(patched).hasPreviousVersion).toBe(true)
+
+      // A GET now also reports that an undo is available.
+      const gotAfterPatch = await getItineraryHandler(makeRequest({ headers, params: { id: 'id-1' } }), ctx)
+      expect(parseBody(gotAfterPatch).hasPreviousVersion).toBe(true)
+
+      // Undo restores the pre-patch title.
+      const undone = await undoItineraryHandler(makeRequest({ method: 'POST', headers, params: { id: 'id-1' } }), ctx)
+      expect(undone.status).toBe(200)
+      expect(parseBody(undone).title).toBe('Roadtrip till Malmö')
+      expect(parseBody(undone).startCity).toBe('Malmö')
+      expect(parseBody(undone).hasPreviousVersion).toBe(false)
+
+      // The restore is persisted: a subsequent GET reflects it too.
+      const gotAfterUndo = await getItineraryHandler(makeRequest({ headers, params: { id: 'id-1' } }), ctx)
+      expect(parseBody(gotAfterUndo).title).toBe('Roadtrip till Malmö')
+      expect(parseBody(gotAfterUndo).hasPreviousVersion).toBe(false)
+
+      // Single-level only: a second undo has nothing left to restore.
+      const secondUndo = await undoItineraryHandler(makeRequest({ method: 'POST', headers, params: { id: 'id-1' } }), ctx)
+      expect(secondUndo.status).toBe(409)
     })
   })
 

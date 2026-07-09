@@ -51,6 +51,7 @@ export const apiClient = {
   getItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}`),
   saveItinerary: (name: string, itinerary: Itinerary, thumbnail?: string) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) }),
   updateItinerary: (id: string, patch: Partial<Itinerary>) => request<Itinerary>(`/api/itineraries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  undoItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}/undo`, { method: 'POST' }),
   saveStopNote: (itineraryId: string, stopDay: number, userNotes: string) =>
     request<Itinerary>(`/api/itineraries/${itineraryId}`, {
       method: 'PATCH',

@@ -53,6 +53,8 @@ export const nl: LocaleStrings = {
     sharedItineraryFailed: 'Laden van gedeeld reisplan mislukt',
     saveNoteFirst: 'Sla je reis eerst op voordat notities bewaard kunnen worden.',
     saveNoteFailed: 'Notitie opslaan mislukt',
+    undone: 'Laatste wijziging ongedaan gemaakt',
+    undoFailed: 'Ongedaan maken mislukt',
   },
   itinerary: {
     plannedNights: 'Geplande nachten',
@@ -74,6 +76,7 @@ export const nl: LocaleStrings = {
     savingNote: 'Opslaan...',
     exportGPX: 'Exporteer GPX',
     exportICS: 'Exporteer iCal',
+    undoLastEdit: 'Laatste wijziging ongedaan maken',
   },
   season: {
     skane: 'Mild klimaat. Warme zomers, kleurrijke herfsten.',

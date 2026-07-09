@@ -53,6 +53,8 @@ export const en: LocaleStrings = {
     sharedItineraryFailed: 'Failed to load shared itinerary',
     saveNoteFirst: 'Save your trip first before notes can be persisted.',
     saveNoteFailed: 'Failed to save note',
+    undone: 'Last edit undone',
+    undoFailed: 'Undo failed',
   },
   itinerary: {
     plannedNights: 'Planned nights',
@@ -74,6 +76,7 @@ export const en: LocaleStrings = {
     savingNote: 'Saving...',
     exportGPX: 'Export GPX',
     exportICS: 'Export iCal',
+    undoLastEdit: 'Undo last edit',
   },
   season: {
     skane: 'Mild climate. Warm summers, colourful autumns.',

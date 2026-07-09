@@ -68,6 +68,12 @@ export type Itinerary = {
   stops: ItineraryStop[]
   generatedAt: string
   thumbnail?: string
+  /**
+   * Whether the API holds a pre-edit snapshot that POST /itineraries/{id}/undo
+   * can restore (single-level undo, #51). Absent/false for itineraries that
+   * have never been PATCHed (or that were just undone).
+   */
+  hasPreviousVersion?: boolean
 }
 
 export type SavedItinerarySummary = {

@@ -23,6 +23,7 @@ import {
   getItineraryHandler,
   saveItineraryHandler,
   updateItineraryHandler,
+  undoItineraryHandler,
 } from './itineraries'
 import { getTableClient } from '../lib/tableClient'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
@@ -32,6 +33,7 @@ function makeClient(overrides: Record<string, unknown> = {}) {
     listEntities: vi.fn(async function* () {}),
     getEntity: vi.fn(),
     createEntity: vi.fn().mockResolvedValue(undefined),
+    updateEntity: vi.fn().mockResolvedValue(undefined),
     deleteEntity: vi.fn().mockResolvedValue(undefined),
   }
   return { ...base, ...overrides }
@@ -277,6 +279,134 @@ describe('PATCH /api/itineraries/:id — rate limiting', () => {
     const result = await updateItineraryHandler(req, makeContext())
     expect(result.status).toBe(429)
     expect(result.headers).toHaveProperty('Retry-After', '45')
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('Rate limit exceeded')
+    expect(client.getEntity).not.toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/itineraries/:id — undo snapshot (#51)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('snapshots the pre-patch state into previousStateJson and marks hasPreviousVersion true', async () => {
+    const itin = { title: 'Roadtrip till Malmö', totalDays: 5, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }
+    const entity = {
+      partitionKey: 'shared',
+      rowKey: 'id1',
+      etag: 'etag-1',
+      name: 'Resa till Gärdet',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Malmö',
+      endCity: 'Västra Götaland',
+      itineraryJson: JSON.stringify(itin),
+      thumbnail: undefined,
+    }
+    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity), updateEntity: vi.fn().mockResolvedValue({ etag: 'etag-2' }) })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'Renamed till Helsingborg' }), headers: new Map() } as any
+    const result = await updateItineraryHandler(req, makeContext())
+
+    expect(result.status).toBe(200)
+    const body = JSON.parse(result.body as string)
+    expect(body.title).toBe('Renamed till Helsingborg')
+    expect(body.hasPreviousVersion).toBe(true)
+
+    const call = (client.updateEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call.previousStateJson).toBeTypeOf('string')
+    const previousState = JSON.parse(call.previousStateJson)
+    expect(previousState.name).toBe('Resa till Gärdet')
+    expect(previousState.startCity).toBe('Malmö')
+    expect(JSON.parse(previousState.itineraryJson).title).toBe('Roadtrip till Malmö')
+  })
+})
+
+describe('POST /api/itineraries/:id/undo (#51)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('restores the previous state and clears the snapshot so undo cannot be reapplied', async () => {
+    const previousItin = { title: 'Roadtrip till Malmö', totalDays: 5, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }
+    const previousState = {
+      name: 'Resa till Gärdet',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Malmö',
+      endCity: 'Västra Götaland',
+      thumbnail: undefined,
+      itineraryJson: JSON.stringify(previousItin),
+    }
+    const currentItin = { title: 'Renamed till Helsingborg', totalDays: 5, startCity: 'Malmö', endCity: 'Helsingborg', stops: [] }
+    const entity = {
+      partitionKey: 'shared',
+      rowKey: 'id1',
+      etag: 'etag-2',
+      name: 'Renamed trip',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Malmö',
+      endCity: 'Helsingborg',
+      itineraryJson: JSON.stringify(currentItin),
+      previousStateJson: JSON.stringify(previousState),
+    }
+    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity), updateEntity: vi.fn().mockResolvedValue({ etag: 'etag-3' }) })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = { method: 'POST', params: { id: 'id1' }, headers: new Map() } as any
+    const result = await undoItineraryHandler(req, makeContext())
+
+    expect(result.status).toBe(200)
+    const body = JSON.parse(result.body as string)
+    expect(body.title).toBe('Roadtrip till Malmö')
+    expect(body.startCity).toBe('Malmö')
+    expect(body.hasPreviousVersion).toBe(false)
+
+    const call = (client.updateEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call.name).toBe('Resa till Gärdet')
+    expect(call.previousStateJson).toBe('')
+  })
+
+  it('fails cleanly with 409 when there is no previous version to undo', async () => {
+    const itin = { title: 'Roadtrip till Malmö', totalDays: 5, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }
+    const entity = {
+      partitionKey: 'shared',
+      rowKey: 'id1',
+      etag: 'etag-1',
+      name: 'Resa till Gärdet',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Malmö',
+      endCity: 'Västra Götaland',
+      itineraryJson: JSON.stringify(itin),
+    }
+    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = { method: 'POST', params: { id: 'id1' }, headers: new Map() } as any
+    const result = await undoItineraryHandler(req, makeContext())
+
+    expect(result.status).toBe(409)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('No previous version available to undo')
+    expect(client.updateEntity).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 for an unknown id', async () => {
+    const client = makeClient({ getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }) })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = { method: 'POST', params: { id: 'nope' }, headers: new Map() } as any
+    const result = await undoItineraryHandler(req, makeContext())
+    expect(result.status).toBe(404)
+  })
+
+  it('returns 429 with Retry-After when itinerary-write rate limit is exceeded', async () => {
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    ;(checkAndIncrementItineraryWriteRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 30,
+    })
+    const req = { method: 'POST', params: { id: 'id1' }, headers: new Map() } as any
+    const result = await undoItineraryHandler(req, makeContext())
+    expect(result.status).toBe(429)
+    expect(result.headers).toHaveProperty('Retry-After', '30')
     const body = JSON.parse(result.body as string)
     expect(body.error).toBe('Rate limit exceeded')
     expect(client.getEntity).not.toHaveBeenCalled()

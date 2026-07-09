@@ -53,6 +53,8 @@ export const de: LocaleStrings = {
     sharedItineraryFailed: 'Geteilter Reiseplan konnte nicht geladen werden',
     saveNoteFirst: 'Speichere zuerst deine Reise, bevor Notizen gespeichert werden können.',
     saveNoteFailed: 'Notiz konnte nicht gespeichert werden',
+    undone: 'Letzte Änderung rückgängig gemacht',
+    undoFailed: 'Rückgängig machen fehlgeschlagen',
   },
   itinerary: {
     plannedNights: 'Geplante Nächte',
@@ -74,6 +76,7 @@ export const de: LocaleStrings = {
     savingNote: 'Speichern...',
     exportGPX: 'GPX exportieren',
     exportICS: 'iCal exportieren',
+    undoLastEdit: 'Letzte Änderung rückgängig machen',
   },
   season: {
     skane: 'Mildes Klima. Warme Sommer, bunte Herbsttage.',

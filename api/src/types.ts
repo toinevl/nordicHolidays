@@ -28,6 +28,12 @@ export type Itinerary = {
   stops: ItineraryStop[]
   generatedAt: string
   thumbnail?: string
+  /**
+   * Whether a pre-edit snapshot exists that `POST /itineraries/{id}/undo`
+   * can restore. Only meaningful on responses that come from an entity read
+   * (get/patch/undo); absent on freshly generated (not-yet-saved) itineraries.
+   */
+  hasPreviousVersion?: boolean
 }
 
 export type SavedItinerarySummary = {

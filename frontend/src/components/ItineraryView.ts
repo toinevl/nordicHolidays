@@ -103,6 +103,7 @@ export class ItineraryView {
   private onReorderStop: ReorderStopCallback
   private onRemoveStop: RemoveStopCallback
   private onSaveNoteCallback?: (stop: ItineraryStop, note: string) => Promise<void>
+  private onUndoCallback?: () => void
 
   constructor(
     onFilterChange: FilterChangeCallback,
@@ -110,12 +111,14 @@ export class ItineraryView {
     onReorderStop: ReorderStopCallback,
     onRemoveStop: RemoveStopCallback,
     onSaveNote?: (stop: ItineraryStop, note: string) => Promise<void>,
+    onUndo?: () => void,
   ) {
     this.onFilterChange = onFilterChange
     this.onStopSelect = onStopSelect
     this.onReorderStop = onReorderStop
     this.onRemoveStop = onRemoveStop
     this.onSaveNoteCallback = onSaveNote
+    this.onUndoCallback = onUndo
   }
 
   render(stops: Stop[], culinary: CulinaryRegion[], accommodations: Accommodation[]): void {
@@ -156,6 +159,13 @@ export class ItineraryView {
     icsBtn.textContent = t('itinerary.exportICS')
     icsBtn.addEventListener('click', () => this.exportICS())
     container.appendChild(icsBtn)
+
+    const undoBtn = document.createElement('button')
+    undoBtn.id = 'btn-undo-last-edit'
+    undoBtn.className = 'btn btn--secondary btn--small hidden'
+    undoBtn.textContent = t('itinerary.undoLastEdit')
+    undoBtn.addEventListener('click', () => this.onUndoCallback?.())
+    container.appendChild(undoBtn)
 
     const wrap = document.querySelector('#itinerary .section-wrap') as HTMLElement | null
     if (wrap) {
@@ -214,6 +224,25 @@ export class ItineraryView {
 
     const titleEl = document.querySelector('.hero-title, h1, .page-title') as HTMLElement | null
     if (titleEl) titleEl.textContent = itinerary.title
+
+    this.updateUndoButtonVisibility()
+  }
+
+  /**
+   * Reflect whether an undo (POST /itineraries/{id}/undo, #51) is currently
+   * available for the loaded itinerary, without re-rendering the whole view
+   * (used after an optimistic edit's PATCH response comes back).
+   */
+  setHasPreviousVersion(hasPreviousVersion: boolean): void {
+    if (this.currentItinerary) {
+      this.currentItinerary = { ...this.currentItinerary, hasPreviousVersion }
+    }
+    this.updateUndoButtonVisibility()
+  }
+
+  private updateUndoButtonVisibility(): void {
+    const undoBtn = document.getElementById('btn-undo-last-edit')
+    if (undoBtn) undoBtn.classList.toggle('hidden', !this.currentItinerary?.hasPreviousVersion)
   }
 
   setFilter(filter: string): void {

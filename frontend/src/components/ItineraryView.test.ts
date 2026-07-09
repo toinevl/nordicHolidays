@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Stop, CulinaryRegion, Accommodation } from '../types'
+import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
 import { ItineraryView } from './ItineraryView'
 
 // Mock IntersectionObserver which is not available in test environment
@@ -330,5 +330,106 @@ describe('ItineraryView XSS Prevention', () => {
     const summary = document.getElementById('route-summary')
     expect(summary?.innerHTML).not.toContain('<script>')
     expect(summary?.innerHTML).toContain('&lt;script&gt;')
+  })
+})
+
+describe('ItineraryView undo-last-edit button (#51)', () => {
+  let onUndo: ReturnType<typeof vi.fn>
+
+  function aValidItinerary(overrides: Partial<Itinerary> = {}): Itinerary {
+    return {
+      title: 'Roadtrip till Malmö',
+      totalDays: 3,
+      startCity: 'Malmö',
+      endCity: 'Västra Götaland',
+      generatedAt: '2026-06-01T00:00:00.000Z',
+      stops: [
+        {
+          day: 1,
+          city: 'Malmö',
+          region: 'Skåne',
+          lat: 55.605,
+          lng: 13.0038,
+          nights: 2,
+          highlights: ['Gärdet'],
+          accommodation: 'Hotel Malmö',
+          culinaryNotes: 'Try the smörgåsbord',
+        },
+      ],
+      ...overrides,
+    }
+  }
+
+  const baselineStops: Stop[] = [
+    {
+      id: 1,
+      days: '1',
+      dates: '2026-06-10',
+      dest: 'Malmö',
+      region: 'Skåne',
+      coords: [13.0038, 55.605] as [number, number],
+      tags: [],
+      nights: 1,
+      desc: '',
+      highlights: [],
+      from: '',
+      km: 0,
+      time: '',
+      zoom: 12,
+      pitch: 45,
+      bearing: 0,
+    },
+  ]
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="route-summary"></div>
+      <div id="filter-chips"></div>
+      <div id="selected-stop"></div>
+      <div id="timeline"></div>
+      <div id="cul-grid"></div>
+      <div id="accom-tbody"></div>
+      <div id="itinerary"><div class="section-wrap"></div></div>
+    `
+    onUndo = vi.fn()
+  })
+
+  it('is hidden until the loaded itinerary has a previous version, then calls the undo callback on click', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn(), vi.fn(), vi.fn(), undefined, onUndo)
+    view.render(baselineStops, [], [])
+
+    const undoBtn = document.getElementById('btn-undo-last-edit') as HTMLButtonElement
+    expect(undoBtn).toBeTruthy()
+    expect(undoBtn.classList.contains('hidden')).toBe(true)
+
+    view.renderFromItinerary(aValidItinerary({ hasPreviousVersion: true }))
+    expect(undoBtn.classList.contains('hidden')).toBe(false)
+
+    undoBtn.click()
+    expect(onUndo).toHaveBeenCalledOnce()
+  })
+
+  it('hides again once hasPreviousVersion is false (e.g. after an undo)', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn(), vi.fn(), vi.fn(), undefined, onUndo)
+    view.render(baselineStops, [], [])
+    view.renderFromItinerary(aValidItinerary({ hasPreviousVersion: true }))
+
+    const undoBtn = document.getElementById('btn-undo-last-edit') as HTMLButtonElement
+    expect(undoBtn.classList.contains('hidden')).toBe(false)
+
+    view.setHasPreviousVersion(false)
+    expect(undoBtn.classList.contains('hidden')).toBe(true)
+  })
+
+  it('reflects hasPreviousVersion via setHasPreviousVersion without a full re-render', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn(), vi.fn(), vi.fn())
+    view.render(baselineStops, [], [])
+    view.renderFromItinerary(aValidItinerary({ hasPreviousVersion: false }))
+
+    const undoBtn = document.getElementById('btn-undo-last-edit') as HTMLButtonElement
+    expect(undoBtn.classList.contains('hidden')).toBe(true)
+
+    view.setHasPreviousVersion(true)
+    expect(undoBtn.classList.contains('hidden')).toBe(false)
   })
 })

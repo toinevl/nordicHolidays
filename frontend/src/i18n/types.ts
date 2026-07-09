@@ -53,6 +53,8 @@ export interface LocaleStrings {
     sharedItineraryFailed: string
     saveNoteFirst: string
     saveNoteFailed: string
+    undone: string
+    undoFailed: string
   }
   itinerary: {
     plannedNights: string
@@ -74,6 +76,7 @@ export interface LocaleStrings {
     savingNote: string
     exportGPX: string
     exportICS: string
+    undoLastEdit: string
   }
   season: {
     skane: string

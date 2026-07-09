@@ -105,6 +105,7 @@ function onReorderStopForMain(stopId: number, direction: 'up' | 'down'): void {
   if (state.activeTripId) {
     apiClient
       .updateItinerary(state.activeTripId, { stops })
+      .then((updated) => itineraryView.setHasPreviousVersion(Boolean(updated.hasPreviousVersion)))
       .catch(() => toast.error(t('saved.saveFailed')))
   }
 }
@@ -123,6 +124,7 @@ function onRemoveStopForMain(stopId: number): void {
   if (state.activeTripId) {
     apiClient
       .updateItinerary(state.activeTripId, { stops })
+      .then((updated) => itineraryView.setHasPreviousVersion(Boolean(updated.hasPreviousVersion)))
       .catch(() => toast.error(t('saved.saveFailed')))
   }
 }
@@ -150,10 +152,27 @@ function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
 
   return Promise.resolve(
     apiClient.saveStopNote(state.activeTripId, stop.day, note)
-  ).then(() => undefined).catch((error) => {
+  ).then((updated) => {
+    itineraryView.setHasPreviousVersion(Boolean(updated.hasPreviousVersion))
+  }).catch((error) => {
     toast.error(error instanceof Error ? error.message : t('toast.saveNoteFailed'))
     throw error
   })
+}
+
+function onUndoForMain(): void {
+  const state = store.getState()
+  if (!state.activeTripId) return
+  apiClient
+    .undoItinerary(state.activeTripId)
+    .then((restored) => {
+      store.setState({ currentItinerary: restored, unsaved: false })
+      applyItinerary(restored)
+      toast.success(t('toast.undone'))
+    })
+    .catch((error) => {
+      toast.error(error instanceof Error ? error.message : t('toast.undoFailed'))
+    })
 }
 
 const itineraryView = new ItineraryView(
@@ -171,6 +190,7 @@ const itineraryView = new ItineraryView(
   onReorderStopForMain,
   onRemoveStopForMain,
   onSaveNoteForMain,
+  onUndoForMain,
 )
 
 const mapView = new MapView('map', (stop, opts) => {
