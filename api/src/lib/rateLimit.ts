@@ -24,9 +24,18 @@ export interface RateLimitResult {
 function extractIp(req: HttpRequest): string {
   const forwarded = req.headers?.get('x-forwarded-for')
   if (forwarded) {
-    // x-forwarded-for can be comma-separated; take the first (client IP)
+    // Proxy hops APPEND to x-forwarded-for rather than prepend, so the chain
+    // reads [original client-supplied value, ...intermediate hops..., value
+    // written by the hop closest to us]. The FIRST entry is whatever the
+    // external caller typed into their own request and is trivially spoofable
+    // (#53 — that's how the old "take ips[0]" logic let an attacker cycle
+    // rate-limit buckets by prepending a fresh fake IP per request). The LAST
+    // entry, by contrast, is written by our nearest trusted hop (the SWA
+    // edge/linked-Functions boundary) from the peer address it actually
+    // observed, so the caller cannot forge it by adding more comma-separated
+    // values upstream of it.
     const ips = forwarded.split(',').map(ip => ip.trim())
-    return ips[0] || 'unknown'
+    return ips[ips.length - 1] || 'unknown'
   }
   return 'unknown'
 }

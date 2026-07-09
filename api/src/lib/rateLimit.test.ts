@@ -135,14 +135,14 @@ describe('checkAndIncrementRateLimit', () => {
     expect(mockLogger.log.error).toHaveBeenCalled()
   })
 
-  it('extracts first IP from comma-separated x-forwarded-for', async () => {
+  it('extracts a single IP from x-forwarded-for with no chain', async () => {
     const client = makeClient({
       getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
     })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
 
     const req = {
-      headers: new Map([['x-forwarded-for', '203.0.113.42, 198.51.100.17, 192.0.2.1']]),
+      headers: new Map([['x-forwarded-for', '203.0.113.42']]),
     }
     await checkAndIncrementRateLimit(req as any, 'owner-123')
 
@@ -150,6 +150,51 @@ describe('checkAndIncrementRateLimit', () => {
       call => call[0]?.partitionKey?.includes('203.0.113.42')
     )
     expect(ipCreateCalls).toHaveLength(1)
+  })
+
+  it('extracts the LAST IP (not the spoofable client-supplied first entry) from a multi-hop x-forwarded-for', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    // 203.0.113.42 is attacker-supplied (a script can put anything here and
+    // change it per-request); 198.51.100.17 is the trusted hop's own
+    // appended value and is what must be used for rate limiting.
+    const req = {
+      headers: new Map([['x-forwarded-for', '203.0.113.42, 198.51.100.17']]),
+    }
+    await checkAndIncrementRateLimit(req as any, 'owner-123')
+
+    const ipCreateCalls = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls.filter(
+      call => call[0]?.partitionKey?.includes('ip:198.51.100.17')
+    )
+    expect(ipCreateCalls).toHaveLength(1)
+    const spoofedCalls = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls.filter(
+      call => call[0]?.partitionKey?.includes('203.0.113.42')
+    )
+    expect(spoofedCalls).toHaveLength(0)
+  })
+
+  it('is not fooled by an attacker prepending a fresh fake IP on every request', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    // Two "requests" from the same real client, each with a different
+    // attacker-chosen first entry, but the same trusted last hop. Both must
+    // land in the same rate-limit bucket.
+    const req1 = { headers: new Map([['x-forwarded-for', '10.0.0.1, 198.51.100.17']]) }
+    const req2 = { headers: new Map([['x-forwarded-for', '10.0.0.2, 198.51.100.17']]) }
+    await checkAndIncrementRateLimit(req1 as any, 'owner-123')
+    await checkAndIncrementRateLimit(req2 as any, 'owner-123')
+
+    const partitionKeys = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls.map(
+      call => call[0]?.partitionKey as string
+    )
+    const trustedIpBuckets = partitionKeys.filter(pk => pk === 'ip:198.51.100.17')
+    expect(trustedIpBuckets).toHaveLength(2) // same bucket created/hit twice, not two different ones
   })
 
   it('returns retryAfterSeconds when rate limit exceeded', async () => {
