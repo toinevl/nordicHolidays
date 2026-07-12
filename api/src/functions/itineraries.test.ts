@@ -413,16 +413,43 @@ describe('POST /api/itineraries/:id/undo (#51)', () => {
   })
 })
 
-describe('GET /api/itineraries — no owner filter', () => {
+describe('GET /api/itineraries — query projection (#56)', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('calls listEntities with no filter (scans the whole — now single-partition — table)', async () => {
+  it('calls listEntities with select projection to avoid fetching large columns', async () => {
     const client = makeClient()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
 
     const req = { method: 'GET', headers: new Map() } as any
     await listItinerariesHandler(req, makeContext())
 
-    expect(client.listEntities).toHaveBeenCalledWith()
+    expect(client.listEntities).toHaveBeenCalledWith({
+      queryOptions: { select: ['rowKey', 'name', 'createdAt', 'startCity', 'endCity'] }
+    })
+  })
+
+  it('returns list with correct fields from projected columns, including non-ASCII names', async () => {
+    const entities = [
+      { partitionKey: 'shared', rowKey: 'id1', name: 'Resa till Malmö', createdAt: '2026-06-01T00:00:00Z', startCity: 'Stockholm (Gärdet)', endCity: 'Västra Götaland' },
+      { partitionKey: 'shared', rowKey: 'id2', name: 'Västeråsresa', createdAt: '2026-06-02T00:00:00Z', startCity: 'Västerås', endCity: 'Västra Götaland' },
+    ]
+    const client = makeClient({ listEntities: vi.fn(async function* () { yield entities[0]; yield entities[1] }) })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = { method: 'GET', headers: new Map() } as any
+    const result = await listItinerariesHandler(req, makeContext())
+
+    const body = JSON.parse(result.body as string) as SavedItinerarySummary[]
+    expect(result.status).toBe(200)
+    expect(body).toHaveLength(2)
+    // Sorted by createdAt descending
+    expect(body[0].id).toBe('id2')
+    expect(body[0].name).toBe('Västeråsresa')
+    expect(body[0].startCity).toBe('Västerås')
+    expect(body[0].endCity).toBe('Västra Götaland')
+    expect(body[1].id).toBe('id1')
+    expect(body[1].name).toBe('Resa till Malmö')
+    expect(body[1].startCity).toBe('Stockholm (Gärdet)')
+    expect(body[1].endCity).toBe('Västra Götaland')
   })
 })

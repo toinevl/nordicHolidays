@@ -95,7 +95,7 @@ export async function listItinerariesHandler(
   try {
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
-    for await (const entity of client.listEntities()) {
+    for await (const entity of client.listEntities({ queryOptions: { select: ['rowKey', 'name', 'createdAt', 'startCity', 'endCity'] } })) {
       summaries.push(entityToSummary(entity as Record<string, unknown>, false))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
