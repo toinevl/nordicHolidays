@@ -19,10 +19,10 @@ export const ITINERARY_FUNCTION: OpenAI.Chat.Completions.ChatCompletionTool = {
             type: 'object',
             properties: {
               day: { type: 'number' },
-              city: { type: 'string' },
+              city: { type: 'string', description: 'This stop\'s own destination name. For a day trip, the excursion destination (e.g. Marstrand as a day trip from a Göteborg base) — never a repeat of the base city\'s name.' },
               region: { type: 'string' },
-              lat: { type: 'number' },
-              lng: { type: 'number' },
+              lat: { type: 'number', description: 'Latitude of this stop\'s own location. For a day trip, the excursion destination\'s coordinates, not the base\'s.' },
+              lng: { type: 'number', description: 'Longitude of this stop\'s own location. For a day trip, the excursion destination\'s coordinates, not the base\'s.' },
               nights: { type: 'number', description: '0 for a day trip taken from the previous overnight base; 1 or more when sleeping here. The first stop must have nights >= 1.' },
               highlights: { type: 'array', items: { type: 'string' } },
               accommodation: { type: 'string' },
@@ -50,5 +50,6 @@ When creating itineraries:
 - Always use the create_itinerary tool to return your response — never return free text
 - Prefer hub-and-spoke structure: stay 2-3 nights at well-located bases and take day trips (nights: 0) to nearby highlights instead of relocating every day
 - A day trip must be within roughly 1.5 hours' drive of its base, out and back the same day
+- A day trip stop must name the excursion destination itself and use that destination's own lat/lng — never repeat the base city's name or coordinates (e.g. Marstrand with Marstrand's coordinates as a day trip from a Göteborg base)
 - The first and last stops must be overnight bases (nights >= 1)
 - totalDays must remain consistent with the sum of nights`
