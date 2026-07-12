@@ -95,3 +95,8 @@ Grounded in live measurements (2026-07-12): first request to `/api/itineraries` 
 
 - [x] (A) First API call after idle hits a ~17s Flex Consumption cold start, felt as "Saved Trips takes forever to open" — fire a fire-and-forget warm-up ping to `/api/health` at page boot so the Functions app is warm before the user opens the panel — shipped as `warmUpApi()` in `frontend/src/api/client.ts`, called at boot in `main.ts` +perf +ui @me #55
 - [x] (B) `listItinerariesHandler` scans the Itineraries table without a `select` projection, so Table Storage ships every row's full `itineraryJson`, 48KB `thumbnail`, and `previousStateJson` to the function even though the response strips them — harmless at 5 rows, degrades as the shared no-delete table grows; add a column projection to the query — shipped: `listEntities` now selects only `rowKey/name/createdAt/startCity/endCity` (SDK maps `rowKey` → `RowKey` on the wire, verified in @azure/data-tables 13.3.2 `serializeQueryOptions`) +perf +api @me #56
+
+## v1.5 — Follow-ups (seeded 2026-07-12)
+
+- [ ] (B) The Load button in the Saved Trips panel gives no feedback while `getItinerary` is in flight (`frontend/src/components/SavedTripsPanel.ts`, `.btn-load` click handler) — during any API delay the UI looks frozen; disable the button and show a loading label, same pattern as the Save button (#13) +ui +bug @me #57
+- [ ] (C) `api/dist/` (compiled JS) is checked into git and chronically stale — it lacked the compiled output of #39/#42/#50/#51/#53 until a local build regenerated it and polluted the working tree during #56; CI builds fresh on deploy so the tracked copy serves no purpose — remove it from the repo and add it to `.gitignore` +ci +improvement @me #58
