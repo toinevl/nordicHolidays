@@ -20,6 +20,7 @@ export class MapView {
   private onStopSelect: StopSelectCallback
   private _animRafId = 0
   private stops: Stop[] = []
+  private _styleReady = false
 
   constructor(containerId: string, onStopSelect: StopSelectCallback, options?: MapViewOptions) {
     this.onStopSelect = onStopSelect
@@ -33,6 +34,7 @@ export class MapView {
       dragRotate: options?.dragRotate ?? false,
     })
 
+    this.map.on('load', () => { this._styleReady = true })
     this._addLegend()
   }
 
@@ -147,6 +149,14 @@ export class MapView {
   }
 
   private _addRouteLayers(stops: Stop[]): void {
+    // Idempotent: a deferred replaceStops handler can fire after addStops'
+    // own 'load' handler has already created the layers for the default
+    // itinerary — re-adding an existing source/layer throws.
+    if (this.map.getLayer('route')) this.map.removeLayer('route')
+    if (this.map.getSource('route')) this.map.removeSource('route')
+    if (this.map.getLayer('route-excursions')) this.map.removeLayer('route-excursions')
+    if (this.map.getSource('route-excursions')) this.map.removeSource('route-excursions')
+
     const baseRouteCoords = buildBaseRouteCoords(stops)
     const excursionLines = buildExcursionLines(stops)
 
@@ -206,14 +216,21 @@ export class MapView {
     this.markerEls.forEach(el => el.remove())
     this.markerEls.clear()
 
-    if (this.map.getLayer('route')) this.map.removeLayer('route')
-    if (this.map.getSource('route')) this.map.removeSource('route')
-    if (this.map.getLayer('route-excursions')) this.map.removeLayer('route-excursions')
-    if (this.map.getSource('route-excursions')) this.map.removeSource('route-excursions')
-
-    // Add markers and route layers directly (map already loaded)
     this._addMarkers(stops)
-    this._addRouteLayers(stops)
+
+    // replaceStops can run before the style has loaded: a shared-link (?id=)
+    // itinerary fetch against a warm API resolves in ~100ms, racing the map's
+    // style download. On an unloaded map even getLayer/isStyleLoaded throw
+    // (map.style is still null), which used to strip every marker and surface
+    // a load-failure toast. Track readiness ourselves and defer the route
+    // layers; _addRouteLayers is idempotent, so it also supersedes the layers
+    // addStops' own 'load' handler may add first. Markers are DOM overlays
+    // and safe either way.
+    if (this._styleReady) {
+      this._addRouteLayers(stops)
+    } else {
+      this.map.once('load', () => this._addRouteLayers(stops))
+    }
 
     if (stops[0]) this.flyTo(stops[0])
   }
