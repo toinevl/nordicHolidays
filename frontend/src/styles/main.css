@@ -371,6 +371,25 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 }
 .map-marker:hover, .map-marker.active { transform: scale(1.3); background: var(--accent-2); color: var(--night-deep); border-color: var(--accent-2); }
 
+.map-marker--daytrip {
+  width: 22px; height: 22px;
+  background: transparent;
+  border-style: dashed;
+  transform: rotate(45deg);
+  font-size: 0.65rem;
+}
+.map-marker--daytrip span { display: inline-block; transform: rotate(-45deg); }
+.map-marker--daytrip:hover, .map-marker--daytrip.active { transform: rotate(45deg) scale(1.3); background: transparent; }
+
+.map-legend {
+  position: absolute; bottom: 12px; left: 12px; z-index: 5;
+  border-radius: 8px; padding: 6px 10px; font-size: 0.72rem; line-height: 1.6;
+  pointer-events: none;
+  background: rgba(21,17,14,0.92); color: var(--text-on-night);
+  border: 1px solid var(--night-border);
+  backdrop-filter: blur(10px);
+}
+
 /* SCROLL REVEAL */
 [data-reveal] {
   opacity: 0;
@@ -589,3 +608,9 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   #culinary-section, #accom-section { display: none; }
   footer { display: none; }
 }
+
+/* Day-trip cards in itinerary timeline (#61) */
+.t-item--daytrip { opacity: 0.92; }
+.t-item--daytrip .t-card { border-left: 2px dashed var(--border); margin-left: 12px; background: color-mix(in srgb, var(--bg-alt) 92%, transparent); }
+.badge-daytrip { font-weight: 600; }
+.daytrip-base { display: block; font-size: 0.78rem; color: var(--ink-muted); }

@@ -150,6 +150,11 @@ export async function generateHandler(
       return withCors({ status: 502, body: JSON.stringify({ error: 'Model returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
+    if (input.stops.length > 0 && input.stops[0].nights === 0) {
+      ctx?.warn('generateHandler: normalizing first stop nights from 0 to 1')
+      input.stops[0].nights = 1
+    }
+
     const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString() }
     return withCors({
       status: 200,

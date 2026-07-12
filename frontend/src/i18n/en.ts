@@ -65,6 +65,7 @@ export const en: LocaleStrings = {
     selectedStop: 'Selected stop',
     dayPrefix: 'Day',
     dayTrip: 'Day trip',
+    dayTripFrom: 'Day trip from {base}',
     oneNight: '1 night',
     nights: '{n} nights',
     flyHere: 'Fly here',
@@ -147,5 +148,11 @@ export const en: LocaleStrings = {
   },
   loading: {
     generating: 'Generating your itinerary...',
+  },
+  map: {
+    legendOvernight: 'Overnight stay',
+    legendDayTrip: 'Day trip',
+    legendRoute: 'Route',
+    legendExcursion: 'Day excursion',
   },
 }

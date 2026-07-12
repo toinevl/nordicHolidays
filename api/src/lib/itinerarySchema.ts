@@ -14,7 +14,7 @@ export const ITINERARY_FUNCTION: OpenAI.Chat.Completions.ChatCompletionTool = {
         endCity: { type: 'string', description: 'Arrival city' },
         stops: {
           type: 'array',
-          description: 'Ordered list of overnight stops',
+          description: 'Ordered list of stops. A stop is either an overnight base (nights >= 1, the traveller sleeps here) or a day trip (nights = 0, visited from the most recent overnight base, returning the same day).',
           items: {
             type: 'object',
             properties: {
@@ -23,7 +23,7 @@ export const ITINERARY_FUNCTION: OpenAI.Chat.Completions.ChatCompletionTool = {
               region: { type: 'string' },
               lat: { type: 'number' },
               lng: { type: 'number' },
-              nights: { type: 'number' },
+              nights: { type: 'number', description: '0 for a day trip taken from the previous overnight base; 1 or more when sleeping here. The first stop must have nights >= 1.' },
               highlights: { type: 'array', items: { type: 'string' } },
               accommodation: { type: 'string' },
               culinaryNotes: { type: 'string' },
@@ -47,4 +47,8 @@ When creating itineraries:
 - Prefer off-the-beaten-track destinations over mass-tourism hotspots
 - September is peak season in the spec — tailor recommendations accordingly
 - Include realistic driving distances and times
-- Always use the create_itinerary tool to return your response — never return free text`
+- Always use the create_itinerary tool to return your response — never return free text
+- Prefer hub-and-spoke structure: stay 2-3 nights at well-located bases and take day trips (nights: 0) to nearby highlights instead of relocating every day
+- A day trip must be within roughly 1.5 hours' drive of its base, out and back the same day
+- The first and last stops must be overnight bases (nights >= 1)
+- totalDays must remain consistent with the sum of nights`

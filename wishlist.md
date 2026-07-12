@@ -100,3 +100,15 @@ Grounded in live measurements (2026-07-12): first request to `/api/itineraries` 
 
 - [ ] (B) The Load button in the Saved Trips panel gives no feedback while `getItinerary` is in flight (`frontend/src/components/SavedTripsPanel.ts`, `.btn-load` click handler) — during any API delay the UI looks frozen; disable the button and show a loading label, same pattern as the Save button (#13) +ui +bug @me #57
 - [ ] (C) `api/dist/` (compiled JS) is checked into git and chronically stale — it lacked the compiled output of #39/#42/#50/#51/#53 until a local build regenerated it and polluted the working tree during #56; CI builds fresh on deploy so the tracked copy serves no purpose — remove it from the repo and add it to `.gitignore` +ci +improvement @me #58
+
+## v1.6 — Day Trips vs. Overnight Bases (seeded 2026-07-12)
+
+Distinction is derived from the existing `nights` field (0 = day trip, ≥1 = overnight base) — no
+migration, fully backward compatible; grounded briefs per item in
+`.hermes/plans/2026-07-12_115600-daytrip-vs-overnight-distinction.md`.
+
+- [x] (A) Day-trip derivation helper: `isDayTrip`/`baseFor` pure functions in new `frontend/src/lib/dayTrips.ts`, nearest-preceding-else-following base resolution, null-safe for all-day-trip data +feature +ui @me #59
+- [x] (A) Map distinction: solid main route threads only overnight bases; new dashed `route-excursions` MultiLineString layer for base→day-trip spokes (no dash animation!); hollow-diamond `.map-marker--daytrip` markers; legend overlay (EN strings, i18n via #61) — `frontend/src/components/MapView.ts` + `mapGeometry.ts` (new, pure, testable) + `main.css` +feature +ui @me #60
+- [x] (B) Itinerary list: `◇ Day trip` badge + "Day trip from {base}" line + nested/lighter card styling for `nights === 0` stops; new i18n keys (dayTripFrom, map.legend*) in EN/NL/DE with completeness test — `frontend/src/components/ItineraryView.ts`, `frontend/src/i18n/*` +feature +ui +i18n @me #61
+- [x] (B) Generator: LLM tool schema currently says stops are all overnight (`api/src/lib/itinerarySchema.ts:17`) — describe nights=0 day trips, add hub-and-spoke SYSTEM_PROMPT guidance (2-3-night bases, ≤1.5h out-and-back, first/last stop overnight), normalize a nights-0 first stop to 1 in `generate.ts` +feature +api @me #62
+- [ ] (C) Lodging affordance on overnight cards: link/copy per base city to simplify booking (design needed — out of v1.6 scope) +feature +ui @me #63

@@ -432,4 +432,62 @@ describe('ItineraryView undo-last-edit button (#51)', () => {
     view.setHasPreviousVersion(true)
     expect(undoBtn.classList.contains('hidden')).toBe(false)
   })
+
+  it('marks day-trip stops with t-item--daytrip class and shows base city', () => {
+    const dayTripView = new ItineraryView(
+      vi.fn(),
+      vi.fn(),
+    )
+
+    const stops: Stop[] = [
+      {
+        id: 1,
+        days: '1',
+        dates: '2026-06-10',
+        dest: 'Göteborg',
+        region: 'Västra Götaland',
+        coords: [11.97, 57.71] as [number, number],
+        tags: [],
+        nights: 1,
+        desc: 'Overnight base',
+        highlights: [],
+        from: 'Amsterdam',
+        km: 100,
+        time: '2h',
+        zoom: 12,
+        pitch: 45,
+        bearing: 0,
+      },
+      {
+        id: 2,
+        days: '2',
+        dates: '2026-06-11',
+        dest: 'Fjällbacka',
+        region: 'Bohuslän',
+        coords: [11.20, 58.45] as [number, number],
+        tags: [],
+        nights: 0,
+        desc: 'Day trip destination',
+        highlights: [],
+        from: 'Göteborg',
+        km: 75,
+        time: '1.5h',
+        zoom: 13,
+        pitch: 30,
+        bearing: 0,
+      },
+    ]
+
+    dayTripView.render(stops, [], [])
+
+    const timeline = document.getElementById('timeline')
+    const dayTripItem = timeline?.querySelector('.t-item--daytrip')
+    const overnightItem = timeline?.querySelector('.t-item:not(.t-item--daytrip)')
+
+    expect(dayTripItem).toBeTruthy()
+    expect(overnightItem).toBeTruthy()
+    expect(dayTripItem?.innerHTML).toContain('◇')
+    expect(dayTripItem?.innerHTML).toContain('Day trip')
+    expect(dayTripItem?.innerHTML).toContain('Göteborg')
+  })
 })

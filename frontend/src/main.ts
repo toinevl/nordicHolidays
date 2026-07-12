@@ -72,6 +72,16 @@ function applyStaticI18n(): void {
   })
   // Loading spinner label
   setText('.spinner-label', t('loading.generating'))
+  // Map legend labels (one legend per MapView instance — 2D and 3D map)
+  const legendLabels: Array<[string, string]> = [
+    ['.map-legend .legend-overnight', `● ${t('map.legendOvernight')}`],
+    ['.map-legend .legend-daytrip', `◇ ${t('map.legendDayTrip')}`],
+    ['.map-legend .legend-route', `─ ${t('map.legendRoute')}`],
+    ['.map-legend .legend-excursion', `┄ ${t('map.legendExcursion')}`],
+  ]
+  legendLabels.forEach(([selector, text]) => {
+    document.querySelectorAll(selector).forEach((el) => { el.textContent = text })
+  })
 }
 function changeLocale(lang: Locale): void {
   setLocale(lang)
