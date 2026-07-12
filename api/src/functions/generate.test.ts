@@ -23,6 +23,7 @@ import { generateHandler } from './generate'
 import { getLlmClient } from '../lib/llmClient'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 import { checkAndIncrementRateLimit } from '../lib/rateLimit'
+import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 
 function makeItinerary(): Itinerary {
   return {
@@ -283,5 +284,70 @@ describe('POST /api/generate', () => {
     const callArgs = mockCreate.mock.calls[0][0]
     const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
     expect(userMessage).toContain('the selected Nordic country')
+  })
+
+  it('SYSTEM_PROMPT mentions day trips and nights guidance', () => {
+    expect(SYSTEM_PROMPT).toMatch(/day trip/i)
+    expect(SYSTEM_PROMPT).toMatch(/nights.*0|0.*nights/i)
+  })
+
+  it('ITINERARY_FUNCTION stops description mentions day trips vs overnight bases', () => {
+    const stopsProperty = ITINERARY_FUNCTION.function.parameters.properties.stops as any
+    expect(stopsProperty.description).toMatch(/day trip/i)
+    expect(stopsProperty.description).toMatch(/overnight|overnight base/i)
+  })
+
+  it('ITINERARY_FUNCTION nights property description explains 0 = day trip', () => {
+    const stopsItems = ITINERARY_FUNCTION.function.parameters.properties.stops.items as any
+    const nightsProperty = stopsItems.properties.nights
+    expect(nightsProperty.description).toMatch(/day trip/i)
+    expect(nightsProperty.description).toMatch(/0/)
+  })
+
+  it('normalizes first stop nights from 0 to 1 in response', async () => {
+    const dayTripFirstStop = {
+      day: 1,
+      city: 'Malmö',
+      region: 'Skåne',
+      lat: 55.6,
+      lng: 13.0,
+      nights: 0,
+      highlights: ['Old Town', 'Ribersborg Beach'],
+      accommodation: 'Day trip base',
+      culinaryNotes: 'Enjoy local fika culture',
+    }
+    const otherStop = {
+      day: 2,
+      city: 'Åre',
+      region: 'Jämtland',
+      lat: 63.4,
+      lng: 13.1,
+      nights: 2,
+      highlights: ['Mountain views'],
+      accommodation: 'Mountain lodge',
+      culinaryNotes: 'Traditional reindeer dish',
+    }
+    const itin = {
+      title: 'Nordic Adventure',
+      totalDays: 7,
+      startCity: 'Malmö',
+      endCity: 'Östersund',
+      stops: [dayTripFirstStop, otherStop],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Östersund', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(200)
+    const body = JSON.parse(result.body as string) as Itinerary
+    expect(body.stops[0].nights).toBe(1)
+    expect(body.stops[1].nights).toBe(2)
   })
 })
