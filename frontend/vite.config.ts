@@ -7,14 +7,32 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: {
         name: 'Nordic Holidays',
-        short_name: 'Nordic Holidays',
-        description: 'Road trip from the Øresund Bridge to the High Coast',
-        theme_color: '#2f6fe0',
-        background_color: '#FFFFFF',
+        short_name: 'Nordic',
+        description: 'AI-planned road trips across the Nordics',
+        theme_color: '#3B4FE8',
+        background_color: '#FAF8F5',
         display: 'standalone',
         scope: '/',
         start_url: '/',
         icons: [
+          {
+            src: 'pwa-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'pwa-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'pwa-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
           {
             src: 'icon.svg',
             sizes: 'any',

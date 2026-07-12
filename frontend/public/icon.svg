@@ -1,4 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <rect width="192" height="192" fill="#2C5F8D"/>
-  <text x="96" y="110" font-size="80" font-weight="bold" fill="white" text-anchor="middle" font-family="sans-serif">NH</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="248" fill="#FAF8F5" stroke="#1C1814" stroke-width="8"/>
+
+  <!-- Inner circle -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#DDD7CE" stroke-width="2"/>
+
+  <!-- Tick marks at 8 cardinal/diagonal positions -->
+  <g stroke="#5D5347" stroke-width="3" stroke-linecap="round">
+    <!-- NE -->
+    <line x1="397" y1="115" x2="415" y2="97"/>
+    <!-- NW -->
+    <line x1="115" y1="115" x2="97" y2="97"/>
+    <!-- SE -->
+    <line x1="397" y1="397" x2="415" y2="415"/>
+    <!-- SW -->
+    <line x1="115" y1="397" x2="97" y2="415"/>
+  </g>
+
+  <!-- Cardinal letters -->
+  <text x="256" y="90" font-family="'DM Mono', monospace" font-size="28" font-weight="700" fill="#E85D2A" text-anchor="middle">N</text>
+  <text x="256" y="438" font-family="'DM Mono', monospace" font-size="24" fill="#5D5347" text-anchor="middle">S</text>
+  <text x="430" y="265" font-family="'DM Mono', monospace" font-size="24" fill="#5D5347" text-anchor="middle">E</text>
+  <text x="82" y="265" font-family="'DM Mono', monospace" font-size="24" fill="#5D5347" text-anchor="middle">W</text>
+
+  <!-- North needle (coral, pointing up) -->
+  <polygon points="256,160 224,256 288,256" fill="#E85D2A" fill-opacity="0.85" stroke="#E85D2A" stroke-width="2"/>
+
+  <!-- South needle (blue, pointing down) -->
+  <polygon points="256,256 232,256 256,340 280,256" fill="#3B4FE8" fill-opacity="0.65" stroke="#3B4FE8" stroke-width="2"/>
+
+  <!-- Center pivot -->
+  <circle cx="256" cy="256" r="18" fill="#1C1814"/>
+  <circle cx="256" cy="256" r="6" fill="#FAF8F5"/>
 </svg>
