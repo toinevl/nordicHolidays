@@ -4,6 +4,7 @@ import { getSeasonInfo } from '../data/seasonData'
 import { t, tpl } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
 import { itineraryToGPX, itineraryToICS, downloadFile } from '../lib/export'
+import { isDayTrip, baseFor } from '../lib/dayTrips'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
@@ -327,18 +328,24 @@ export class ItineraryView {
         const tags = s.tags
           .map((tag) => `<span class="tag tag-${sanitizeTagForClass(tag)}">${tagLabel(tag)}</span>`)
           .join('')
-        const nights =
-          s.nights === 0
-            ? t('itinerary.dayTrip')
-            : s.nights === 1
-              ? t('itinerary.oneNight')
-              : tpl('itinerary.nights', { n: String(s.nights) })
+        let nights = ''
+        if (s.nights === 0) {
+          nights = `<span class="badge-daytrip">◇ ${t('itinerary.dayTrip')}</span>`
+          const base = baseFor(this.stops, idx)
+          if (base) {
+            nights += `<span class="daytrip-base">${tpl('itinerary.dayTripFrom', { base: escapeHtml(base.dest) })}</span>`
+          }
+        } else if (s.nights === 1) {
+          nights = t('itinerary.oneNight')
+        } else {
+          nights = tpl('itinerary.nights', { n: String(s.nights) })
+        }
         const drive =
           s.km > 0
             ? `<div class="stop-drive">🚗 from ${escapeHtml(s.from)}<br>${s.km} km · ${s.time}</div>`
             : `<div class="stop-drive">⛴️ ${escapeHtml(s.from)}</div>`
 
-        return `<div class="t-item" data-tags="${escapeHtml(s.tags.join(','))}" data-reveal style="transition-delay:${idx * 0.04}s">
+        return `<div class="t-item${isDayTrip(s) ? ' t-item--daytrip' : ''}" data-tags="${escapeHtml(s.tags.join(','))}" data-reveal style="transition-delay:${idx * 0.04}s">
           <div class="t-dot"><div class="dot">${s.id}</div></div>
           <div>
             <div class="t-meta">

@@ -2,6 +2,7 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Stop } from '../types'
 import { buildBaseRouteCoords, buildExcursionLines, markerClassFor } from './mapGeometry'
+import { t } from '../i18n/index'
 
 export type StopSelectCallback = (stop: Stop, options?: { scroll?: boolean }) => void
 
@@ -40,12 +41,11 @@ export class MapView {
     const legend = document.createElement('div')
     legend.className = 'map-legend'
     legend.innerHTML = `
-      <div><span data-i18n="map.legend-stay">● Overnight stay</span></div>
-      <div><span data-i18n="map.legend-daytrip">◇ Day trip</span></div>
-      <div><span data-i18n="map.legend-route">─ Route</span></div>
-      <div><span data-i18n="map.legend-excursion">┄ Day excursion</span></div>
+      <div><span class="legend-overnight">● ${t('map.legendOvernight')}</span></div>
+      <div><span class="legend-daytrip">◇ ${t('map.legendDayTrip')}</span></div>
+      <div><span class="legend-route">─ ${t('map.legendRoute')}</span></div>
+      <div><span class="legend-excursion">┄ ${t('map.legendExcursion')}</span></div>
     `
-    // TODO(#61): replace hardcoded strings with t() keys map.legend*
     container.appendChild(legend)
   }
 

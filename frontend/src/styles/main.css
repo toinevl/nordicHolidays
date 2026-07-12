@@ -608,3 +608,9 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   #culinary-section, #accom-section { display: none; }
   footer { display: none; }
 }
+
+/* Day-trip cards in itinerary timeline (#61) */
+.t-item--daytrip { opacity: 0.92; }
+.t-item--daytrip .t-card { border-left: 2px dashed var(--border); margin-left: 12px; background: color-mix(in srgb, var(--bg-alt) 92%, transparent); }
+.badge-daytrip { font-weight: 600; }
+.daytrip-base { display: block; font-size: 0.78rem; color: var(--ink-muted); }

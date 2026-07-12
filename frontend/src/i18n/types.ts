@@ -65,6 +65,7 @@ export interface LocaleStrings {
     selectedStop: string
     dayPrefix: string
     dayTrip: string
+    dayTripFrom: string
     oneNight: string
     nights: string
     flyHere: string
@@ -77,6 +78,12 @@ export interface LocaleStrings {
     exportGPX: string
     exportICS: string
     undoLastEdit: string
+  }
+  map: {
+    legendOvernight: string
+    legendDayTrip: string
+    legendRoute: string
+    legendExcursion: string
   }
   season: {
     skane: string
@@ -163,6 +170,7 @@ export type LocaleKey =
   | `hero.${keyof LocaleStrings['hero']}`
   | `sections.${keyof LocaleStrings['sections']}`
   | `accom.${keyof LocaleStrings['accom']}`
+  | `map.${keyof LocaleStrings['map']}`
   | `map3d.${keyof LocaleStrings['map3d']}`
   | `footer.${keyof LocaleStrings['footer']}`
   | `loading.${keyof LocaleStrings['loading']}`

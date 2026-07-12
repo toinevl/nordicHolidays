@@ -65,6 +65,7 @@ export const de: LocaleStrings = {
     selectedStop: 'Ausgewählter Stopp',
     dayPrefix: 'Tag',
     dayTrip: 'Tagesausflug',
+    dayTripFrom: 'Tagesausflug ab {base}',
     oneNight: '1 Nacht',
     nights: '{n} Nächte',
     flyHere: 'Hierher fliegen',
@@ -147,5 +148,11 @@ export const de: LocaleStrings = {
   },
   loading: {
     generating: 'Reiseplan wird erstellt...',
+  },
+  map: {
+    legendOvernight: 'Übernachtung',
+    legendDayTrip: 'Tagesausflug',
+    legendRoute: 'Route',
+    legendExcursion: 'Tagesausflug (Route)',
   },
 }
