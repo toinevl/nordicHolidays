@@ -348,7 +348,10 @@ if (urlId) {
       applyItinerary(itinerary)
       toast.success(t('toast.sharedItineraryLoaded'))
     })
-    .catch(() => toast.error(t('toast.sharedItineraryFailed')))
+    .catch((err) => {
+      console.error('Shared itinerary load failed:', err)
+      toast.error(t('toast.sharedItineraryFailed'))
+    })
 }
 
 applyStaticI18n()

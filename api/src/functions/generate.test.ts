@@ -291,6 +291,14 @@ describe('POST /api/generate', () => {
     expect(SYSTEM_PROMPT).toMatch(/nights.*0|0.*nights/i)
   })
 
+  it('SYSTEM_PROMPT requires day trips to carry the excursion destination name and coordinates', () => {
+    expect(SYSTEM_PROMPT).toMatch(/destination's own lat\/lng/i)
+    expect(SYSTEM_PROMPT).toMatch(/never repeat the base/i)
+    const stopsItems = ITINERARY_FUNCTION.function.parameters.properties.stops.items as any
+    expect(stopsItems.properties.lat.description).toMatch(/not the base/i)
+    expect(stopsItems.properties.city.description).toMatch(/never a repeat of the base/i)
+  })
+
   it('ITINERARY_FUNCTION stops description mentions day trips vs overnight bases', () => {
     const stopsProperty = ITINERARY_FUNCTION.function.parameters.properties.stops as any
     expect(stopsProperty.description).toMatch(/day trip/i)
