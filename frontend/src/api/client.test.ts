@@ -14,7 +14,7 @@ vi.mock('../lib/auth', () => ({
 const mockFetch = vi.fn()
 ;(globalThis as Record<string, unknown>).fetch = mockFetch
 
-import { apiClient } from './client'
+import { apiClient, warmUpApi } from './client'
 
 describe('apiClient.getPreferences', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -47,6 +47,24 @@ describe('apiClient.getPreferences', () => {
     mockFetch.mockRejectedValue(ownerError)
 
     await expect(apiClient.getPreferences()).rejects.toThrow('some other fetch failure')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('warmUpApi', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('calls fetch with the health endpoint URL', () => {
+    mockFetch.mockResolvedValue({ ok: true })
+    warmUpApi()
+    const callUrl = mockFetch.mock.calls[0]?.[0]
+    expect(typeof callUrl).toBe('string')
+    expect(callUrl).toContain('/api/health')
+  })
+
+  it('catches and suppresses fetch errors', () => {
+    mockFetch.mockRejectedValue(new Error('network failure'))
+    expect(() => warmUpApi()).not.toThrow()
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 })

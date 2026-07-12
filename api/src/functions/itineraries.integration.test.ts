@@ -55,7 +55,7 @@ function createInMemoryStore() {
       return { ...found }
     },
 
-    listEntities(opts: { queryOptions?: { filter?: string } } = {}): AsyncIterable<Entity> {
+    listEntities(opts: { queryOptions?: { filter?: string; select?: string[] } } = {}): AsyncIterable<Entity> {
       const filter = opts.queryOptions?.filter
       const matched = entities.filter((e) => matchesFilter(e, filter))
       return {

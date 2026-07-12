@@ -8,10 +8,14 @@ import { SavedTripsPanel } from './components/SavedTripsPanel'
 import { Toast } from './components/Toast'
 import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
 import type { Itinerary, ItineraryStop, Locale } from './types'
-import { apiClient } from './api/client'
+import { apiClient, warmUpApi } from './api/client'
 import { setLocale, getLocale, t, tpl } from './i18n/index'
 import { initialize, handleRedirect } from './lib/auth'
 const store = createStore()
+
+// Fire-and-forget warm-up ping to Azure Functions app. Flex Consumption scales to zero when idle;
+// this ping warms the app while the user is still browsing the static page.
+warmUpApi()
 const toast = new Toast()
 ;(async () => {
   await initialize()
