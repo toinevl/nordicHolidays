@@ -2,6 +2,7 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Stop } from '../types'
 import { buildBaseRouteCoords, buildExcursionLines, markerClassFor } from './mapGeometry'
+import { isDayTrip } from '../lib/dayTrips'
 import { t } from '../i18n/index'
 
 export type StopSelectCallback = (stop: Stop, options?: { scroll?: boolean }) => void
@@ -141,7 +142,11 @@ export class MapView {
       el.dataset.id = String(stop.id)
       el.innerHTML = `<span>${stop.id}</span>`
       el.addEventListener('click', () => this.onStopSelect(stop, { scroll: true }))
-      new maplibregl.Marker({ element: el })
+      // Offset day-trip markers so they don't overlap their base marker at low zoom
+      new maplibregl.Marker({
+        element: el,
+        ...(isDayTrip(stop) ? { offset: [14, -14] } : {})
+      })
         .setLngLat(stop.coords)
         .addTo(this.map)
       this.markerEls.set(stop.id, el)
