@@ -1,0 +1,851 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "hermes-agent",
+  "elements": [
+    {
+      "type": "text",
+      "id": "title1",
+      "x": 70,
+      "y": 20,
+      "width": 247.50000000000003,
+      "height": 25.2,
+      "text": "Logo 1: The Northern Path",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#5D5347",
+      "originalText": "Logo 1: The Northern Path",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "ellipse",
+      "id": "badge1",
+      "x": 80,
+      "y": 60,
+      "width": 240,
+      "height": 240,
+      "strokeColor": "#3B4FE8",
+      "strokeWidth": 3,
+      "backgroundColor": "#FAF8F5",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 100
+    },
+    {
+      "type": "line",
+      "id": "mt1l",
+      "x": 120,
+      "y": 215,
+      "width": 80,
+      "height": 60,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          40,
+          -60
+        ],
+        [
+          80,
+          0
+        ]
+      ],
+      "strokeColor": "#1C1814",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "line",
+      "id": "mt1f",
+      "x": 120,
+      "y": 215,
+      "width": 80,
+      "height": 60,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          40,
+          -60
+        ],
+        [
+          80,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "strokeColor": "#3B4FE8",
+      "strokeWidth": 2,
+      "backgroundColor": "#6474FF",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 30,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "line",
+      "id": "mt2f",
+      "x": 185,
+      "y": 215,
+      "width": 70,
+      "height": 40,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          35,
+          -40
+        ],
+        [
+          70,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "strokeColor": "#3B4FE8",
+      "strokeWidth": 2,
+      "backgroundColor": "#3B4FE8",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 20,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "ellipse",
+      "id": "sun1",
+      "x": 150,
+      "y": 100,
+      "width": 70,
+      "height": 70,
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 2,
+      "backgroundColor": "#E85D2A",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 35
+    },
+    {
+      "type": "arrow",
+      "id": "road1",
+      "x": 200,
+      "y": 250,
+      "width": 25,
+      "height": 120,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -15,
+          -25
+        ],
+        [
+          10,
+          -50
+        ],
+        [
+          -10,
+          -75
+        ],
+        [
+          5,
+          -100
+        ],
+        [
+          0,
+          -120
+        ]
+      ],
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed",
+      "roughness": 1,
+      "opacity": 100,
+      "endArrowhead": "arrow",
+      "startArrowhead": null
+    },
+    {
+      "type": "text",
+      "id": "brand1a",
+      "x": 110,
+      "y": 320,
+      "width": 79.2,
+      "height": 33.599999999999994,
+      "text": "Nordic",
+      "fontSize": 24,
+      "fontFamily": 1,
+      "strokeColor": "#1C1814",
+      "originalText": "Nordic",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "brand1b",
+      "x": 155,
+      "y": 350,
+      "width": 70.4,
+      "height": 22.4,
+      "text": "Holidays",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#3B4FE8",
+      "originalText": "Holidays",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "title2",
+      "x": 470,
+      "y": 20,
+      "width": 257.40000000000003,
+      "height": 25.2,
+      "text": "Logo 2: The Nordic Compass",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#5D5347",
+      "originalText": "Logo 2: The Nordic Compass",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "ellipse",
+      "id": "badge2",
+      "x": 480,
+      "y": 60,
+      "width": 240,
+      "height": 240,
+      "strokeColor": "#1C1814",
+      "strokeWidth": 3,
+      "backgroundColor": "#FAF8F5",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 100
+    },
+    {
+      "type": "ellipse",
+      "id": "badge2i",
+      "x": 510,
+      "y": 90,
+      "width": 180,
+      "height": 180,
+      "strokeColor": "#DDD7CE",
+      "strokeWidth": 1,
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 100
+    },
+    {
+      "type": "line",
+      "id": "needle_n",
+      "x": 600,
+      "y": 180,
+      "width": 0,
+      "height": 70,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          -70
+        ]
+      ],
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 3,
+      "endArrowhead": null,
+      "startArrowhead": null,
+      "roughness": 0
+    },
+    {
+      "type": "line",
+      "id": "tri_n",
+      "x": 600,
+      "y": 180,
+      "width": 30,
+      "height": 65,
+      "points": [
+        [
+          -15,
+          0
+        ],
+        [
+          15,
+          0
+        ],
+        [
+          0,
+          -65
+        ],
+        [
+          -15,
+          0
+        ]
+      ],
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 2,
+      "backgroundColor": "#E85D2A",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 80,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "line",
+      "id": "tri_s",
+      "x": 600,
+      "y": 180,
+      "width": 20,
+      "height": 45,
+      "points": [
+        [
+          -10,
+          0
+        ],
+        [
+          10,
+          0
+        ],
+        [
+          0,
+          45
+        ],
+        [
+          -10,
+          0
+        ]
+      ],
+      "strokeColor": "#3B4FE8",
+      "strokeWidth": 2,
+      "backgroundColor": "#3B4FE8",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 60,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "ellipse",
+      "id": "center2",
+      "x": 592,
+      "y": 172,
+      "width": 16,
+      "height": 16,
+      "strokeColor": "#1C1814",
+      "strokeWidth": 2,
+      "backgroundColor": "#1C1814",
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 100
+    },
+    {
+      "type": "text",
+      "id": "card_n",
+      "x": 593,
+      "y": 105,
+      "width": 8.8,
+      "height": 22.4,
+      "text": "N",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#E85D2A",
+      "originalText": "N",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "card_s",
+      "x": 593,
+      "y": 253,
+      "width": 7.700000000000001,
+      "height": 19.599999999999998,
+      "text": "S",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#5D5347",
+      "originalText": "S",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "card_e",
+      "x": 658,
+      "y": 175,
+      "width": 7.700000000000001,
+      "height": 19.599999999999998,
+      "text": "E",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#5D5347",
+      "originalText": "E",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "card_w",
+      "x": 528,
+      "y": 175,
+      "width": 7.700000000000001,
+      "height": 19.599999999999998,
+      "text": "W",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#5D5347",
+      "originalText": "W",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "line",
+      "id": "tick_ne",
+      "x": 645,
+      "y": 125,
+      "width": 12,
+      "height": 12,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          12,
+          -12
+        ]
+      ],
+      "strokeColor": "#5D5347",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "line",
+      "id": "tick_nw",
+      "x": 555,
+      "y": 125,
+      "width": 12,
+      "height": 12,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -12,
+          -12
+        ]
+      ],
+      "strokeColor": "#5D5347",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "line",
+      "id": "tick_se",
+      "x": 645,
+      "y": 235,
+      "width": 12,
+      "height": 12,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          12,
+          12
+        ]
+      ],
+      "strokeColor": "#5D5347",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "line",
+      "id": "tick_sw",
+      "x": 555,
+      "y": 235,
+      "width": 12,
+      "height": 12,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -12,
+          12
+        ]
+      ],
+      "strokeColor": "#5D5347",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "text",
+      "id": "brand2a",
+      "x": 510,
+      "y": 320,
+      "width": 79.2,
+      "height": 33.599999999999994,
+      "text": "Nordic",
+      "fontSize": 24,
+      "fontFamily": 1,
+      "strokeColor": "#1C1814",
+      "originalText": "Nordic",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "brand2b",
+      "x": 555,
+      "y": 350,
+      "width": 70.4,
+      "height": 22.4,
+      "text": "Holidays",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#3B4FE8",
+      "originalText": "Holidays",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "title3",
+      "x": 870,
+      "y": 20,
+      "width": 207.9,
+      "height": 25.2,
+      "text": "Logo 3: Pine & Summit",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#5D5347",
+      "originalText": "Logo 3: Pine & Summit",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "ellipse",
+      "id": "badge3",
+      "x": 880,
+      "y": 60,
+      "width": 240,
+      "height": 240,
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 3,
+      "backgroundColor": "#FAF8F5",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 100
+    },
+    {
+      "type": "line",
+      "id": "pine_top",
+      "x": 1000,
+      "y": 100,
+      "width": 40,
+      "height": 35,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          20,
+          35
+        ],
+        [
+          -20,
+          35
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "strokeColor": "#3B4FE8",
+      "strokeWidth": 2,
+      "backgroundColor": "#3B4FE8",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 80,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "line",
+      "id": "pine_mid",
+      "x": 990,
+      "y": 130,
+      "width": 60,
+      "height": 40,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          30,
+          40
+        ],
+        [
+          -30,
+          40
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "strokeColor": "#3B4FE8",
+      "strokeWidth": 2,
+      "backgroundColor": "#6474FF",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 60,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "line",
+      "id": "pine_bot",
+      "x": 978,
+      "y": 165,
+      "width": 84,
+      "height": 45,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          42,
+          45
+        ],
+        [
+          -42,
+          45
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "strokeColor": "#3B4FE8",
+      "strokeWidth": 2,
+      "backgroundColor": "#3B4FE8",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 25,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "rectangle",
+      "id": "trunk",
+      "x": 996,
+      "y": 208,
+      "width": 8,
+      "height": 18,
+      "strokeColor": "#1C1814",
+      "strokeWidth": 1,
+      "backgroundColor": "#5D5347",
+      "fillStyle": "solid",
+      "roughness": 1,
+      "opacity": 60
+    },
+    {
+      "type": "arrow",
+      "id": "path3",
+      "x": 920,
+      "y": 240,
+      "width": 76,
+      "height": 20,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          20,
+          10
+        ],
+        [
+          40,
+          0
+        ],
+        [
+          60,
+          -5
+        ],
+        [
+          76,
+          -10
+        ]
+      ],
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed",
+      "roughness": 1,
+      "opacity": 100,
+      "endArrowhead": "arrow",
+      "startArrowhead": null
+    },
+    {
+      "type": "ellipse",
+      "id": "stop3_0",
+      "x": 927,
+      "y": 242,
+      "width": 6,
+      "height": 6,
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 1,
+      "backgroundColor": "#E85D2A",
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 80
+    },
+    {
+      "type": "ellipse",
+      "id": "stop3_1",
+      "x": 957,
+      "y": 237,
+      "width": 6,
+      "height": 6,
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 1,
+      "backgroundColor": "#E85D2A",
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 80
+    },
+    {
+      "type": "ellipse",
+      "id": "stop3_2",
+      "x": 982,
+      "y": 231,
+      "width": 6,
+      "height": 6,
+      "strokeColor": "#E85D2A",
+      "strokeWidth": 1,
+      "backgroundColor": "#E85D2A",
+      "fillStyle": "solid",
+      "roughness": 0,
+      "opacity": 80
+    },
+    {
+      "type": "line",
+      "id": "ground3",
+      "x": 920,
+      "y": 230,
+      "width": 160,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          0
+        ]
+      ],
+      "strokeColor": "#DDD7CE",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "endArrowhead": null,
+      "startArrowhead": null
+    },
+    {
+      "type": "text",
+      "id": "brand3a",
+      "x": 910,
+      "y": 320,
+      "width": 79.2,
+      "height": 33.599999999999994,
+      "text": "Nordic",
+      "fontSize": 24,
+      "fontFamily": 1,
+      "strokeColor": "#1C1814",
+      "originalText": "Nordic",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "brand3b",
+      "x": 955,
+      "y": 350,
+      "width": 70.4,
+      "height": 22.4,
+      "text": "Holidays",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#3B4FE8",
+      "originalText": "Holidays",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "autoResize": true
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#FFFFFF"
+  }
+}
