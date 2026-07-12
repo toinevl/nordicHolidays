@@ -42,6 +42,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
+export function warmUpApi(): void {
+  fetch(`${API_BASE}/api/health`).catch(() => {})
+}
+
 export const apiClient = {
   getPreferences: () => request<Preferences>('/api/preferences'),
   savePreferences: (prefs: Preferences) => request<Preferences>('/api/preferences', { method: 'PUT', body: JSON.stringify(prefs) }),
