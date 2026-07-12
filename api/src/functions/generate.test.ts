@@ -358,4 +358,68 @@ describe('POST /api/generate', () => {
     expect(body.stops[0].nights).toBe(1)
     expect(body.stops[1].nights).toBe(2)
   })
+
+  it('promotes distant day trips (>150 km from base) to overnight stops', async () => {
+    const goteborgBase = {
+      day: 1,
+      city: 'Göteborg',
+      region: 'Västra Götaland',
+      lat: 57.7089,
+      lng: 11.9746,
+      nights: 2,
+      highlights: ['Liseberg'],
+      accommodation: 'City center hotel',
+      culinaryNotes: 'Fresh seafood',
+    }
+    const distantDayTrip = {
+      day: 3,
+      city: 'Gamla Stan (Stockholm)',
+      region: 'Uppland',
+      lat: 59.3293,
+      lng: 18.0686,
+      nights: 0,
+      highlights: ['Medieval streets'],
+      accommodation: 'Day trip',
+      culinaryNotes: 'Historic cafés',
+    }
+    const nearDayTrip = {
+      day: 4,
+      city: 'Marstrand',
+      region: 'Västra Götaland',
+      lat: 57.8863,
+      lng: 11.5820,
+      nights: 0,
+      highlights: ['Fortress'],
+      accommodation: 'Day trip',
+      culinaryNotes: 'Local fish',
+    }
+    const itin = {
+      title: 'West Coast Explorer',
+      totalDays: 5,
+      startCity: 'Göteborg',
+      endCity: 'Göteborg',
+      stops: [goteborgBase, distantDayTrip, nearDayTrip],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Göteborg', endCity: 'Göteborg', tripDays: 5 }),
+    } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(200)
+    const body = JSON.parse(result.body as string) as Itinerary
+    expect(body.stops).toHaveLength(3)
+    expect(body.stops[0].city).toBe('Göteborg')
+    expect(body.stops[0].nights).toBe(2)
+    expect(body.stops[1].city).toBe('Gamla Stan (Stockholm)')
+    expect(body.stops[1].nights).toBe(1) // promoted from 0 (>150 km away)
+    expect(body.stops[2].city).toBe('Marstrand')
+    expect(body.stops[2].nights).toBe(0) // stays 0 (<150 km away)
+    expect(body.totalDays).toBe(5) // unchanged
+  })
 })

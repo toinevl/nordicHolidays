@@ -1,0 +1,26 @@
+name: Keep API warm
+
+# The API runs on Flex Consumption and scales to zero when idle; a cold start
+# costs ~17s (measured 2026-07-12, wishlist #55/#67). The in-page warm-up ping
+# only helps visitors who browse before their first API interaction — this
+# schedule keeps the app warm during European waking hours so even the first
+# visitor of the hour gets a warm API. Not a substitute for an always-ready
+# instance; just the free approximation of one.
+
+on:
+  schedule:
+    # Every 15 minutes, 05:00-22:45 UTC (07:00-00:45 CEST)
+    - cron: '*/15 5-22 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping health endpoint
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -m 60 \
+            https://nordic-holidays-api.azurewebsites.net/api/health)
+          echo "health returned $code"
+          test "$code" = "200"

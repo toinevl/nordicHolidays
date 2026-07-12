@@ -25,6 +25,7 @@ export const en: LocaleStrings = {
     save: 'Save',
     saving: 'Saving...',
     load: 'Load',
+    loadingTrip: 'Loading...',
     empty: 'No trips yet — be the first to add one!',
     loading: 'Loading...',
     errorLoading: 'Error loading trips',

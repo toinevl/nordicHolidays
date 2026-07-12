@@ -4,6 +4,7 @@ import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 import { checkAndIncrementRateLimit } from '../lib/rateLimit'
+import { haversineKm } from '../lib/geo'
 import type { Itinerary, Preferences } from '../types'
 import { GenerateRequestBodySchema, logError } from '../lib/schemas'
 
@@ -13,6 +14,9 @@ const COUNTRY_NAMES: Record<string, string> = {
   DK: 'Denmark',
   FI: 'Finland',
 }
+
+// Day trips beyond 150 km (~1.5h drive) are promoted to overnight stops for geographic honesty
+const MAX_DAY_TRIP_KM = 150
 
 function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' | 'de' = 'en'): string {
   const countryName = COUNTRY_NAMES[prefs.country] ?? 'the selected Nordic country'
@@ -153,6 +157,34 @@ export async function generateHandler(
     if (input.stops.length > 0 && input.stops[0].nights === 0) {
       ctx?.warn('generateHandler: normalizing first stop nights from 0 to 1')
       input.stops[0].nights = 1
+    }
+
+    // Promote day trips further than MAX_DAY_TRIP_KM (straight-line) from
+    // their base to overnight stops. Bases are resolved against the original
+    // stop structure in a first pass so one promotion can't change which base
+    // the next day trip measures against; mutations happen afterwards.
+    const promotions: Array<{ index: number, km: number, baseCity: string }> = []
+    for (let i = 0; i < input.stops.length; i++) {
+      const stop = input.stops[i]
+      if (stop.nights !== 0) continue
+      // Nearest preceding overnight stop, else nearest following one
+      let base = null
+      for (let j = i - 1; j >= 0; j--) {
+        if (input.stops[j].nights >= 1) { base = input.stops[j]; break }
+      }
+      if (!base) {
+        for (let j = i + 1; j < input.stops.length; j++) {
+          if (input.stops[j].nights >= 1) { base = input.stops[j]; break }
+        }
+      }
+      if (!base) continue
+      const km = haversineKm({ lat: stop.lat, lng: stop.lng }, { lat: base.lat, lng: base.lng })
+      if (km > MAX_DAY_TRIP_KM) promotions.push({ index: i, km, baseCity: base.city })
+    }
+    for (const { index, km, baseCity } of promotions) {
+      const stop = input.stops[index]
+      ctx?.warn(`generateHandler: promoting ${stop.city} to overnight stop (${Math.round(km)} km from ${baseCity})`)
+      stop.nights = 1
     }
 
     const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString() }

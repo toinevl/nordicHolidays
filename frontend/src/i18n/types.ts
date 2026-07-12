@@ -25,6 +25,7 @@ export interface LocaleStrings {
     save: string
     saving: string
     load: string
+    loadingTrip: string
     empty: string
     loading: string
     errorLoading: string
