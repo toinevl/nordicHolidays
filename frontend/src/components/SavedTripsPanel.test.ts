@@ -227,3 +227,109 @@ describe('SavedTripsPanel save feedback', () => {
     expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Network down'))
   })
 })
+
+describe('SavedTripsPanel load button loading state', () => {
+  let store: any
+  let toast: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn>; show: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+    toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), show: vi.fn() }
+    store = {
+      getState: vi.fn(() => ({
+        unsaved: false,
+        savedItineraries: [],
+        locale: 'en',
+      })),
+      setState: vi.fn(),
+      subscribe: vi.fn(),
+    }
+  })
+
+  it('disables button and shows loading text while getItinerary is pending', async () => {
+    const { apiClient } = await import('../api/client')
+    let resolveFetch: (value: any) => void
+    const fetchPromise = new Promise(resolve => { resolveFetch = resolve })
+    ;(apiClient.listItineraries as any).mockResolvedValueOnce([
+      {
+        id: 'trip-1',
+        name: 'Resa till Malmö',
+        startCity: 'Stockholm',
+        endCity: 'Malmö',
+        createdAt: '2026-07-12T12:00:00Z',
+      },
+      {
+        id: 'trip-2',
+        name: 'Västeras Äventyr',
+        startCity: 'Västerås',
+        endCity: 'Västerås',
+        createdAt: '2026-07-12T12:00:00Z',
+      },
+    ])
+    ;(apiClient.getItinerary as any).mockReturnValueOnce(fetchPromise)
+
+    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, async () => '', toast as any)
+    panel.open()
+    await vi.waitFor(() => expect(document.querySelectorAll('.btn-load').length).toBe(2))
+
+    const buttons = document.querySelectorAll('.btn-load') as NodeListOf<HTMLButtonElement>
+    const button1 = Array.from(buttons).find(b => b.dataset.id === 'trip-1')!
+    const button2 = Array.from(buttons).find(b => b.dataset.id === 'trip-2')!
+    expect(button1.textContent).toBe('Load')
+    expect(button1.disabled).toBe(false)
+    expect(button2.disabled).toBe(false)
+
+    button1.click()
+
+    // While pending, button should be disabled with loading text
+    expect(button1.disabled).toBe(true)
+    expect(button1.textContent).toBe('Loading...')
+    expect(button1.classList.contains('btn--loading')).toBe(true)
+    // Other buttons should also be disabled
+    expect(button2.disabled).toBe(true)
+
+    // Resolve the fetch
+    resolveFetch!({ title: 'Resa till Malmö', stops: [] })
+
+    // Wait for handler to complete
+    await vi.waitFor(() => {
+      expect(button1.disabled).toBe(false)
+    })
+
+    // After resolution, button should be restored
+    expect(button1.textContent).toBe('Load')
+    expect(button1.classList.contains('btn--loading')).toBe(false)
+    expect(button2.disabled).toBe(false)
+  })
+
+  it('restores button state in finally block even on error', async () => {
+    const { apiClient } = await import('../api/client')
+    ;(apiClient.listItineraries as any).mockResolvedValueOnce([
+      {
+        id: 'trip-1',
+        name: 'Resa till Malmö',
+        startCity: 'Stockholm',
+        endCity: 'Malmö',
+        createdAt: '2026-07-12T12:00:00Z',
+      },
+    ])
+    ;(apiClient.getItinerary as any).mockRejectedValueOnce(new Error('Network error'))
+
+    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, async () => '', toast as any)
+    panel.open()
+    await vi.waitFor(() => expect(document.querySelectorAll('.btn-load').length).toBe(1))
+
+    const buttons = document.querySelectorAll('.btn-load') as NodeListOf<HTMLButtonElement>
+    const button = Array.from(buttons).find(b => b.dataset.id === 'trip-1')!
+    button.click()
+
+    // Wait for error handler to complete
+    await new Promise(r => setTimeout(r, 150))
+
+    // Button should be restored even after error
+    expect(button.disabled).toBe(false)
+    expect(button.textContent).toBe('Load')
+    expect(button.classList.contains('btn--loading')).toBe(false)
+  })
+})

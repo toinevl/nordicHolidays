@@ -25,6 +25,7 @@ export const nl: LocaleStrings = {
     save: 'Opslaan',
     saving: 'Opslaan...',
     load: 'Laden',
+    loadingTrip: 'Laden...',
     empty: 'Nog geen reizen — wees de eerste!',
     loading: 'Laden...',
     errorLoading: 'Fout bij laden van reizen',

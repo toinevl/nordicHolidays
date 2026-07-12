@@ -25,6 +25,7 @@ export const de: LocaleStrings = {
     save: 'Speichern',
     saving: 'Speichern...',
     load: 'Laden',
+    loadingTrip: 'Lädt...',
     empty: 'Noch keine Reisen — sei der Erste!',
     loading: 'Laden...',
     errorLoading: 'Fehler beim Laden der Reisen',

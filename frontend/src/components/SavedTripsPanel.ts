@@ -180,6 +180,15 @@ export class SavedTripsPanel {
       container.querySelectorAll('.btn-load').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id = (btn as HTMLElement).dataset.id!
+          const button = btn as HTMLButtonElement
+          const originalText = button.textContent
+          const allLoadButtons = container.querySelectorAll('.btn-load') as NodeListOf<HTMLButtonElement>
+
+          button.disabled = true
+          button.textContent = t('saved.loadingTrip')
+          button.classList.add('btn--loading')
+          allLoadButtons.forEach(b => { if (b !== button) b.disabled = true })
+
           try {
             const itinerary = await apiClient.getItinerary(id)
             const summary = list.find(s => s.id === id)!
@@ -187,6 +196,11 @@ export class SavedTripsPanel {
             this.close()
           } catch (err) {
             this.toast?.error(`${t('saved.loadFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          } finally {
+            button.disabled = false
+            button.textContent = originalText
+            button.classList.remove('btn--loading')
+            allLoadButtons.forEach(b => { if (b !== button) b.disabled = false })
           }
         })
       })
