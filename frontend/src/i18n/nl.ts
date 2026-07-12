@@ -80,6 +80,7 @@ export const nl: LocaleStrings = {
     exportICS: 'Exporteer iCal',
     exportGoogleMaps: 'Google Maps',
     exportWaze: 'Waze',
+    tripIndex: 'Reisindex',
     undoLastEdit: 'Laatste wijziging ongedaan maken',
   },
   season: {

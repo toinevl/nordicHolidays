@@ -577,7 +577,7 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 /* ── PRINT ──────────────────────────────────────────────────────────────── */
 @media print {
   nav, .status-bar, .panel-overlay, .toast-container, .loading-overlay,
-  .hero-actions, .btn-fly, .filter-panel, #btn-print, .grain { display: none !important; }
+  .hero-actions, .btn-fly, .filter-panel, .trip-index, #btn-print, .grain { display: none !important; }
 
   body { background: #fff; color: #111; font-size: 12pt; }
   #hero { height: auto; min-height: 0; page-break-after: always; }
@@ -614,3 +614,26 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 .t-item--daytrip .t-card { border-left: 2px dashed var(--border); margin-left: 12px; background: color-mix(in srgb, var(--bg-alt) 92%, transparent); }
 .badge-daytrip { font-weight: 600; }
 .daytrip-base { display: block; font-size: 0.78rem; color: var(--ink-muted); }
+
+/* Trip Index (#69) — compact stop navigator in the filter panel sidebar */
+.trip-index { border-top: 1px solid var(--border); padding-top: 0.9rem; margin-top: 0.25rem; }
+.trip-index-title {
+  font-family: 'DM Mono', monospace; font-size: 0.65rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 0.6rem;
+}
+.trip-index-list { list-style: none; display: flex; flex-direction: column; gap: 0.15rem; }
+.trip-index-link {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%;
+  background: none; border: none; cursor: pointer;
+  padding: 0.3rem 0.4rem; border-radius: var(--r);
+  transition: background 0.15s;
+  text-align: left;
+}
+.trip-index-link:hover { background: var(--bg-subtle); }
+.trip-index-day {
+  font-family: 'DM Mono', monospace; font-size: 0.58rem; font-weight: 500;
+  color: var(--accent-2); flex-shrink: 0; min-width: 1.8rem;
+}
+.trip-index-dest { font-size: 0.82rem; color: var(--ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trip-index-daytrip-mark { color: var(--ink-muted); font-size: 0.7rem; flex-shrink: 0; }
+.trip-index-item--daytrip .trip-index-dest { color: var(--ink-muted); }

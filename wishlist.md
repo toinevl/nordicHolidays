@@ -120,4 +120,4 @@ migration, fully backward compatible; grounded briefs per item in
 ## v1.7 — Navigation Export (seeded 2026-07-12)
 
 - [x] (A) Send itinerary to Google Maps (multi-stop driving route) and Waze (navigate to final destination) via deep-link URLs so users can import their trip for turn-by-turn guidance — see .hermes/plans/2026-07-12_143000-google-maps-waze-export.md +feature +ui @me #68
-- [ ] (B) Add a trip summary/index overview for page navigation — a compact at-a-glance panel listing all stops with day numbers, city names, and quick-jump links so users can navigate between itinerary sections without scrolling the full timeline +feature +ui @me #69
+- [x] (B) Add a trip summary/index overview for page navigation — a compact at-a-glance panel listing all stops with day numbers, city names, and quick-jump links so users can navigate between itinerary sections without scrolling the full timeline +feature +ui @me #69

@@ -80,6 +80,7 @@ export const en: LocaleStrings = {
     exportICS: 'Export iCal',
     exportGoogleMaps: 'Google Maps',
     exportWaze: 'Waze',
+    tripIndex: 'Trip Index',
     undoLastEdit: 'Undo last edit',
   },
   season: {

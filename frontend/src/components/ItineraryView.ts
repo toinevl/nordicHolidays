@@ -129,6 +129,7 @@ export class ItineraryView {
     this.accommodations = accommodations
     this.renderRouteTools()
     this.renderTimeline()
+    this.renderTripIndex()
     this.renderCulinary()
     this.renderAccommodations()
     this.initScrollReveal()
@@ -245,6 +246,7 @@ export class ItineraryView {
     this.currentFilter = 'all'
     this.renderRouteTools()
     this.renderTimeline()
+    this.renderTripIndex()
     this.renderCulinary()
     this.renderAccommodations()
     this.initScrollReveal()
@@ -343,6 +345,34 @@ export class ItineraryView {
         <div class="selected-title">${escapeHtml(stop.dest)}</div>
         <p class="selected-copy">${t('itinerary.dayPrefix')} ${stop.days} · ${stop.dates}<br>${drive}</p>`
     }
+  }
+
+  private renderTripIndex(): void {
+    const el = document.getElementById('trip-index')
+    if (!el || this.stops.length === 0) return
+
+    el.innerHTML = `
+      <div class="trip-index-title">${t('itinerary.tripIndex')}</div>
+      <ul class="trip-index-list">
+        ${this.stops.map((s) => {
+          const isDayTripStop = isDayTrip(s)
+          return `          <li class="trip-index-item${isDayTripStop ? ' trip-index-item--daytrip' : ''}">
+            <button class="trip-index-link" data-stop-id="${s.id}">
+              <span class="trip-index-day">D${s.days}</span>
+              <span class="trip-index-dest">${escapeHtml(s.dest)}</span>
+              ${isDayTripStop ? '<span class="trip-index-daytrip-mark">◇</span>' : ''}
+            </button>
+          </li>`
+        }).join('')}
+      </ul>`
+
+    el.querySelectorAll<HTMLButtonElement>('.trip-index-link').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const stopId = Number(btn.dataset.stopId)
+        if (!Number.isFinite(stopId)) return
+        this.setSelectedStop(stopId, true)
+      })
+    })
   }
 
   private renderTimeline(): void {

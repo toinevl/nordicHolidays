@@ -80,6 +80,7 @@ export interface LocaleStrings {
     exportICS: string
     exportGoogleMaps: string
     exportWaze: string
+    tripIndex: string
     undoLastEdit: string
   }
   map: {
