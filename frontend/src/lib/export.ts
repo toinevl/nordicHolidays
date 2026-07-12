@@ -98,6 +98,53 @@ END:VCALENDAR`
 }
 
 /**
+ * Convert an Itinerary to a Google Maps multi-stop driving directions URL.
+ * Origin is the first stop, destination is the last stop, and middle stops
+ * become pipe-separated waypoints. For ≤2 stops, no waypoints param is emitted.
+ * An empty itinerary yields the plain Google Maps homepage URL.
+ */
+export function itineraryToGoogleMapsUrl(itinerary: Itinerary): string {
+  const base = 'https://www.google.com/maps'
+  if (itinerary.stops.length === 0) {
+    return base
+  }
+
+  const origin = itinerary.stops[0]
+  const destination = itinerary.stops[itinerary.stops.length - 1]
+
+  const params = new URLSearchParams()
+  params.set('api', '1')
+  params.set('travelmode', 'driving')
+  params.set('origin', `${origin.lat},${origin.lng}`)
+  params.set('destination', `${destination.lat},${destination.lng}`)
+
+  const waypoints = itinerary.stops.slice(1, -1)
+  if (waypoints.length > 0) {
+    params.set(
+      'waypoints',
+      waypoints.map((w) => `${w.lat},${w.lng}`).join('|'),
+    )
+  }
+
+  return `${base}/dir/?${params.toString()}`
+}
+
+/**
+ * Convert an Itinerary to a Waze navigation URL targeting the final destination.
+ * Uses the waze.com/ul deep-link format with ll=<lat>,<lng>&navigate=yes for the
+ * last stop. An empty itinerary yields the plain Waze homepage URL.
+ */
+export function itineraryToWazeUrl(itinerary: Itinerary): string {
+  const base = 'https://waze.com'
+  if (itinerary.stops.length === 0) {
+    return base
+  }
+
+  const destination = itinerary.stops[itinerary.stops.length - 1]
+  return `${base}/ul?ll=${destination.lat}%2C${destination.lng}&navigate=yes`
+}
+
+/**
  * Escape special characters for iCalendar format.
  * Per RFC 5545, special characters in parameter and property values must be escaped.
  */

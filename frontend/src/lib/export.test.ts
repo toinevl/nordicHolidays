@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Itinerary } from '../types'
-import { itineraryToGPX, itineraryToICS, downloadFile } from './export'
+import {
+  itineraryToGPX,
+  itineraryToICS,
+  itineraryToGoogleMapsUrl,
+  itineraryToWazeUrl,
+  downloadFile,
+} from './export'
 
 const sampleItinerary: Itinerary = {
   title: 'Nordic Adventure',
@@ -216,6 +222,118 @@ describe('iCalendar Export', () => {
     const uids = (ics.match(/UID:[^\n]+/g) || []).map((u) => u.replace('UID:', ''))
     expect(uids.length).toBe(3)
     expect(new Set(uids).size).toBe(3) // All unique
+  })
+})
+
+describe('itineraryToGoogleMapsUrl', () => {
+  it('returns the Google Maps homepage for an empty itinerary', () => {
+    const empty: Itinerary = { ...sampleItinerary, stops: [] }
+    expect(itineraryToGoogleMapsUrl(empty)).toBe('https://www.google.com/maps')
+  })
+
+  it('uses the first stop as origin and last as destination', () => {
+    const url = itineraryToGoogleMapsUrl(sampleItinerary)
+    expect(url).toContain('origin=59.3293%2C18.0686')
+    expect(url).toContain('destination=59.9139%2C10.7522')
+  })
+
+  it('includes middle stops as pipe-separated waypoints', () => {
+    const url = itineraryToGoogleMapsUrl(sampleItinerary)
+    // Uppsala is the sole middle stop
+    expect(url).toContain('waypoints=59.8586%2C17.6389')
+  })
+
+  it('omits waypoints when there are exactly two stops', () => {
+    const twoStop: Itinerary = {
+      ...sampleItinerary,
+      stops: [sampleItinerary.stops[0], sampleItinerary.stops[2]],
+    }
+    const url = itineraryToGoogleMapsUrl(twoStop)
+    expect(url).not.toContain('waypoints')
+    expect(url).toContain('origin=59.3293%2C18.0686')
+    expect(url).toContain('destination=59.9139%2C10.7522')
+  })
+
+  it('omits waypoints when there is only one stop', () => {
+    const oneStop: Itinerary = {
+      ...sampleItinerary,
+      stops: [sampleItinerary.stops[0]],
+    }
+    const url = itineraryToGoogleMapsUrl(oneStop)
+    expect(url).not.toContain('waypoints')
+    // origin and destination are the same stop
+    expect(url).toContain('origin=59.3293%2C18.0686')
+    expect(url).toContain('destination=59.3293%2C18.0686')
+  })
+
+  it('uses the driving travelmode', () => {
+    const url = itineraryToGoogleMapsUrl(sampleItinerary)
+    expect(url).toContain('travelmode=driving')
+  })
+
+  it('builds a URL with the /dir/ path and query string', () => {
+    const url = itineraryToGoogleMapsUrl(sampleItinerary)
+    expect(url).toMatch(/^https:\/\/www\.google\.com\/maps\/dir\/\?/)
+  })
+
+  it('joins multiple waypoints with encoded pipe characters', () => {
+    const fourStop: Itinerary = {
+      ...sampleItinerary,
+      stops: [
+        { ...sampleItinerary.stops[0], city: 'A' },
+        { ...sampleItinerary.stops[1], city: 'B' },
+        {
+          day: 3,
+          city: 'Gävle',
+          region: 'Gävleborg',
+          lat: 60.6745,
+          lng: 17.1413,
+          nights: 1,
+          highlights: [],
+          accommodation: 'Hotel D',
+          culinaryNotes: '',
+        },
+        { ...sampleItinerary.stops[2], city: 'D' },
+      ],
+    }
+    const url = itineraryToGoogleMapsUrl(fourStop)
+    // Two middle stops → waypoints joined by %7C (encoded pipe)
+    expect(url).toContain('waypoints=59.8586%2C17.6389%7C60.6745%2C17.1413')
+  })
+})
+
+describe('itineraryToWazeUrl', () => {
+  it('returns the Waze homepage for an empty itinerary', () => {
+    const empty: Itinerary = { ...sampleItinerary, stops: [] }
+    expect(itineraryToWazeUrl(empty)).toBe('https://waze.com')
+  })
+
+  it('navigates to the last stop coordinates', () => {
+    const url = itineraryToWazeUrl(sampleItinerary)
+    expect(url).toContain('ll=59.9139%2C10.7522')
+    expect(url).toContain('navigate=yes')
+  })
+
+  it('uses the waze.com/ul deep-link format', () => {
+    const url = itineraryToWazeUrl(sampleItinerary)
+    expect(url).toMatch(/^https:\/\/waze\.com\/ul\?/)
+  })
+
+  it('only targets the final destination, ignoring earlier stops', () => {
+    const url = itineraryToWazeUrl(sampleItinerary)
+    // Stockholm (first stop) should not appear in the URL
+    expect(url).not.toContain('59.3293')
+    expect(url).not.toContain('18.0686')
+  })
+
+  it('handles a single-stop itinerary by navigating to that stop', () => {
+    const oneStop: Itinerary = {
+      ...sampleItinerary,
+      stops: [sampleItinerary.stops[0]],
+    }
+    const url = itineraryToWazeUrl(oneStop)
+    expect(url).toContain('ll=59.3293%2C18.0686')
+    expect(url).toContain('navigate=yes')
   })
 })
 

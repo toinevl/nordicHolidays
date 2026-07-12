@@ -3,7 +3,7 @@ import { haversineKm } from '../lib/distance'
 import { getSeasonInfo } from '../data/seasonData'
 import { t, tpl } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
-import { itineraryToGPX, itineraryToICS, downloadFile } from '../lib/export'
+import { itineraryToGPX, itineraryToICS, downloadFile, itineraryToGoogleMapsUrl, itineraryToWazeUrl } from '../lib/export'
 import { isDayTrip, baseFor } from '../lib/dayTrips'
 
 export type FilterChangeCallback = (filter: string) => void
@@ -161,6 +161,20 @@ export class ItineraryView {
     icsBtn.addEventListener('click', () => this.exportICS())
     container.appendChild(icsBtn)
 
+    const gmapsBtn = document.createElement('button')
+    gmapsBtn.id = 'btn-export-gmaps'
+    gmapsBtn.className = 'btn btn--secondary btn--small'
+    gmapsBtn.textContent = t('itinerary.exportGoogleMaps')
+    gmapsBtn.addEventListener('click', () => this.openInGoogleMaps())
+    container.appendChild(gmapsBtn)
+
+    const wazeBtn = document.createElement('button')
+    wazeBtn.id = 'btn-export-waze'
+    wazeBtn.className = 'btn btn--secondary btn--small'
+    wazeBtn.textContent = t('itinerary.exportWaze')
+    wazeBtn.addEventListener('click', () => this.openInWaze())
+    container.appendChild(wazeBtn)
+
     const undoBtn = document.createElement('button')
     undoBtn.id = 'btn-undo-last-edit'
     undoBtn.className = 'btn btn--secondary btn--small hidden'
@@ -187,6 +201,18 @@ export class ItineraryView {
     const content = itineraryToICS(this.currentItinerary)
     const filename = `${this.currentItinerary.title.toLowerCase().replace(/\s+/g, '-')}.ics`
     downloadFile(filename, content, 'text/calendar')
+  }
+
+  private openInGoogleMaps(): void {
+    if (!this.currentItinerary) return
+    const url = itineraryToGoogleMapsUrl(this.currentItinerary)
+    window.open(url, '_blank', 'noopener')
+  }
+
+  private openInWaze(): void {
+    if (!this.currentItinerary) return
+    const url = itineraryToWazeUrl(this.currentItinerary)
+    window.open(url, '_blank', 'noopener')
   }
 
   renderFromItinerary(itinerary: Itinerary): void {

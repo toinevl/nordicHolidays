@@ -78,6 +78,8 @@ export const nl: LocaleStrings = {
     savingNote: 'Opslaan...',
     exportGPX: 'Exporteer GPX',
     exportICS: 'Exporteer iCal',
+    exportGoogleMaps: 'Google Maps',
+    exportWaze: 'Waze',
     undoLastEdit: 'Laatste wijziging ongedaan maken',
   },
   season: {

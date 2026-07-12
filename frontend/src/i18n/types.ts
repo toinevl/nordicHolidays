@@ -78,6 +78,8 @@ export interface LocaleStrings {
     savingNote: string
     exportGPX: string
     exportICS: string
+    exportGoogleMaps: string
+    exportWaze: string
     undoLastEdit: string
   }
   map: {

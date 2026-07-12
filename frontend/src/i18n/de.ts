@@ -78,6 +78,8 @@ export const de: LocaleStrings = {
     savingNote: 'Speichern...',
     exportGPX: 'GPX exportieren',
     exportICS: 'iCal exportieren',
+    exportGoogleMaps: 'Google Maps',
+    exportWaze: 'Waze',
     undoLastEdit: 'Letzte Änderung rückgängig machen',
   },
   season: {
