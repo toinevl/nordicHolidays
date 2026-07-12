@@ -15,6 +15,7 @@ Plan your Nordic holiday by selecting a start and end point — we’ll generate
 - **Save & load trips** — persist itineraries to Azure Table Storage and reload them in one click
 - **Share via URL** — every saved trip gets a shareable `?id=` link
 - **Print / PDF export** — print-optimised stylesheet for clean offline use
+- **Navigation export** — send any itinerary to **Google Maps** (multi-stop driving route) or **Waze** (navigate to final destination) via deep-link; also export as **GPX** (sat-nav waypoints) or **iCal** (calendar events)
 - **Day-by-day timeline** — stop cards with drive distances, tips, and region colour tags
 - **Season & weather callouts** — packing and activity advice per trip
 - **Regenerate** — instantly produce a fresh itinerary with the same parameters
