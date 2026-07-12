@@ -1,6 +1,7 @@
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Stop } from '../types'
+import { buildBaseRouteCoords, buildExcursionLines, markerClassFor } from './mapGeometry'
 
 export type StopSelectCallback = (stop: Stop, options?: { scroll?: boolean }) => void
 
@@ -30,6 +31,22 @@ export class MapView {
       bearing: options?.bearing ?? 0,
       dragRotate: options?.dragRotate ?? false,
     })
+
+    this._addLegend()
+  }
+
+  private _addLegend(): void {
+    const container = this.map.getContainer()
+    const legend = document.createElement('div')
+    legend.className = 'map-legend'
+    legend.innerHTML = `
+      <div><span data-i18n="map.legend-stay">● Overnight stay</span></div>
+      <div><span data-i18n="map.legend-daytrip">◇ Day trip</span></div>
+      <div><span data-i18n="map.legend-route">─ Route</span></div>
+      <div><span data-i18n="map.legend-excursion">┄ Day excursion</span></div>
+    `
+    // TODO(#61): replace hardcoded strings with t() keys map.legend*
+    container.appendChild(legend)
   }
 
   captureThumbnail(canvas?: HTMLCanvasElement | null): Promise<string> {
@@ -108,53 +125,17 @@ export class MapView {
 
   addStops(stops: Stop[]): void {
     this.stops = stops
-    stops.forEach(stop => {
-      const el = document.createElement('div')
-      el.className = 'map-marker'
-      el.dataset.id = String(stop.id)
-      el.innerHTML = `<span>${stop.id}</span>`
-      el.addEventListener('click', () => this.onStopSelect(stop, { scroll: true }))
-      new maplibregl.Marker({ element: el })
-        .setLngLat(stop.coords)
-        .addTo(this.map)
-      this.markerEls.set(stop.id, el)
-    })
+    this._addMarkers(stops)
 
     this.map.on('load', () => {
-      this.map.addSource('route', {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: stops.map(s => s.coords),
-          },
-        },
-      })
-      this.map.addLayer({
-        id: 'route',
-        type: 'line',
-        source: 'route',
-        paint: { 'line-color': '#e89820', 'line-width': 2.5, 'line-opacity': 0.0 },
-      })
-      setTimeout(() => this.map.setPaintProperty('route', 'line-opacity', 0.9), 50)
-      this.animateRoute()
+      this._addRouteLayers(stops)
     })
   }
 
-  replaceStops(stops: Stop[]): void {
-    this.stops = stops
-    this.markerEls.forEach(el => el.remove())
-    this.markerEls.clear()
-
-    if (this.map.getLayer('route')) this.map.removeLayer('route')
-    if (this.map.getSource('route')) this.map.removeSource('route')
-
-    // Add markers directly (no load event needed — map is already loaded)
+  private _addMarkers(stops: Stop[]): void {
     stops.forEach(stop => {
       const el = document.createElement('div')
-      el.className = 'map-marker'
+      el.className = markerClassFor(stop)
       el.dataset.id = String(stop.id)
       el.innerHTML = `<span>${stop.id}</span>`
       el.addEventListener('click', () => this.onStopSelect(stop, { scroll: true }))
@@ -163,8 +144,13 @@ export class MapView {
         .addTo(this.map)
       this.markerEls.set(stop.id, el)
     })
+  }
 
-    // Add route directly (map already loaded)
+  private _addRouteLayers(stops: Stop[]): void {
+    const baseRouteCoords = buildBaseRouteCoords(stops)
+    const excursionLines = buildExcursionLines(stops)
+
+    // Main route through overnight bases
     this.map.addSource('route', {
       type: 'geojson',
       data: {
@@ -172,7 +158,7 @@ export class MapView {
         properties: {},
         geometry: {
           type: 'LineString',
-          coordinates: stops.map(s => s.coords),
+          coordinates: baseRouteCoords,
         },
       },
     })
@@ -184,6 +170,50 @@ export class MapView {
     })
     setTimeout(() => this.map.setPaintProperty('route', 'line-opacity', 0.9), 50)
     this.animateRoute()
+
+    // Excursion lines from bases to day trips
+    if (excursionLines.length > 0) {
+      this.map.addSource('route-excursions', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: excursionLines.map(line => ({
+            type: 'Feature' as const,
+            properties: {},
+            geometry: {
+              type: 'LineString' as const,
+              coordinates: line,
+            },
+          })),
+        },
+      })
+      this.map.addLayer({
+        id: 'route-excursions',
+        type: 'line',
+        source: 'route-excursions',
+        paint: {
+          'line-color': '#e89820',
+          'line-width': 1.5,
+          'line-opacity': 0.7,
+          'line-dasharray': [2, 2],
+        },
+      })
+    }
+  }
+
+  replaceStops(stops: Stop[]): void {
+    this.stops = stops
+    this.markerEls.forEach(el => el.remove())
+    this.markerEls.clear()
+
+    if (this.map.getLayer('route')) this.map.removeLayer('route')
+    if (this.map.getSource('route')) this.map.removeSource('route')
+    if (this.map.getLayer('route-excursions')) this.map.removeLayer('route-excursions')
+    if (this.map.getSource('route-excursions')) this.map.removeSource('route-excursions')
+
+    // Add markers and route layers directly (map already loaded)
+    this._addMarkers(stops)
+    this._addRouteLayers(stops)
 
     if (stops[0]) this.flyTo(stops[0])
   }
