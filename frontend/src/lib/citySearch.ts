@@ -84,7 +84,7 @@ export async function searchNominatim(query: string, countryCode = '', limit = D
     }
     if (countryCode) params.countrycodes = countryCode.toLowerCase()
     url.search = new URLSearchParams(params).toString()
-    const res = await fetch(url.toString(), { headers: { 'User-Agent': 'NordicHolidays-app/1.0 (+https://example.com)' } })
+    const res = await fetch(url.toString(), { headers: { 'User-Agent': 'Fjordvia-app/1.0 (+https://fjordvia.com)' } })
     if (!res.ok) throw new Error('nominatim-error')
     const rows: { display_name: string; lat: string; lon: string; address?: Record<string, string> }[] = await res.json()
     const results = rows.slice(0, limit).map(row => ({

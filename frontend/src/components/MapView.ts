@@ -94,7 +94,7 @@ export class MapView {
 
       ctx.font = '12px sans-serif'
       ctx.fillStyle = '#94a3b8'
-      ctx.fillText('Nordic Holidays', 160, 110)
+      ctx.fillText('Fjordvia', 160, 110)
 
       resolve(canvas.toDataURL('image/jpeg', 0.6))
     })

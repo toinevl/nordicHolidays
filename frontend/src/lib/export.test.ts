@@ -127,7 +127,7 @@ describe('iCalendar Export', () => {
   it('includes required iCalendar headers', () => {
     const ics = itineraryToICS(sampleItinerary)
     expect(ics).toContain('VERSION:2.0')
-    expect(ics).toContain('PRODID:-//Nordic Holidays//EN')
+    expect(ics).toContain('PRODID:-//Fjordvia//EN')
     expect(ics).toContain('CALSCALE:GREGORIAN')
     expect(ics).toContain('METHOD:PUBLISH')
   })

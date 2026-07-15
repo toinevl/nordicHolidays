@@ -319,7 +319,7 @@ store.subscribe(() => {
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
 store.setState({
   currentItinerary: {
-    title: 'Nordic Holidays',
+    title: 'Fjordvia',
     totalDays: STOPS.reduce((sum, s) => sum + s.nights, 0),
     startCity: STOPS[0]?.dest ?? '',
     endCity: STOPS[STOPS.length - 1]?.dest ?? '',

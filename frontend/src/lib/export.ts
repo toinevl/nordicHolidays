@@ -34,7 +34,7 @@ export function itineraryToGPX(itinerary: Itinerary): string {
     .join('\n')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Nordic Holidays" xmlns="http://www.topografix.com/GPX/1/1">
+<gpx version="1.1" creator="Fjordvia" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
     <name>${escapeXml(itinerary.title)}</name>
     <desc>${escapeXml(itinerary.startCity)} to ${escapeXml(itinerary.endCity)} - ${itinerary.totalDays} days</desc>
@@ -71,7 +71,7 @@ export function itineraryToICS(itinerary: Itinerary): string {
       const dateStr = formatIcsDate(eventDate)
       const summary = `${stop.city}${stop.nights > 0 ? ` (${stop.nights} night${stop.nights === 1 ? '' : 's'})` : ' (day trip)'}`
       const description = stop.highlights.join('; ')
-      const uid = `stop-${stop.day}-${Math.random().toString(36).substr(2, 9)}@nordicholidays.local`
+      const uid = `stop-${stop.day}-${Math.random().toString(36).substr(2, 9)}@fjordvia.local`
 
       return `BEGIN:VEVENT
 UID:${uid}
@@ -87,7 +87,7 @@ END:VEVENT`
   const now = formatIcsDateTime(new Date())
   return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Nordic Holidays//EN
+PRODID:-//Fjordvia//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:${escapeIcs(itinerary.title)}

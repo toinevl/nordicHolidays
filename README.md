@@ -1,10 +1,10 @@
-# NordicHolidays
+# Fjordvia
 
 [![CI](https://github.com/toinevl/nordicHolidays/actions/workflows/ci.yml/badge.svg)](https://github.com/toinevl/nordicHolidays/actions/workflows/ci.yml)
 
-Plan your Nordic holiday by selecting a start and end point — we’ll generate the rest with AI.
+**Fjordvia** — AI-Planned Road Trips Across the Nordics. Plan your Nordic holiday by selecting a start and end point — we’ll generate the rest with AI.
 
-**Live app:** https://nordicholidays.azurestaticapps.net
+**Live app:** <https://nordicholidays.azurestaticapps.net> (Fjordvia will live at <https://fjordvia.com> once the domain binding lands — tracked separately as wishlist #80)
 
 ---
 
@@ -95,7 +95,7 @@ See [docs/architecture-diagram.md](docs/architecture-diagram.md) for the full Me
 
 ## Storage
 
-NordicHolidays uses **Azure Table Storage** exclusively for persistence. It stores `Itineraries`, `Preferences`, and `Profiles` tables under a unified `owner` model.
+Fjordvia uses **Azure Table Storage** exclusively for persistence. It stores `Itineraries`, `Preferences`, and `Profiles` tables under a unified `owner` model.
 
 ![Storage architecture](docs/storage-architecture.excalidraw)
 

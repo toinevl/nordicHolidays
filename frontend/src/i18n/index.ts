@@ -4,6 +4,7 @@ import { nl } from './nl'
 import { de } from './de'
 import { escapeHtml } from '../lib/escape'
 
+// Key deliberately unchanged after the Fjordvia rebrand so existing visitors keep their stored locale.
 export const LOCALE_STORAGE_KEY = 'nordicholidays_locale'
 
 const locales: Record<Locale, LocaleStrings> = { en, nl, de }
