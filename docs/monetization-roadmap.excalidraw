@@ -1,0 +1,270 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    {
+      "id": "title", "type": "text", "x": 30, "y": 20, "width": 960, "height": 45, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "NordicHolidays — €1,000/month by July 2027", "fontSize": 32, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "NordicHolidays — €1,000/month by July 2027", "lineHeight": 1.25
+    },
+
+    {
+      "id": "p1-box", "type": "rectangle", "x": 30, "y": 80, "width": 280, "height": 250, "angle": 0,
+      "strokeColor": "#1971c2", "backgroundColor": "#e7f5ff", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "p1-title", "type": "text", "x": 30, "y": 92, "width": 280, "height": 25, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "Phase 1 — Affiliate substrate", "fontSize": 20, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "Phase 1 — Affiliate substrate", "lineHeight": 1.25
+    },
+    {
+      "id": "p1-sub", "type": "text", "x": 30, "y": 120, "width": 280, "height": 18, "angle": 0,
+      "strokeColor": "#868e96", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "months 0–2 · code-heavy", "fontSize": 14, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "months 0–2 · code-heavy", "lineHeight": 1.25
+    },
+    {
+      "id": "p1-items", "type": "text", "x": 45, "y": 150, "width": 250, "height": 160, "angle": 0,
+      "strokeColor": "#343a40", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "• Travelpayouts signup\n• Lodging links on base cards\n• GetYourGuide on day trips\n• Car rental in trip summary\n• ~50 SEO itinerary pages\n• Click-through analytics",
+      "fontSize": 14, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top", "containerId": null,
+      "originalText": "• Travelpayouts signup\n• Lodging links on base cards\n• GetYourGuide on day trips\n• Car rental in trip summary\n• ~50 SEO itinerary pages\n• Click-through analytics",
+      "lineHeight": 1.25
+    },
+
+    {
+      "id": "arrow1", "type": "arrow", "x": 310, "y": 205, "width": 60, "height": 0, "angle": 0,
+      "strokeColor": "#495057", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 2}, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "points": [[0, 0], [60, 0]], "lastCommittedPoint": null, "startBinding": null,
+      "endBinding": null, "startArrowhead": null, "endArrowhead": "arrow"
+    },
+    {
+      "id": "arrow1-label", "type": "text", "x": 280, "y": 178, "width": 120, "height": 16, "angle": 0,
+      "strokeColor": "#868e96", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "demo + data", "fontSize": 12, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "demo + data", "lineHeight": 1.25
+    },
+
+    {
+      "id": "p2-box", "type": "rectangle", "x": 370, "y": 80, "width": 280, "height": 250, "angle": 0,
+      "strokeColor": "#f59f00", "backgroundColor": "#fff9db", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "p2-title", "type": "text", "x": 370, "y": 92, "width": 280, "height": 25, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "Phase 2 — Widget MVP + pilots", "fontSize": 20, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "Phase 2 — Widget MVP + pilots", "lineHeight": 1.25
+    },
+    {
+      "id": "p2-sub", "type": "text", "x": 370, "y": 120, "width": 280, "height": 18, "angle": 0,
+      "strokeColor": "#868e96", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "months 2–5 · build + sell", "fontSize": 14, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "months 2–5 · build + sell", "lineHeight": 1.25
+    },
+    {
+      "id": "p2-items", "type": "text", "x": 385, "y": 150, "width": 250, "height": 160, "angle": 0,
+      "strokeColor": "#343a40", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "• Embeddable ?partner= iframe\n• Partners table + theming\n• B2B landing page + demo\n• 100-prospect list\n• Outreach 10 / week\n• 2 pilots @ €49/mo",
+      "fontSize": 14, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top", "containerId": null,
+      "originalText": "• Embeddable ?partner= iframe\n• Partners table + theming\n• B2B landing page + demo\n• 100-prospect list\n• Outreach 10 / week\n• 2 pilots @ €49/mo",
+      "lineHeight": 1.25
+    },
+
+    {
+      "id": "arrow2", "type": "arrow", "x": 650, "y": 205, "width": 60, "height": 0, "angle": 0,
+      "strokeColor": "#495057", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 2}, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "points": [[0, 0], [60, 0]], "lastCommittedPoint": null, "startBinding": null,
+      "endBinding": null, "startArrowhead": null, "endArrowhead": "arrow"
+    },
+    {
+      "id": "arrow2-label", "type": "text", "x": 620, "y": 178, "width": 120, "height": 16, "angle": 0,
+      "strokeColor": "#868e96", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "convert + scale", "fontSize": 12, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "convert + scale", "lineHeight": 1.25
+    },
+
+    {
+      "id": "p3-box", "type": "rectangle", "x": 710, "y": 80, "width": 280, "height": 250, "angle": 0,
+      "strokeColor": "#2f9e44", "backgroundColor": "#d3f9d8", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "p3-title", "type": "text", "x": 710, "y": 92, "width": 280, "height": 25, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "Phase 3 — Scale to target", "fontSize": 20, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "Phase 3 — Scale to target", "lineHeight": 1.25
+    },
+    {
+      "id": "p3-sub", "type": "text", "x": 710, "y": 120, "width": 280, "height": 18, "angle": 0,
+      "strokeColor": "#868e96", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "months 5–12 · sales-led", "fontSize": 14, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "months 5–12 · sales-led", "lineHeight": 1.25
+    },
+    {
+      "id": "p3-items", "type": "text", "x": 725, "y": 150, "width": 250, "height": 160, "angle": 0,
+      "strokeColor": "#343a40", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "• Pilots → €99–149/mo\n• Case studies on landing page\n• 7–8 paying partners\n• Support + SLA hygiene\n• Per-partner LLM cost caps\n• Quarterly checkpoints",
+      "fontSize": 14, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top", "containerId": null,
+      "originalText": "• Pilots → €99–149/mo\n• Case studies on landing page\n• 7–8 paying partners\n• Support + SLA hygiene\n• Per-partner LLM cost caps\n• Quarterly checkpoints",
+      "lineHeight": 1.25
+    },
+
+    {
+      "id": "gate-box", "type": "rectangle", "x": 370, "y": 352, "width": 280, "height": 80, "angle": 0,
+      "strokeColor": "#c92a2a", "backgroundColor": "#ffe3e3", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "dashed", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "gate-text", "type": "text", "x": 380, "y": 362, "width": 260, "height": 60, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "PIVOT GATE (month 4–5):\n30 conversations, 0 pilots →\nswitch to Trip Pass (Strategy B)", "fontSize": 13, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "PIVOT GATE (month 4–5):\n30 conversations, 0 pilots →\nswitch to Trip Pass (Strategy B)", "lineHeight": 1.25
+    },
+
+    {
+      "id": "bridge-box", "type": "rectangle", "x": 30, "y": 470, "width": 960, "height": 150, "angle": 0,
+      "strokeColor": "#862e9c", "backgroundColor": "#f3d9fa", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "bridge-title", "type": "text", "x": 30, "y": 480, "width": 960, "height": 22, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "Revenue bridge (€ / month)", "fontSize": 18, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "Revenue bridge (€ / month)", "lineHeight": 1.25
+    },
+
+    {
+      "id": "m0-box", "type": "rectangle", "x": 40, "y": 515, "width": 176, "height": 85, "angle": 0,
+      "strokeColor": "#862e9c", "backgroundColor": "#eebefa", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "m0-text", "type": "text", "x": 40, "y": 528, "width": 176, "height": 55, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "M0\n€0\n(today)", "fontSize": 14, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "M0\n€0\n(today)", "lineHeight": 1.25
+    },
+    {
+      "id": "m2-box", "type": "rectangle", "x": 231, "y": 515, "width": 176, "height": 85, "angle": 0,
+      "strokeColor": "#862e9c", "backgroundColor": "#eebefa", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "m2-text", "type": "text", "x": 231, "y": 528, "width": 176, "height": 55, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "M2\nfirst affiliate\nclicks / €", "fontSize": 14, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "M2\nfirst affiliate\nclicks / €", "lineHeight": 1.25
+    },
+    {
+      "id": "m6-box", "type": "rectangle", "x": 422, "y": 515, "width": 176, "height": 85, "angle": 0,
+      "strokeColor": "#862e9c", "backgroundColor": "#eebefa", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "m6-text", "type": "text", "x": 422, "y": 528, "width": 176, "height": 55, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "M6\n≥ €200 / mo\ncheckpoint", "fontSize": 14, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "M6\n≥ €200 / mo\ncheckpoint", "lineHeight": 1.25
+    },
+    {
+      "id": "m9-box", "type": "rectangle", "x": 613, "y": 515, "width": 176, "height": 85, "angle": 0,
+      "strokeColor": "#862e9c", "backgroundColor": "#eebefa", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "m9-text", "type": "text", "x": 613, "y": 528, "width": 176, "height": 55, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "M9\n≥ €550 / mo\ncheckpoint", "fontSize": 14, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "M9\n≥ €550 / mo\ncheckpoint", "lineHeight": 1.25
+    },
+    {
+      "id": "m12-box", "type": "rectangle", "x": 804, "y": 515, "width": 176, "height": 85, "angle": 0,
+      "strokeColor": "#2f9e44", "backgroundColor": "#8ce99a", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": {"type": 3}, "boundElements": [], "updated": 1, "link": null, "locked": false
+    },
+    {
+      "id": "m12-text", "type": "text", "x": 804, "y": 528, "width": 176, "height": 55, "angle": 0,
+      "strokeColor": "#1e1e1e", "backgroundColor": "transparent", "fillStyle": "solid", "strokeWidth": 2,
+      "strokeStyle": "solid", "roughness": 1, "opacity": 100, "groupIds": [], "frameId": null,
+      "roundness": null, "boundElements": [], "updated": 1, "link": null, "locked": false,
+      "text": "M12 — GOAL\n€1,045+ / mo\n7×€135 B2B + affiliate", "fontSize": 14, "fontFamily": 1,
+      "textAlign": "center", "verticalAlign": "top", "containerId": null,
+      "originalText": "M12 — GOAL\n€1,045+ / mo\n7×€135 B2B + affiliate", "lineHeight": 1.25
+    }
+  ],
+  "appState": {
+    "gridSize": null,
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}

@@ -121,3 +121,25 @@ migration, fully backward compatible; grounded briefs per item in
 
 - [x] (A) Send itinerary to Google Maps (multi-stop driving route) and Waze (navigate to final destination) via deep-link URLs so users can import their trip for turn-by-turn guidance — see .hermes/plans/2026-07-12_143000-google-maps-waze-export.md +feature +ui @me #68
 - [x] (B) Add a trip summary/index overview for page navigation — a compact at-a-glance panel listing all stops with day numbers, city names, and quick-jump links so users can navigate between itinerary sections without scrolling the full timeline +feature +ui @me #69
+
+## v2.0 — Monetization (seeded 2026-07-15)
+
+Chosen strategy after evaluating affiliate-only, freemium Trip Pass, and B2B widget licensing:
+**B2B embeddable widget as revenue backbone (~7 partners × ~€135/mo) with consumer affiliate
+links as low-effort substrate and live demo** — target €1,000/month by 2027-07. Business case,
+market survey (Booking.com cut off sub-€1k affiliates 2025-06; GetYourGuide ≈€9/booking via
+Travelpayouts/Awin; competitors give AI generation away free), full 3-strategy evaluation, revenue
+bridge, and pivot gates in `.hermes/plans/2026-07-15_210406-monetization-1000-eur-month.md`;
+roadmap picture in `docs/monetization-roadmap.excalidraw`.
+
+- [ ] (A) Affiliate plumbing: config-driven affiliate IDs (env/table, never hardcoded) + lodging affiliate links (Travelpayouts/Stay22) on overnight-base cards — supersedes the #63 design gap +feature +ui @me #70
+- [ ] (A) GetYourGuide activity links on day-trip cards (7–8% commission, ≈€9/booking AOV) — day-trip feature (#59–#62) becomes the monetization surface +feature +ui @me #71
+- [ ] (B) Car-rental affiliate link (DiscoverCars via Travelpayouts) in the trip summary panel (#69) — every itinerary is a driving route +feature +ui @me #72
+- [ ] (B) SEO itinerary library: pre-generate ~50 public itineraries (country × duration matrix) as indexable landing pages with sitemap + meta/OG tags, building on the public-share model (#47) +feature +seo @me #73
+- [ ] (A) Affiliate click-through tracking: App Insights custom events per link type/placement so conversion is measurable before payouts arrive (Travelpayouts ~$50 payout threshold) +improvement @me #74
+- [ ] (B) Widget MVP: embeddable `?partner=` iframe entry with per-partner theming, partner's own affiliate IDs, and "Powered by NordicHolidays" footer +feature +api @me #75
+- [ ] (B) `Partners` table + per-partner config, generate-quota/rate limits, and lead-capture email field on itinerary save (GDPR consent checkbox) +feature +api @me #76
+- [ ] (B) B2B landing page: live demo embed, pilot pricing (€49/mo, 3 months → €99–149/mo standard), case-study slots +feature +ui @me #77
+- [ ] (B) Non-code: 100-prospect outreach list (campervan/motorhome rentals NL/DE/BE, ferry content teams, camping chains, agencies) + pilot pitch; KvK + Stripe invoicing when first pilot signs; pivot gate month 4–5: 30 conversations with 0 pilots → switch to Trip Pass (Strategy B in the plan) @me #78
+- [r] (A) Rebrand to **Fjordvia** — chosen 2026-07-15 after two naming passes (fjord + via "road"; EN/NL/DE-clean, no known collisions); fjordvia.com registered at Porkbun. Rename in UI chrome + i18n strings (EN/NL/DE completeness test will enforce), page titles/OG meta, README, and the "Powered by Fjordvia" widget footer (#75) +ui +feature @me #79
+- [r] (A) Bind fjordvia.com to the SWA: DNS at Porkbun, declare the custom domain as `Microsoft.Web/staticSites/customDomains` in `infra/main.bicep` (same pattern as sweden.van-vliet.eu, #52), add the new origin to Function App platform CORS **and** the IaC drift test (#36) — missing platform CORS is exactly the 2026-06-29 "NetworkError" outage — and keep sweden.van-vliet.eu live as alias/redirect so existing share links don't break +ci +feature @me #80
