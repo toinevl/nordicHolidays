@@ -18,7 +18,12 @@ The templates in this directory are a **reference implementation** of the existi
   - Application settings (excluding secrets)
 - **Application Insights** (`nordic-holidays-api`)
 - **Static Web App** (`nordicholidays`, Free tier), including the
-  `sweden.van-vliet.eu` custom domain binding (`customDomains` child resource)
+  `sweden.van-vliet.eu` and `fjordvia.com` custom domain bindings
+  (`customDomains` child resources, param `customDomainNames`). The Free
+  tier caps custom domains at **2**, so these two fill the quota —
+  `fjordvia.eu` is a Porkbun-side 301 redirect to `https://fjordvia.com`,
+  not a binding (see [`RECOVERY.md`](./RECOVERY.md), "fjordvia.com domain
+  binding", for the manual binding/DNS runbook)
 - **Role Assignments**
   - Function App identity → Storage Table Data Contributor (on storage account)
   - Function App identity → Key Vault Secrets User (on key vault)
@@ -34,12 +39,18 @@ The templates in this directory are a **reference implementation** of the existi
   is ever deleted, follow [`RECOVERY.md`](./RECOVERY.md) to reconstruct it
   step by step** — do not guess at the federated credential subject/issuer
   format from scratch.
-- **SWA Custom Domain Binding** (`sweden.van-vliet.eu`): now declared as a
-  `Microsoft.Web/staticSites/customDomains` child resource in `main.bicep`
-  (param `customDomainName`), so recreating the Static Web App from this
-  template no longer silently drops it. DNS (the CNAME record itself) is
-  still managed outside Bicep and must already exist for the binding to
-  validate.
+- **SWA Custom Domain DNS** (`sweden.van-vliet.eu`, `fjordvia.com`): the
+  bindings themselves are declared as `Microsoft.Web/staticSites/customDomains`
+  child resources in `main.bicep` (param `customDomainNames`, a loop since
+  #80), so recreating the Static Web App from this template no longer
+  silently drops them. The DNS records (CNAME for the subdomain; TXT
+  validation token + ALIAS at Porkbun for the `fjordvia.com` apex) are
+  managed outside Bicep and must already exist for a binding to validate —
+  the step-by-step DNS/binding procedure lives in
+  [`RECOVERY.md`](./RECOVERY.md), "fjordvia.com domain binding". The live
+  Function App's **platform CORS** allow-list is also not applied by any
+  pipeline from this template; adding an origin there is a manual
+  `az functionapp cors add` (same runbook, step 1).
 - **Secrets and Sensitive Values**: The actual secret values (e.g., AZURE_FOUNDRY_API_KEY) are not stored in the template. Deploy secrets via Azure Key Vault or CI/CD pipelines.
 
 ## Template Files

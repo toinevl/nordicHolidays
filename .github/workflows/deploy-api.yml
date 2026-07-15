@@ -42,7 +42,7 @@ jobs:
               ENTRA_ISSUER_HOST="${ENTRA_ISSUER_HOST:-login.microsoftonline.com}" \
               ENTRA_API_AUDIENCE="${ENTRA_API_AUDIENCE}" \
               ENTRA_REQUIRED_SCOPE="${ENTRA_REQUIRED_SCOPE:-user_impersonation}" \
-              ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://sweden.van-vliet.eu,http://localhost:5173}"
+              ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://sweden.van-vliet.eu,https://fjordvia.com,http://localhost:5173}"
         env:
           ENTRA_ISSUER_HOST: ${{ secrets.ENTRA_ISSUER_HOST || 'login.microsoftonline.com' }}
           ENTRA_API_AUDIENCE: ${{ secrets.ENTRA_API_AUDIENCE }}
@@ -51,7 +51,7 @@ jobs:
           # App governs the browser preflight in prod; this keeps the app layer consistent
           # (and silences its "falling back to localhost" warning). Local dev still works
           # via the localhost fallback when this is unset.
-          ALLOWED_ORIGINS: ${{ vars.NORDIC_HOLIDAYS_ALLOWED_ORIGINS || 'https://sweden.van-vliet.eu,http://localhost:5173' }}
+          ALLOWED_ORIGINS: ${{ vars.NORDIC_HOLIDAYS_ALLOWED_ORIGINS || 'https://sweden.van-vliet.eu,https://fjordvia.com,http://localhost:5173' }}
 
       - name: Install dependencies
         working-directory: api

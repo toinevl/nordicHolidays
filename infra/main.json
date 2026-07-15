@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "12356200173197589925"
+      "templateHash": "3724387672773095855"
     }
   },
   "parameters": {
@@ -74,17 +74,21 @@
         "description": "Static Web App SKU - Free tier"
       }
     },
-    "customDomainName": {
-      "type": "string",
-      "defaultValue": "sweden.van-vliet.eu",
+    "customDomainNames": {
+      "type": "array",
+      "defaultValue": [
+        "sweden.van-vliet.eu",
+        "fjordvia.com"
+      ],
       "metadata": {
-        "description": "Custom domain to bind to the Static Web App. Leave empty to skip creating the binding (e.g. for an environment that has no custom domain yet)."
+        "description": "Custom domains to bind to the Static Web App. Pass an empty array to skip creating bindings (e.g. for an environment that has no custom domain yet). NOTE: the Free SWA tier allows a maximum of 2 custom domains — sweden.van-vliet.eu + fjordvia.com fills that quota, which is why fjordvia.eu is a registrar-side 301 redirect at Porkbun instead of a third binding (see infra/RECOVERY.md, \"fjordvia.com domain binding\")."
       }
     },
     "allowedCorsOrigins": {
       "type": "array",
       "defaultValue": [
         "https://sweden.van-vliet.eu",
+        "https://fjordvia.com",
         "http://localhost:5173"
       ],
       "metadata": {
@@ -383,12 +387,15 @@
       }
     },
     {
-      "condition": "[not(empty(parameters('customDomainName')))]",
+      "copy": {
+        "name": "staticWebAppCustomDomain",
+        "count": "[length(parameters('customDomainNames'))]"
+      },
       "type": "Microsoft.Web/staticSites/customDomains",
       "apiVersion": "2024-04-01",
-      "name": "[format('{0}/{1}', parameters('staticWebAppName'), parameters('customDomainName'))]",
+      "name": "[format('{0}/{1}', parameters('staticWebAppName'), parameters('customDomainNames')[copyIndex()])]",
       "properties": {
-        "validationMethod": "cname-delegation"
+        "validationMethod": "[if(lessOrEquals(length(split(parameters('customDomainNames')[copyIndex()], '.')), 2), 'dns-txt-token', 'cname-delegation')]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName'))]"
@@ -490,9 +497,9 @@
       "type": "string",
       "value": "[coalesce(reference(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2024-04-01').defaultHostname, 'Not assigned')]"
     },
-    "staticWebAppCustomDomainName": {
-      "type": "string",
-      "value": "[parameters('customDomainName')]"
+    "staticWebAppCustomDomainNames": {
+      "type": "array",
+      "value": "[parameters('customDomainNames')]"
     }
   }
 }
