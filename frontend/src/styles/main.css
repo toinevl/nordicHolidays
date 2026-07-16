@@ -660,3 +660,125 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   transition: color 0.2s, background 0.15s;
 }
 .trip-index-rentcar:hover { color: var(--primary); background: var(--bg-subtle); }
+
+/* ── B2B SECTION (#77) ──────────────────────────────────────────────────── */
+.b2b-section {
+  background: var(--bg-subtle);
+  padding: 5rem 2rem 6rem;
+}
+.b2b-hero {
+  max-width: 800px; margin: 0 auto 3.5rem; text-align: center;
+}
+.b2b-title {
+  font-size: clamp(2rem, 4vw, 3rem); font-weight: 500;
+  color: var(--ink); margin: 0.6rem 0 1rem;
+}
+.b2b-subtitle {
+  font-size: 1.1rem; color: var(--ink-muted); line-height: 1.7;
+}
+.b2b-features {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 2rem; max-width: 1100px; margin: 0 auto 4rem;
+}
+.b2b-feature {
+  text-align: center; padding: 1.5rem;
+}
+.b2b-feature-icon {
+  font-size: 2rem; margin-bottom: 0.75rem;
+}
+.b2b-feature h3 {
+  font-size: 1.15rem; color: var(--ink); margin-bottom: 0.5rem;
+}
+.b2b-feature p {
+  font-size: 0.9rem; color: var(--ink-muted); line-height: 1.6;
+}
+.b2b-demo {
+  max-width: 1000px; margin: 0 auto 4rem;
+}
+.b2b-demo-label {
+  font-family: 'DM Mono', monospace; font-size: 0.68rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--primary); margin-bottom: 0.6rem; text-align: center;
+}
+.b2b-demo-frame {
+  border: 1px solid var(--border); border-radius: var(--r);
+  overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+.b2b-demo-frame iframe {
+  width: 100%; height: 500px; border: 0; display: block;
+}
+.b2b-pricing {
+  max-width: 800px; margin: 0 auto 4rem;
+}
+.b2b-pricing-label {
+  font-family: 'DM Mono', monospace; font-size: 0.68rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--primary); margin-bottom: 0.6rem; text-align: center;
+}
+.b2b-pricing-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+}
+.b2b-price-card {
+  background: var(--bg-alt); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 2rem; display: flex;
+  flex-direction: column; align-items: center; text-align: center;
+}
+.b2b-price-card--pilot {
+  border-color: var(--primary); border-width: 2px;
+}
+.b2b-price-card--standard {
+  background: var(--night-deep); color: var(--text-on-night);
+  border-color: var(--night-border);
+}
+.b2b-price-badge {
+  font-family: 'DM Mono', monospace; font-size: 0.65rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0.25rem 0.75rem; border-radius: 999px; margin-bottom: 1rem;
+  background: rgba(59,79,232,0.12); color: var(--primary);
+}
+.b2b-price-card--standard .b2b-price-badge {
+  background: rgba(232,93,42,0.16); color: var(--accent-2);
+}
+.b2b-price-amount {
+  font-family: 'Cormorant Garamond', serif; font-size: 2.5rem;
+  font-weight: 600; color: var(--ink);
+}
+.b2b-price-card--standard .b2b-price-amount { color: var(--text-on-night); }
+.b2b-price-amount span {
+  font-size: 0.9rem; font-family: 'DM Mono', monospace; font-weight: 400;
+}
+.b2b-price-duration {
+  font-size: 0.82rem; color: var(--ink-muted); margin: 0.25rem 0 1.5rem;
+}
+.b2b-price-card--standard .b2b-price-duration { color: var(--text-on-night-muted); }
+.b2b-price-list {
+  list-style: none; padding: 0; margin: 0 0 2rem; width: 100%;
+}
+.b2b-price-list li {
+  font-size: 0.88rem; padding: 0.4rem 0; color: var(--ink-muted);
+  border-bottom: 1px solid var(--border);
+}
+.b2b-price-list li::before { content: '✓ '; color: var(--support); font-weight: 600; }
+.b2b-price-card--standard .b2b-price-list li {
+  color: var(--text-on-night-muted);
+  border-bottom-color: var(--night-border);
+}
+.b2b-cta { margin-top: auto; }
+
+.b2b-casestudies {
+  max-width: 800px; margin: 0 auto; text-align: center;
+}
+.b2b-casestudies-label {
+  font-family: 'DM Mono', monospace; font-size: 0.68rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--primary); margin-bottom: 1rem;
+}
+.b2b-casestudies-empty {
+  font-size: 0.95rem; color: var(--ink-muted); font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .b2b-features { grid-template-columns: 1fr; }
+  .b2b-pricing-grid { grid-template-columns: 1fr; }
+  .b2b-demo-frame iframe { height: 350px; }
+}

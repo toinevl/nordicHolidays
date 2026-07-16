@@ -12,6 +12,7 @@ import { apiClient, warmUpApi } from './api/client'
 import { setLocale, getLocale, t, tpl } from './i18n/index'
 import { initialize, handleRedirect } from './lib/auth'
 import { affiliateClickPayload, trackAffiliateClick } from './lib/tracking'
+import { B2BSection } from './components/B2BSection'
 const store = createStore()
 
 // Fire-and-forget warm-up ping to Azure Functions app. Flex Consumption scales to zero when idle;
@@ -364,3 +365,6 @@ if (urlId) {
 }
 
 applyStaticI18n()
+
+// B2B landing page section (#77)
+new B2BSection().render(document.getElementById('b2b-root')!)

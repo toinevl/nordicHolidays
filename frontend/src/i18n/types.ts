@@ -94,6 +94,39 @@ export interface LocaleStrings {
     loadFailedTitle: string
     loadFailedBody: string
   }
+  b2b: {
+    kicker: string
+    title: string
+    subtitle: string
+    feature1Title: string
+    feature1Body: string
+    feature2Title: string
+    feature2Body: string
+    feature3Title: string
+    feature3Body: string
+    demoLabel: string
+    pricingLabel: string
+    pilotBadge: string
+    perMonth: string
+    pilotDuration: string
+    pilotFeature1: string
+    pilotFeature2: string
+    pilotFeature3: string
+    pilotFeature4: string
+    pilotSubject: string
+    startPilot: string
+    standardBadge: string
+    standardDuration: string
+    standardFeature1: string
+    standardFeature2: string
+    standardFeature3: string
+    standardFeature4: string
+    standardFeature5: string
+    standardSubject: string
+    bookDemo: string
+    caseStudiesLabel: string
+    caseStudiesEmpty: string
+  }
   season: {
     skane: string
     blekinge: string
@@ -181,5 +214,6 @@ export type LocaleKey =
   | `accom.${keyof LocaleStrings['accom']}`
   | `map.${keyof LocaleStrings['map']}`
   | `map3d.${keyof LocaleStrings['map3d']}`
+  | `b2b.${keyof LocaleStrings['b2b']}`
   | `footer.${keyof LocaleStrings['footer']}`
   | `loading.${keyof LocaleStrings['loading']}`
