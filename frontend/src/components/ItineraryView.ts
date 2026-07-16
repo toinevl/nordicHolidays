@@ -391,7 +391,7 @@ export class ItineraryView {
           nights = `<span class="badge-daytrip">◇ ${t('itinerary.dayTrip')}</span>`
           const base = baseFor(this.stops, idx)
           if (base) {
-            nights += `<span class="daytrip-base">${tpl('itinerary.dayTripFrom', { base: escapeHtml(base.dest) })}</span>`
+            nights += `<span class="daytrip-base">${tpl('itinerary.dayTripFrom', { base: base.dest })}</span>`
           }
         } else if (s.nights === 1) {
           nights = t('itinerary.oneNight')
@@ -418,7 +418,7 @@ export class ItineraryView {
               <div class="tags">${tags}</div>
               <p class="card-desc">${escapeHtml(s.desc)}</p>
               <ul class="card-highlights">${s.highlights.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
-              ${isDayTrip(s) ? '' : `<a class="card-lodging-link" data-affiliate="lodging" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: escapeHtml(s.dest) })}</a>`}
+              ${isDayTrip(s) ? '' : `<a class="card-lodging-link" data-affiliate="lodging" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: s.dest })}</a>`}
               ${(() => {
                 const note = (s as any).userNotes
                 const noteText = typeof note === 'string' ? escapeHtml(note) : ''

@@ -579,6 +579,26 @@ describe('ItineraryView lodging affiliate link (#70)', () => {
     expect(document.querySelector('script')).toBeNull()
   })
 
+  it('renders an & in the city single-escaped, not as &amp;amp; (tpl already escapes params)', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Karlstad & Värmland', nights: 2 }),
+        aStop({ id: 2, dest: 'Mårbacka & Rottneros', nights: 0 }),
+      ],
+      [],
+      [],
+    )
+
+    const link = document.querySelector<HTMLAnchorElement>('a.card-lodging-link')
+    expect(link?.textContent).toContain('Karlstad & Värmland')
+    expect(link?.textContent).not.toContain('&amp;')
+
+    const dayTripBase = document.querySelector<HTMLElement>('.daytrip-base')
+    expect(dayTripBase?.textContent).toContain('Karlstad & Värmland')
+    expect(dayTripBase?.textContent).not.toContain('&amp;')
+  })
+
   it('does not trigger stop selection when the lodging link is clicked', () => {
     const onStopSelect = vi.fn()
     const view = new ItineraryView(vi.fn(), onStopSelect)
