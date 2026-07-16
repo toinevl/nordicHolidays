@@ -617,3 +617,249 @@ describe('ItineraryView lodging affiliate link (#70)', () => {
     expect(onStopSelect).toHaveBeenCalledOnce()
   })
 })
+
+describe('ItineraryView activity affiliate link on day-trip cards (#71)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="route-summary"></div>
+      <div id="filter-chips"></div>
+      <div id="selected-stop"></div>
+      <div id="timeline"></div>
+      <div id="cul-grid"></div>
+      <div id="accom-tbody"></div>
+      <div id="itinerary"></div>
+    `
+  })
+
+  function aStop(overrides: Partial<Stop> = {}): Stop {
+    return {
+      id: 1,
+      days: '1',
+      dates: '2026-06-10',
+      dest: 'Malmö',
+      region: 'Skåne',
+      coords: [13.0038, 55.605] as [number, number],
+      tags: [],
+      nights: 2,
+      desc: 'Overnight base',
+      highlights: ['Gärdet'],
+      from: 'Amsterdam',
+      km: 100,
+      time: '2h',
+      zoom: 12,
+      pitch: 45,
+      bearing: 0,
+      ...overrides,
+    }
+  }
+
+  it('renders an activity link on day-trip cards with the encoded city in the href', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Göteborg', nights: 2 }),
+        aStop({ id: 2, dest: 'Fjällbacka', nights: 0, from: 'Göteborg' }),
+      ],
+      [],
+      [],
+    )
+
+    const link = document.querySelector<HTMLAnchorElement>('a.card-activity-link')
+    expect(link).toBeTruthy()
+    expect(link?.getAttribute('href')).toContain('Fj%C3%A4llbacka')
+    expect(link?.getAttribute('target')).toBe('_blank')
+    expect(link?.getAttribute('rel')).toBe('noopener nofollow sponsored')
+    expect(link?.getAttribute('data-affiliate')).toBe('activity')
+    expect(link?.textContent).toContain('Fjällbacka')
+  })
+
+  it('encodes Norwegian ø in the href (Tromsø)', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Ängelholm', nights: 1 }),
+        aStop({ id: 2, dest: 'Tromsø', nights: 0, from: 'Ängelholm' }),
+      ],
+      [],
+      [],
+    )
+
+    const link = document.querySelector<HTMLAnchorElement>('a.card-activity-link')
+    expect(link?.getAttribute('href')).toContain('Troms%C3%B8')
+  })
+
+  it('gives every card exactly one affiliate row: lodging on overnight, activity on day trip', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Göteborg', nights: 2 }),
+        aStop({ id: 2, dest: 'Fjällbacka', nights: 0, from: 'Göteborg' }),
+      ],
+      [],
+      [],
+    )
+
+    const overnightCard = document.getElementById('stop-1')
+    const dayTripCard = document.getElementById('stop-2')
+    expect(overnightCard?.querySelectorAll('a[data-affiliate]').length).toBe(1)
+    expect(overnightCard?.querySelector('a.card-lodging-link')).toBeTruthy()
+    expect(overnightCard?.querySelector('a.card-activity-link')).toBeNull()
+    expect(dayTripCard?.querySelectorAll('a[data-affiliate]').length).toBe(1)
+    expect(dayTripCard?.querySelector('a.card-activity-link')).toBeTruthy()
+    expect(dayTripCard?.querySelector('a.card-lodging-link')).toBeNull()
+  })
+
+  it('escapes a malicious day-trip dest in both the href attribute and the link text', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Göteborg', nights: 2 }),
+        aStop({ id: 2, dest: 'Fjällbacka"><script>alert(1)</script>', nights: 0, from: 'Göteborg' }),
+      ],
+      [],
+      [],
+    )
+
+    const timeline = document.getElementById('timeline')
+    expect(timeline?.innerHTML).not.toContain('<script>')
+    const link = document.querySelector<HTMLAnchorElement>('a.card-activity-link')
+    expect(link).toBeTruthy()
+    expect(link?.getAttribute('data-affiliate')).toBe('activity')
+    expect(document.querySelector('script')).toBeNull()
+  })
+
+  it('renders an & in the day-trip city single-escaped, not as &amp;amp;', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Karlstad & Värmland', nights: 2 }),
+        aStop({ id: 2, dest: 'Mårbacka & Rottneros', nights: 0, from: 'Karlstad & Värmland' }),
+      ],
+      [],
+      [],
+    )
+
+    const link = document.querySelector<HTMLAnchorElement>('a.card-activity-link')
+    expect(link?.textContent).toContain('Mårbacka & Rottneros')
+    expect(link?.textContent).not.toContain('&amp;')
+  })
+
+  it('does not trigger stop selection when the activity link is clicked', () => {
+    const onStopSelect = vi.fn()
+    const view = new ItineraryView(vi.fn(), onStopSelect)
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Göteborg', nights: 2 }),
+        aStop({ id: 2, dest: 'Fjällbacka', nights: 0, from: 'Göteborg' }),
+      ],
+      [],
+      [],
+    )
+    // render() auto-selects the first stop; only clicks after that are under test
+    onStopSelect.mockClear()
+
+    const link = document.querySelector<HTMLAnchorElement>('a.card-activity-link')
+    expect(link).toBeTruthy()
+    link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    expect(onStopSelect).not.toHaveBeenCalled()
+
+    // A click elsewhere on the day-trip card still selects the stop
+    const desc = document.querySelector<HTMLElement>('#stop-2 .card-desc')
+    desc?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    expect(onStopSelect).toHaveBeenCalledOnce()
+  })
+})
+
+describe('ItineraryView trip-index car-rental link (#72)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="route-summary"></div>
+      <div id="filter-chips"></div>
+      <div id="selected-stop"></div>
+      <div id="timeline"></div>
+      <div id="trip-index"></div>
+      <div id="cul-grid"></div>
+      <div id="accom-tbody"></div>
+      <div id="itinerary"></div>
+    `
+  })
+
+  function aStop(overrides: Partial<Stop> = {}): Stop {
+    return {
+      id: 1,
+      days: '1',
+      dates: '2026-06-10',
+      dest: 'Malmö',
+      region: 'Skåne',
+      coords: [13.0038, 55.605] as [number, number],
+      tags: [],
+      nights: 2,
+      desc: 'Overnight base',
+      highlights: ['Gärdet'],
+      from: 'Amsterdam',
+      km: 100,
+      time: '2h',
+      zoom: 12,
+      pitch: 45,
+      bearing: 0,
+      ...overrides,
+    }
+  }
+
+  it('renders one trip-level rent-car link in the trip index after the stop list', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [aStop({ id: 1, dest: 'Fjällbacka', nights: 2 }), aStop({ id: 2, dest: 'Tromsø', nights: 1 })],
+      [],
+      [],
+    )
+
+    const index = document.getElementById('trip-index')
+    const links = index?.querySelectorAll<HTMLAnchorElement>('a.trip-index-rentcar')
+    expect(links?.length).toBe(1)
+    const link = links?.[0]
+    expect(link?.getAttribute('href')).toContain('https://www.discovercars.com/')
+    expect(link?.getAttribute('target')).toBe('_blank')
+    expect(link?.getAttribute('rel')).toBe('noopener nofollow sponsored')
+    expect(link?.getAttribute('data-affiliate')).toBe('car-rental')
+    expect(link?.textContent).toContain('Rent a car')
+    // Trip-level link lives after the stop list, outside any .trip-index-link button
+    const ul = index?.querySelector('.trip-index-list')
+    expect(ul?.querySelector('a.trip-index-rentcar')).toBeNull()
+    expect(ul && link ? ul.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING : 0).toBeTruthy()
+  })
+
+  it('does not render a rent-car link when there are no stops', () => {
+    // render() itself requires at least one stop (renderRouteTools assumes stops[0]),
+    // so exercise renderTripIndex's own empty-stops early-return directly.
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    ;(view as unknown as { stops: Stop[] }).stops = []
+    ;(view as unknown as { renderTripIndex(): void }).renderTripIndex()
+
+    expect(document.getElementById('trip-index')?.innerHTML).toBe('')
+    expect(document.querySelector('a.trip-index-rentcar')).toBeNull()
+  })
+
+  it('clicking the rent-car link does not change stop selection, and index buttons still work', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [aStop({ id: 1, dest: 'Ängelholm', nights: 2 }), aStop({ id: 2, dest: 'Västerås', nights: 1 })],
+      [],
+      [],
+    )
+
+    const selected = document.getElementById('selected-stop')
+    expect(selected?.textContent).toContain('Ängelholm')
+
+    // Clicking the rent-car link must not hijack the trip-index button delegation
+    const link = document.querySelector<HTMLAnchorElement>('a.trip-index-rentcar')
+    link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    expect(selected?.textContent).toContain('Ängelholm')
+    expect(selected?.textContent).not.toContain('Västerås')
+
+    // The trip-index stop buttons still select their stop
+    const secondBtn = document.querySelectorAll<HTMLButtonElement>('.trip-index-link')[1]
+    secondBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    expect(selected?.textContent).toContain('Västerås')
+  })
+})

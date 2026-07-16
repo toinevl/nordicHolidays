@@ -641,12 +641,22 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 .trip-index-daytrip-mark { color: var(--ink-muted); font-size: 0.7rem; flex-shrink: 0; }
 .trip-index-item--daytrip .trip-index-dest { color: var(--ink-muted); }
 
-/* Lodging affiliate link on overnight-base cards (#70) */
-.card-lodging-link {
+/* Affiliate links on timeline cards: lodging on overnight bases (#70), activities on day trips (#71) */
+.card-lodging-link, .card-activity-link {
   display: inline-flex; align-items: center; gap: 0.35rem;
   font-size: 0.78rem; color: var(--ink-muted);
   text-decoration: none; border-bottom: 1px dashed var(--border);
   padding-bottom: 0.1rem; margin-bottom: 1rem;
   transition: color 0.2s, border-color 0.2s;
 }
-.card-lodging-link:hover { color: var(--primary); border-bottom-color: var(--primary); }
+.card-lodging-link:hover, .card-activity-link:hover { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* Trip-level car-rental affiliate link in the trip index (#72) */
+.trip-index-rentcar {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  margin-top: 0.6rem; padding: 0.3rem 0.4rem;
+  font-size: 0.82rem; color: var(--ink-muted);
+  text-decoration: none; border-radius: var(--r);
+  transition: color 0.2s, background 0.15s;
+}
+.trip-index-rentcar:hover { color: var(--primary); background: var(--bg-subtle); }

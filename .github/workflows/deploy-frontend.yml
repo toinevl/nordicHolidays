@@ -52,6 +52,10 @@ jobs:
           # Travelpayouts affiliate marker from the TRAVELPAYOUTS_MARKER repo *variable*
           # (not a secret — markers aren't sensitive). Unset → empty → plain non-affiliate links.
           VITE_TRAVELPAYOUTS_MARKER: ${{ vars.TRAVELPAYOUTS_MARKER }}
+          # GetYourGuide partner id (#71) and DiscoverCars affiliate id (#72), same
+          # repo-variable pattern. Unset → empty → plain non-affiliate links.
+          VITE_GYG_PARTNER_ID: ${{ vars.GYG_PARTNER_ID }}
+          VITE_DISCOVERCARS_AID: ${{ vars.DISCOVERCARS_AID }}
 
       - name: Deploy to SWA
         uses: Azure/static-web-apps-deploy@v1

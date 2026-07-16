@@ -83,6 +83,8 @@ export interface LocaleStrings {
     tripIndex: string
     undoLastEdit: string
     findHotels: string
+    findActivities: string
+    rentCar: string
   }
   map: {
     legendOvernight: string

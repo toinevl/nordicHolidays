@@ -5,7 +5,7 @@ import { t, tpl } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
 import { itineraryToGPX, itineraryToICS, downloadFile, itineraryToGoogleMapsUrl, itineraryToWazeUrl } from '../lib/export'
 import { isDayTrip, baseFor } from '../lib/dayTrips'
-import { lodgingUrl } from '../lib/affiliate'
+import { lodgingUrl, activityUrl, carRentalUrl } from '../lib/affiliate'
 import { affiliateConfig } from '../config'
 
 export type FilterChangeCallback = (filter: string) => void
@@ -366,7 +366,8 @@ export class ItineraryView {
             </button>
           </li>`
         }).join('')}
-      </ul>`
+      </ul>
+      <a class="trip-index-rentcar" data-affiliate="car-rental" href="${escapeHtml(carRentalUrl(affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🚗 ${t('itinerary.rentCar')}</a>`
 
     el.querySelectorAll<HTMLButtonElement>('.trip-index-link').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -418,7 +419,9 @@ export class ItineraryView {
               <div class="tags">${tags}</div>
               <p class="card-desc">${escapeHtml(s.desc)}</p>
               <ul class="card-highlights">${s.highlights.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
-              ${isDayTrip(s) ? '' : `<a class="card-lodging-link" data-affiliate="lodging" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: s.dest })}</a>`}
+              ${isDayTrip(s)
+                ? `<a class="card-activity-link" data-affiliate="activity" href="${escapeHtml(activityUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🎟 ${tpl('itinerary.findActivities', { city: s.dest })}</a>`
+                : `<a class="card-lodging-link" data-affiliate="lodging" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: s.dest })}</a>`}
               ${(() => {
                 const note = (s as any).userNotes
                 const noteText = typeof note === 'string' ? escapeHtml(note) : ''
@@ -460,8 +463,8 @@ export class ItineraryView {
     tl.querySelectorAll<HTMLElement>('.t-card').forEach((card) => {
       card.addEventListener('click', (event) => {
         if ((event.target as HTMLElement).closest('button')) return
-        // Let lodging affiliate links (#70) open normally instead of selecting the stop
-        if ((event.target as HTMLElement).closest('a.card-lodging-link')) return
+        // Let affiliate links (#70 lodging, #71 activities) open normally instead of selecting the stop
+        if ((event.target as HTMLElement).closest('a[data-affiliate]')) return
         const stop = this.stops.find((s) => `stop-${s.id}` === card.id)
         if (stop) this.onStopSelect(stop, { fly: false })
       })
