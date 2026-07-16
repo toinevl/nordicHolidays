@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/**'
+      - 'scripts/**'
       - '.github/workflows/deploy-frontend.yml'
   workflow_dispatch:
 
@@ -42,6 +43,10 @@ jobs:
             "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
+
+      - name: Generate SEO itinerary library (#73)
+        run: npx tsx ../scripts/generate-seo-pages.ts
+        working-directory: frontend
 
       - name: Build
         run: npm run build

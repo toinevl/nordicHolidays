@@ -366,5 +366,17 @@ if (urlId) {
 
 applyStaticI18n()
 
+// SEO landing page entry (#73): pre-fill the generator when arriving via
+// ?country=XX&days=N (e.g. from /trips/se-7-days.html CTA)
+const seoCountry = new URLSearchParams(window.location.search).get('country')
+const seoDays = new URLSearchParams(window.location.search).get('days')
+if (seoCountry || seoDays) {
+  const prefs = store.getState().preferences
+  if (seoCountry) prefs.country = seoCountry.toUpperCase()
+  if (seoDays) prefs.tripDays = parseInt(seoDays, 10) || prefs.tripDays
+  store.setState({ preferences: prefs })
+  generatorPanel.open()
+}
+
 // B2B landing page section (#77)
 new B2BSection().render(document.getElementById('b2b-root')!)

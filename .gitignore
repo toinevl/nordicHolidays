@@ -47,3 +47,8 @@ api/local.settings.json.*
 
 # Compiled API output — CI builds fresh on deploy (#58)
 api/dist/
+
+# Generated SEO itinerary library pages (#73) — built fresh by scripts/generate-seo-pages.ts
+frontend/public/trips/
+frontend/public/sitemap.xml
+frontend/public/robots.txt
