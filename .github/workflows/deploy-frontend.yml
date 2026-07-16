@@ -49,6 +49,9 @@ jobs:
         env:
           VITE_ENTRA_CLIENT_ID: ${{ secrets.VITE_ENTRA_CLIENT_ID }}
           VITE_ENTRA_TENANT_ID: ${{ secrets.VITE_ENTRA_TENANT_ID }}
+          # Travelpayouts affiliate marker from the TRAVELPAYOUTS_MARKER repo *variable*
+          # (not a secret — markers aren't sensitive). Unset → empty → plain non-affiliate links.
+          VITE_TRAVELPAYOUTS_MARKER: ${{ vars.TRAVELPAYOUTS_MARKER }}
 
       - name: Deploy to SWA
         uses: Azure/static-web-apps-deploy@v1

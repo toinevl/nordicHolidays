@@ -82,6 +82,7 @@ export interface LocaleStrings {
     exportWaze: string
     tripIndex: string
     undoLastEdit: string
+    findHotels: string
   }
   map: {
     legendOvernight: string

@@ -5,6 +5,8 @@ import { t, tpl } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
 import { itineraryToGPX, itineraryToICS, downloadFile, itineraryToGoogleMapsUrl, itineraryToWazeUrl } from '../lib/export'
 import { isDayTrip, baseFor } from '../lib/dayTrips'
+import { lodgingUrl } from '../lib/affiliate'
+import { affiliateConfig } from '../config'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
@@ -416,6 +418,7 @@ export class ItineraryView {
               <div class="tags">${tags}</div>
               <p class="card-desc">${escapeHtml(s.desc)}</p>
               <ul class="card-highlights">${s.highlights.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
+              ${isDayTrip(s) ? '' : `<a class="card-lodging-link" data-affiliate="lodging" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: escapeHtml(s.dest) })}</a>`}
               ${(() => {
                 const note = (s as any).userNotes
                 const noteText = typeof note === 'string' ? escapeHtml(note) : ''
@@ -457,6 +460,8 @@ export class ItineraryView {
     tl.querySelectorAll<HTMLElement>('.t-card').forEach((card) => {
       card.addEventListener('click', (event) => {
         if ((event.target as HTMLElement).closest('button')) return
+        // Let lodging affiliate links (#70) open normally instead of selecting the stop
+        if ((event.target as HTMLElement).closest('a.card-lodging-link')) return
         const stop = this.stops.find((s) => `stop-${s.id}` === card.id)
         if (stop) this.onStopSelect(stop, { fly: false })
       })

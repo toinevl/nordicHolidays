@@ -491,3 +491,109 @@ describe('ItineraryView undo-last-edit button (#51)', () => {
     expect(dayTripItem?.innerHTML).toContain('Göteborg')
   })
 })
+
+describe('ItineraryView lodging affiliate link (#70)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="route-summary"></div>
+      <div id="filter-chips"></div>
+      <div id="selected-stop"></div>
+      <div id="timeline"></div>
+      <div id="cul-grid"></div>
+      <div id="accom-tbody"></div>
+      <div id="itinerary"></div>
+    `
+  })
+
+  function aStop(overrides: Partial<Stop> = {}): Stop {
+    return {
+      id: 1,
+      days: '1',
+      dates: '2026-06-10',
+      dest: 'Malmö',
+      region: 'Skåne',
+      coords: [13.0038, 55.605] as [number, number],
+      tags: [],
+      nights: 2,
+      desc: 'Overnight base',
+      highlights: ['Gärdet'],
+      from: 'Amsterdam',
+      km: 100,
+      time: '2h',
+      zoom: 12,
+      pitch: 45,
+      bearing: 0,
+      ...overrides,
+    }
+  }
+
+  it('renders a lodging link on overnight cards with the encoded city in the href', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render([aStop({ dest: 'Malmö', nights: 2 })], [], [])
+
+    const link = document.querySelector<HTMLAnchorElement>('a.card-lodging-link')
+    expect(link).toBeTruthy()
+    expect(link?.getAttribute('href')).toContain('Malm%C3%B6')
+    expect(link?.getAttribute('target')).toBe('_blank')
+    expect(link?.getAttribute('rel')).toBe('noopener nofollow sponsored')
+    expect(link?.getAttribute('data-affiliate')).toBe('lodging')
+    expect(link?.textContent).toContain('Malmö')
+  })
+
+  it('encodes Norwegian ø in the href (Tromsø)', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render([aStop({ dest: 'Tromsø', nights: 1 })], [], [])
+
+    const link = document.querySelector<HTMLAnchorElement>('a.card-lodging-link')
+    expect(link?.getAttribute('href')).toContain('Troms%C3%B8')
+  })
+
+  it('does NOT render a lodging link on day-trip cards (nights === 0)', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Göteborg', nights: 2 }),
+        aStop({ id: 2, dest: 'Fjällbacka', nights: 0, from: 'Göteborg' }),
+      ],
+      [],
+      [],
+    )
+
+    const links = document.querySelectorAll('a.card-lodging-link')
+    expect(links.length).toBe(1)
+    const dayTripCard = document.getElementById('stop-2')
+    expect(dayTripCard?.querySelector('a.card-lodging-link')).toBeNull()
+  })
+
+  it('escapes a malicious dest in both the href attribute and the link text', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render([aStop({ dest: 'Malmö"><script>alert(1)</script>', nights: 2 })], [], [])
+
+    const timeline = document.getElementById('timeline')
+    expect(timeline?.innerHTML).not.toContain('<script>')
+    // The anchor must exist and its href must not have been broken out of
+    const link = document.querySelector<HTMLAnchorElement>('a.card-lodging-link')
+    expect(link).toBeTruthy()
+    expect(link?.getAttribute('data-affiliate')).toBe('lodging')
+    // No stray script element injected anywhere
+    expect(document.querySelector('script')).toBeNull()
+  })
+
+  it('does not trigger stop selection when the lodging link is clicked', () => {
+    const onStopSelect = vi.fn()
+    const view = new ItineraryView(vi.fn(), onStopSelect)
+    view.render([aStop({ dest: 'Västerås', nights: 2 })], [], [])
+    // render() auto-selects the first stop; only clicks after that are under test
+    onStopSelect.mockClear()
+
+    const link = document.querySelector<HTMLAnchorElement>('a.card-lodging-link')
+    expect(link).toBeTruthy()
+    link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    expect(onStopSelect).not.toHaveBeenCalled()
+
+    // A click elsewhere on the card still selects the stop
+    const card = document.querySelector<HTMLElement>('.t-card .card-desc')
+    card?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    expect(onStopSelect).toHaveBeenCalledOnce()
+  })
+})

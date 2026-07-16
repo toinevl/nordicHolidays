@@ -82,6 +82,7 @@ export const de: LocaleStrings = {
     exportWaze: 'Waze',
     tripIndex: 'Reiseindex',
     undoLastEdit: 'Letzte Änderung rückgängig machen',
+    findHotels: 'Hotels in {city} finden',
   },
   season: {
     skane: 'Mildes Klima. Warme Sommer, bunte Herbsttage.',

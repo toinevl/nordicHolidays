@@ -82,6 +82,7 @@ export const nl: LocaleStrings = {
     exportWaze: 'Waze',
     tripIndex: 'Reisindex',
     undoLastEdit: 'Laatste wijziging ongedaan maken',
+    findHotels: 'Hotels zoeken in {city}',
   },
   season: {
     skane: 'Mild klimaat. Warme zomers, kleurrijke herfsten.',
