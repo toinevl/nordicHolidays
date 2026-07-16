@@ -44,3 +44,6 @@ frontend/test-results/
 api/local.settings.json.bak
 api/local.settings.json.*
 .superpowers/
+
+# Compiled API output — CI builds fresh on deploy (#58)
+api/dist/

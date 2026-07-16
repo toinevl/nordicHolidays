@@ -99,7 +99,7 @@ Grounded in live measurements (2026-07-12): first request to `/api/itineraries` 
 ## v1.5 — Follow-ups (seeded 2026-07-12)
 
 - [x] (B) The Load button in the Saved Trips panel gives no feedback while `getItinerary` is in flight (`frontend/src/components/SavedTripsPanel.ts`, `.btn-load` click handler) — during any API delay the UI looks frozen; disable the button and show a loading label, same pattern as the Save button (#13) — shipped with EN/NL/DE `saved.loadingTrip` key; sibling Load buttons disabled during flight to prevent double loads +ui +bug @me #57
-- [ ] (C) `api/dist/` (compiled JS) is checked into git and chronically stale — it lacked the compiled output of #39/#42/#50/#51/#53 until a local build regenerated it and polluted the working tree during #56; CI builds fresh on deploy so the tracked copy serves no purpose — remove it from the repo and add it to `.gitignore` +ci +improvement @me #58
+- [x] (C) `api/dist/` (compiled JS) is checked into git and chronically stale — it lacked the compiled output of #39/#42/#50/#51/#53 until a local build regenerated it and polluted the working tree during #56; CI builds fresh on deploy so the tracked copy serves no purpose — remove it from the repo and add it to `.gitignore` +ci +improvement @me #58 — done 2026-07-16: `git rm -r --cached api/dist` + gitignore entry; verified deploy-api.yml runs `npm run build` and zips its own `dist`, so the tracked copy was never deployed
 
 ## v1.6 — Day Trips vs. Overnight Bases (seeded 2026-07-12)
 
