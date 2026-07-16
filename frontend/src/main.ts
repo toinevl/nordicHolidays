@@ -11,11 +11,20 @@ import type { Itinerary, ItineraryStop, Locale } from './types'
 import { apiClient, warmUpApi } from './api/client'
 import { setLocale, getLocale, t, tpl } from './i18n/index'
 import { initialize, handleRedirect } from './lib/auth'
+import { affiliateClickPayload, trackAffiliateClick } from './lib/tracking'
 const store = createStore()
 
 // Fire-and-forget warm-up ping to Azure Functions app. Flex Consumption scales to zero when idle;
 // this ping warms the app while the user is still browsing the static page.
 warmUpApi()
+
+// Affiliate click-through beacon (#74): one delegated listener for all
+// data-affiliate links (#70–#72). Never preventDefault — the links keep
+// opening in their new tab exactly as before; the beacon uses keepalive.
+document.addEventListener('click', (e) => {
+  const payload = affiliateClickPayload(e.target)
+  if (payload) trackAffiliateClick({ ...payload, locale: getLocale() })
+})
 const toast = new Toast()
 ;(async () => {
   await initialize()

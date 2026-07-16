@@ -11,6 +11,9 @@ import {
   RATE_LIMIT_PER_IP_PER_HOUR,
   RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR,
   RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR,
+  checkAndIncrementTrackRateLimit,
+  RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR,
+  RATE_LIMIT_TRACK_PER_IP_PER_HOUR,
 } from './rateLimit'
 import { getTableClient } from './tableClient'
 
@@ -318,5 +321,61 @@ describe('checkAndIncrementItineraryWriteRateLimit', () => {
 
     expect(result.allowed).toBe(true)
     expect(mockLogger.log.error).toHaveBeenCalled()
+  })
+})
+
+describe('checkAndIncrementTrackRateLimit (#74)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('allows a request when under both limits and uses track-specific partition prefixes', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const req = makeRequest('192.168.1.1')
+    const result = await checkAndIncrementTrackRateLimit(req, 'owner-åke')
+
+    expect(result.allowed).toBe(true)
+    const partitionKeys = client.createEntity.mock.calls.map((c: any[]) => c[0].partitionKey)
+    expect(partitionKeys).toContain('track-owner:owner-åke')
+    expect(partitionKeys.some((k: string) => k.startsWith('track-ip:'))).toBe(true)
+  })
+
+  it('blocks when the per-IP track limit is reached', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockImplementation(async (pk: string) => {
+        if (pk.startsWith('track-ip:')) return { partitionKey: pk, rowKey: 'w', count: RATE_LIMIT_TRACK_PER_IP_PER_HOUR }
+        throw { statusCode: 404 }
+      }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkAndIncrementTrackRateLimit(makeRequest('10.0.0.9'), 'owner-123')
+    expect(result.allowed).toBe(false)
+    expect(result.retryAfterSeconds).toBeGreaterThan(0)
+  })
+
+  it('blocks when the per-owner track limit is reached', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockImplementation(async (pk: string) => {
+        if (pk.startsWith('track-owner:')) return { partitionKey: pk, rowKey: 'w', count: RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR }
+        throw { statusCode: 404 }
+      }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkAndIncrementTrackRateLimit(makeRequest('10.0.0.9'), 'owner-123')
+    expect(result.allowed).toBe(false)
+  })
+
+  it('fails open on table errors', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 500 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkAndIncrementTrackRateLimit(makeRequest('10.0.0.9'), 'owner-123')
+    expect(result.allowed).toBe(true)
   })
 })

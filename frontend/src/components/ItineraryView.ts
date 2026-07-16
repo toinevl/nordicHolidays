@@ -420,8 +420,8 @@ export class ItineraryView {
               <p class="card-desc">${escapeHtml(s.desc)}</p>
               <ul class="card-highlights">${s.highlights.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
               ${isDayTrip(s)
-                ? `<a class="card-activity-link" data-affiliate="activity" href="${escapeHtml(activityUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🎟 ${tpl('itinerary.findActivities', { city: s.dest })}</a>`
-                : `<a class="card-lodging-link" data-affiliate="lodging" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: s.dest })}</a>`}
+                ? `<a class="card-activity-link" data-affiliate="activity" data-city="${encodeURIComponent(s.dest)}" href="${escapeHtml(activityUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🎟 ${tpl('itinerary.findActivities', { city: s.dest })}</a>`
+                : `<a class="card-lodging-link" data-affiliate="lodging" data-city="${encodeURIComponent(s.dest)}" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: s.dest })}</a>`}
               ${(() => {
                 const note = (s as any).userNotes
                 const noteText = typeof note === 'string' ? escapeHtml(note) : ''

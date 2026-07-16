@@ -105,6 +105,19 @@ export const ItineraryPatchBodySchema = z.object({
 }).strict()
 
 /**
+ * Schema for the affiliate click-tracking beacon (#74).
+ * Deliberately narrow: a fixed event name, a closed set of link types, and a
+ * bounded city string — no free-form fields, no PII. `.strict()` rejects
+ * anything else so the endpoint can't be used as a data sink.
+ */
+export const TrackEventSchema = z.object({
+  event: z.literal('affiliate_click'),
+  linkType: z.enum(['lodging', 'activity', 'car-rental']),
+  city: z.string().max(120).optional(),
+  locale: z.enum(['en', 'nl', 'de']).optional(),
+}).strict()
+
+/**
  * Schema for profile PUT (partial updates).
  * Only allows specific updatable fields; strips everything else via .strict().
  */

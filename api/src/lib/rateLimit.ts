@@ -7,6 +7,8 @@ export const RATE_LIMIT_PER_OWNER_PER_HOUR = 5
 export const RATE_LIMIT_PER_IP_PER_HOUR = 20
 export const RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR = 10
 export const RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR = 30
+export const RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR = 60
+export const RATE_LIMIT_TRACK_PER_IP_PER_HOUR = 120
 export const RATE_LIMIT_TABLE_NAME = 'RateLimits'
 
 // Lazy initialization for table creation
@@ -194,6 +196,71 @@ export async function checkAndIncrementRateLimit(
  * signal. Uses distinct partition-key prefixes from checkAndIncrementRateLimit
  * so the two limiters' counters never share a bucket.
  */
+/**
+ * Check and increment rate limit for affiliate click-tracking beacons (#74).
+ * Clicks are anonymous and cheap, but the endpoint must not be a spammable
+ * Table Storage write path: per-IP is the primary signal (owner id is a
+ * best-effort, spoofable header, same caveat as the itinerary-write limiter).
+ * Uses `track-owner:` / `track-ip:` partition prefixes so counters never share
+ * a bucket with the other limiters.
+ */
+export async function checkAndIncrementTrackRateLimit(
+  req: HttpRequest,
+  ownerId: string,
+  logger?: any
+): Promise<RateLimitResult> {
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const hourWindow = getCurrentHourWindow()
+    const ip = extractIp(req)
+    const retryAfter = getSecondsUntilHourEnd()
+
+    const buckets: Array<{ partitionKey: string; limit: number; label: string }> = [
+      { partitionKey: `track-owner:${ownerId}`, limit: RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR, label: `owner ${ownerId}` },
+      { partitionKey: `track-ip:${ip}`, limit: RATE_LIMIT_TRACK_PER_IP_PER_HOUR, label: `IP ${ip}` },
+    ]
+
+    for (const bucket of buckets) {
+      try {
+        const entity = await client.getEntity(bucket.partitionKey, hourWindow)
+        const count = (entity.count as number) ?? 0
+        if (count >= bucket.limit) {
+          return { allowed: false, retryAfterSeconds: retryAfter }
+        }
+        await client.updateEntity(
+          {
+            partitionKey: entity.partitionKey as string,
+            rowKey: entity.rowKey as string,
+            ...entity,
+            count: count + 1,
+          },
+          'Merge'
+        )
+      } catch (err: any) {
+        if (err?.statusCode === 404) {
+          await client.createEntity({
+            partitionKey: bucket.partitionKey,
+            rowKey: hourWindow,
+            count: 1,
+            timestamp: now.toISOString(),
+          })
+        } else {
+          logError(logger, `Track rate limit check failed for ${bucket.label}: ${err instanceof Error ? err.message : String(err)}`)
+          return { allowed: true }
+        }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    logError(logger, `Track rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    return { allowed: true }
+  }
+}
+
 export async function checkAndIncrementItineraryWriteRateLimit(
   req: HttpRequest,
   ownerId: string,

@@ -537,7 +537,23 @@ describe('ItineraryView lodging affiliate link (#70)', () => {
     expect(link?.getAttribute('target')).toBe('_blank')
     expect(link?.getAttribute('rel')).toBe('noopener nofollow sponsored')
     expect(link?.getAttribute('data-affiliate')).toBe('lodging')
+    expect(link?.getAttribute('data-city')).toBe(encodeURIComponent('Malmö'))
     expect(link?.textContent).toContain('Malmö')
+  })
+
+  it('carries the city on both affiliate link kinds via data-city for click tracking (#74)', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render(
+      [
+        aStop({ id: 1, dest: 'Göteborg', nights: 2 }),
+        aStop({ id: 2, dest: 'Fjällbacka', nights: 0 }),
+      ],
+      [],
+      [],
+    )
+
+    expect(document.querySelector('a.card-lodging-link')?.getAttribute('data-city')).toBe(encodeURIComponent('Göteborg'))
+    expect(document.querySelector('a.card-activity-link')?.getAttribute('data-city')).toBe(encodeURIComponent('Fjällbacka'))
   })
 
   it('encodes Norwegian ø in the href (Tromsø)', () => {
