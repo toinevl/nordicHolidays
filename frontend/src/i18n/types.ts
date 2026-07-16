@@ -91,6 +91,8 @@ export interface LocaleStrings {
     legendDayTrip: string
     legendRoute: string
     legendExcursion: string
+    loadFailedTitle: string
+    loadFailedBody: string
   }
   season: {
     skane: string

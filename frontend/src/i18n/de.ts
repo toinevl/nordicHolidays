@@ -161,5 +161,7 @@ export const de: LocaleStrings = {
     legendDayTrip: 'Tagesausflug',
     legendRoute: 'Route',
     legendExcursion: 'Tagesausflug (Route)',
+    loadFailedTitle: 'Karte konnte nicht geladen werden',
+    loadFailedBody: 'Dein Browser (oder Gerät) unterstützt möglicherweise kein WebGL. Routenmarkierungen funktionieren weiterhin — scrolle nach unten für die vollständige Reiseroute.',
   },
 }

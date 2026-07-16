@@ -161,5 +161,7 @@ export const en: LocaleStrings = {
     legendDayTrip: 'Day trip',
     legendRoute: 'Route',
     legendExcursion: 'Day excursion',
+    loadFailedTitle: 'Map could not load',
+    loadFailedBody: 'Your browser (or device) may not support WebGL. Route markers still work — scroll down for the full itinerary.',
   },
 }

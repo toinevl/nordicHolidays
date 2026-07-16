@@ -161,5 +161,7 @@ export const nl: LocaleStrings = {
     legendDayTrip: 'Dagtrip',
     legendRoute: 'Route',
     legendExcursion: 'Dagexcursie',
+    loadFailedTitle: 'Kaart kan niet laden',
+    loadFailedBody: 'Je browser (of apparaat) ondersteunt mogelijk geen WebGL. Routemarkeringen werken nog — scrol naar beneden voor de volledige reisroute.',
   },
 }
