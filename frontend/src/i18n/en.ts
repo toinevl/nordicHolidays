@@ -156,6 +156,10 @@ export const en: LocaleStrings = {
   loading: {
     generating: 'Generating your itinerary...',
   },
+  widget: {
+    poweredBy: 'Powered by',
+    planTrip: 'Plan your trip',
+  },
   map: {
     legendOvernight: 'Overnight stay',
     legendDayTrip: 'Day trip',

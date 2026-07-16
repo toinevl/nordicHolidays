@@ -156,6 +156,10 @@ export const de: LocaleStrings = {
   loading: {
     generating: 'Reiseplan wird erstellt...',
   },
+  widget: {
+    poweredBy: 'Unterstützt von',
+    planTrip: 'Plane deine Reise',
+  },
   map: {
     legendOvernight: 'Übernachtung',
     legendDayTrip: 'Tagesausflug',

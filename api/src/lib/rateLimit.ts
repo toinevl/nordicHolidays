@@ -9,6 +9,8 @@ export const RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR = 10
 export const RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR = 60
 export const RATE_LIMIT_TRACK_PER_IP_PER_HOUR = 120
+export const RATE_LIMIT_PARTNER_LOOKUP_PER_IP_PER_HOUR = 60
+export const RATE_LIMIT_LEADS_PER_IP_PER_HOUR = 5
 export const RATE_LIMIT_TABLE_NAME = 'RateLimits'
 
 // Lazy initialization for table creation
@@ -338,6 +340,120 @@ export async function checkAndIncrementItineraryWriteRateLimit(
     return { allowed: true }
   } catch (err) {
     logError(logger, `Itinerary-write rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    return { allowed: true }
+  }
+}
+
+/**
+ * Check and increment rate limit for partner config lookups (#76).
+ * The partner config endpoint is public and unauthenticated, so per-IP is the
+ * only signal — the goal is to prevent enumeration of partner IDs. Uses the
+ * `partner-lookup-ip:` partition prefix so counters never share a bucket with
+ * the other limiters.
+ */
+export async function checkAndIncrementPartnerLookupRateLimit(
+  req: HttpRequest,
+  logger?: any
+): Promise<RateLimitResult> {
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const hourWindow = getCurrentHourWindow()
+    const ip = extractIp(req)
+    const retryAfter = getSecondsUntilHourEnd()
+
+    const partitionKey = `partner-lookup-ip:${ip}`
+    try {
+      const entity = await client.getEntity(partitionKey, hourWindow)
+      const count = (entity.count as number) ?? 0
+      if (count >= RATE_LIMIT_PARTNER_LOOKUP_PER_IP_PER_HOUR) {
+        return { allowed: false, retryAfterSeconds: retryAfter }
+      }
+      await client.updateEntity(
+        {
+          partitionKey: entity.partitionKey as string,
+          rowKey: entity.rowKey as string,
+          ...entity,
+          count: count + 1,
+        },
+        'Merge'
+      )
+    } catch (err: any) {
+      if (err?.statusCode === 404) {
+        await client.createEntity({
+          partitionKey,
+          rowKey: hourWindow,
+          count: 1,
+          timestamp: now.toISOString(),
+        })
+      } else {
+        logError(logger, `Partner-lookup rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`)
+        return { allowed: true }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    logError(logger, `Partner-lookup rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    return { allowed: true }
+  }
+}
+
+/**
+ * Check and increment rate limit for lead-capture submissions (#76).
+ * Leads store PII (email), so the limit is deliberately low (5/hour) to
+ * prevent abuse. Per-IP is the primary signal since there is no auth. Uses
+ * the `leads-ip:` partition prefix so counters never share a bucket with the
+ * other limiters.
+ */
+export async function checkAndIncrementLeadRateLimit(
+  req: HttpRequest,
+  logger?: any
+): Promise<RateLimitResult> {
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const hourWindow = getCurrentHourWindow()
+    const ip = extractIp(req)
+    const retryAfter = getSecondsUntilHourEnd()
+
+    const partitionKey = `leads-ip:${ip}`
+    try {
+      const entity = await client.getEntity(partitionKey, hourWindow)
+      const count = (entity.count as number) ?? 0
+      if (count >= RATE_LIMIT_LEADS_PER_IP_PER_HOUR) {
+        return { allowed: false, retryAfterSeconds: retryAfter }
+      }
+      await client.updateEntity(
+        {
+          partitionKey: entity.partitionKey as string,
+          rowKey: entity.rowKey as string,
+          ...entity,
+          count: count + 1,
+        },
+        'Merge'
+      )
+    } catch (err: any) {
+      if (err?.statusCode === 404) {
+        await client.createEntity({
+          partitionKey,
+          rowKey: hourWindow,
+          count: 1,
+          timestamp: now.toISOString(),
+        })
+      } else {
+        logError(logger, `Leads rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`)
+        return { allowed: true }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    logError(logger, `Leads rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
     return { allowed: true }
   }
 }

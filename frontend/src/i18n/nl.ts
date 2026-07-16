@@ -156,6 +156,10 @@ export const nl: LocaleStrings = {
   loading: {
     generating: 'Reisplan genereren...',
   },
+  widget: {
+    poweredBy: 'Mogelijk gemaakt door',
+    planTrip: 'Plan je reis',
+  },
   map: {
     legendOvernight: 'Overnachting',
     legendDayTrip: 'Dagtrip',

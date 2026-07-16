@@ -782,3 +782,38 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   .b2b-pricing-grid { grid-template-columns: 1fr; }
   .b2b-demo-frame iframe { height: 350px; }
 }
+
+/* WIDGET FOOTER (#75) — "Powered by Fjordvia" bar in iframe embed mode */
+.widget-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.35rem 1rem;
+  background: rgba(255, 253, 249, 0.95);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+.widget-footer-link {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-2);
+  text-decoration: none;
+  letter-spacing: 0;
+}
+.widget-footer-link:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .widget-footer { font-size: 0.62rem; }
+  .widget-footer-link { font-size: 0.78rem; }
+}

@@ -128,3 +128,18 @@ export const ProfilePutBodySchema = z.object({
     z.union([z.string().max(500), z.number(), z.boolean()])
   ).refine(obj => Object.keys(obj).length <= 20, 'Too many extension fields').optional(),
 }).strict()
+
+/**
+ * Schema for lead-capture submissions (#76).
+ * consent must be literally true (GDPR opt-in). locale is the UI language the
+ * user was viewing when they submitted, so the partner can follow up in the
+ * right language. `.strict()` rejects anything else so the endpoint can't be
+ * used as a data sink.
+ */
+export const LeadBodySchema = z.object({
+  partnerId: z.string().min(1),
+  email: z.string().email(),
+  itineraryId: z.string().optional(),
+  consent: z.literal(true),
+  locale: z.enum(['en', 'nl', 'de']).optional(),
+}).strict()

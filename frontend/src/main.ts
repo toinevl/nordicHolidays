@@ -13,6 +13,8 @@ import { setLocale, getLocale, t, tpl } from './i18n/index'
 import { initialize, handleRedirect } from './lib/auth'
 import { affiliateClickPayload, trackAffiliateClick } from './lib/tracking'
 import { B2BSection } from './components/B2BSection'
+import { isWidgetMode, getPartnerSlug, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
+import { WidgetFooter } from './components/WidgetFooter'
 const store = createStore()
 
 // Fire-and-forget warm-up ping to Azure Functions app. Flex Consumption scales to zero when idle;
@@ -380,3 +382,37 @@ if (seoCountry || seoDays) {
 
 // B2B landing page section (#77)
 new B2BSection().render(document.getElementById('b2b-root')!)
+
+// ---------------------------------------------------------------------------
+// Widget mode (#75): embeddable ?partner=<slug> iframe mode.
+//
+// When the app loads with ?partner=<slug>, it enters a stripped-down embed:
+// partner theming (CSS variables), partner affiliate IDs stored globally,
+// nav/status-bar/B2B/footer hidden, and a "Powered by Fjordvia" bar rendered
+// at the bottom. If the partner config fails to load (404, network error),
+// the app still works — just without theming or affiliate overrides.
+// ---------------------------------------------------------------------------
+if (isWidgetMode()) {
+  const slug = getPartnerSlug()
+  if (slug) {
+    loadWidgetConfig(slug).then((config) => {
+      setActiveWidgetConfig(config)
+
+      // Apply partner theming as CSS variable overrides on :root
+      if (config?.primaryColor) {
+        document.documentElement.style.setProperty('--primary', config.primaryColor)
+      }
+      if (config?.accentColor) {
+        document.documentElement.style.setProperty('--accent-2', config.accentColor)
+      }
+
+      // Strip down to embed mode: hide nav, status bar, B2B section, footer
+      document.querySelectorAll('nav, #status-bar, #b2b-root, footer').forEach((el) => {
+        el.classList.add('hidden')
+      })
+
+      // Render the "Powered by Fjordvia" bar
+      new WidgetFooter(config).render()
+    })
+  }
+}

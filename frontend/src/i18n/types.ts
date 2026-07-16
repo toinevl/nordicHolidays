@@ -197,6 +197,10 @@ export interface LocaleStrings {
   loading: {
     generating: string
   }
+  widget: {
+    poweredBy: string
+    planTrip: string
+  }
 }
 
 export type LocaleKey =
@@ -217,3 +221,4 @@ export type LocaleKey =
   | `b2b.${keyof LocaleStrings['b2b']}`
   | `footer.${keyof LocaleStrings['footer']}`
   | `loading.${keyof LocaleStrings['loading']}`
+  | `widget.${keyof LocaleStrings['widget']}`
