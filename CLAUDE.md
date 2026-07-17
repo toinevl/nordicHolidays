@@ -1,5 +1,16 @@
 # nordicHolidays — Project Notes
 
+## New API functions MUST be imported in api/src/index.ts
+
+The Azure Functions v4 programming model only registers functions whose
+module actually gets imported — package.json's `main` is `dist/src/index.js`,
+so a new file in `api/src/functions/` that isn't imported there compiles,
+tests and deploys green while its endpoint 404s in production. This shipped
+three dead endpoints at once on 2026-07-16 (track #74, leads/partners #75
+and #76). `api/src/index.test.ts` now asserts every non-test module in
+`src/functions/` is imported; keep it passing rather than trusting a green
+deploy.
+
 ## Testing conventions
 
 **Test fixtures must include real non-ASCII Nordic place names** (ä, ö, å — e.g.
