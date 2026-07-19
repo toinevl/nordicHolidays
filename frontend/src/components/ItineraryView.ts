@@ -1,5 +1,5 @@
 import type { Stop, CulinaryRegion, Accommodation, Itinerary, ItineraryStop } from '../types'
-import { haversineKm } from '../lib/distance'
+import { haversineKm, formatDriveTime } from '../lib/distance'
 import { getSeasonInfo } from '../data/seasonData'
 import { t, tpl } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
@@ -222,8 +222,16 @@ export class ItineraryView {
     this.currentItinerary = itinerary
     const stops: Stop[] = itinerary.stops.map((s, i) => {
       const prev = itinerary.stops[i - 1]
-      const km = prev ? haversineKm([prev.lng, prev.lat], [s.lng, s.lat]) : 0
       const from = prev ? prev.city : ''
+      // #89: prefer real Azure Maps driving distance/time when the API
+      // populated them. Fall back to client-side haversine (no multiplier)
+      // for hand-edited/reordered stops or pre-#89 itineraries. The previous
+      // haversine × 1.3 constant was the root cause of #89 (errors up to
+      // 300km on fjord routes); it is intentionally NOT used as a fallback.
+      const apiKm = typeof s.km === 'number' ? s.km : (prev ? haversineKm([prev.lng, prev.lat], [s.lng, s.lat]) : 0)
+      const apiTimeMin = typeof s.driveTimeMin === 'number' ? s.driveTimeMin : (apiKm > 0 ? Math.round((apiKm / 80) * 60) : 0)
+      const km = i === 0 ? 0 : apiKm
+      const time = km > 0 ? formatDriveTime(i === 0 ? 0 : apiTimeMin) : ''
       return {
         id: i + 1,
         days: String(s.day),
@@ -237,7 +245,7 @@ export class ItineraryView {
         highlights: s.highlights,
         from,
         km,
-        time: km > 0 ? `~${Math.round(km / 90)} h drive` : '',
+        time,
         zoom: 12,
         pitch: 45,
         bearing: 0,

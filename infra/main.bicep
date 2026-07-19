@@ -15,6 +15,12 @@ param functionAppName string = 'nordic-holidays-api'
 @description('Application Insights name')
 param appInsightsName string = 'nordic-holidays-api'
 
+@description('Azure Maps account name (must be globally unique alphanumeric, 3-24 chars)')
+param azureMapsAccountName string = 'nordicholidays-maps'
+
+@description('Azure Maps account location — Maps is available in fewer regions than general compute; westeurope/eastus/northeurope are safe defaults. Must match the Function App region for lowest latency.')
+param azureMapsLocation string = 'westeurope'
+
 @description('Static Web App name')
 param staticWebAppName string = 'nordicholidays'
 
@@ -281,6 +287,35 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2024-04-01' = {
     ENTRA_REQUIRED_SCOPE: 'user_impersonation'
     AZURE_FOUNDRY_ENDPOINT: 'https://proj-tvv-openclaw-resource.cognitiveservices.azure.com/openai'
     AZURE_FOUNDRY_API_KEY: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/AZURE-FOUNDRY-API-KEY)'
+    AZURE_MAPS_CLIENT_ID: azureMaps.properties.uniqueId  // #89 — Maps account resourceId for RBAC auth
+  }
+}
+
+// Azure Maps account (#89) — real driving distances/times via Route Directions API.
+// Gen2 (S0) tier has a free monthly quota that comfortably covers generation volume;
+// see wishlist #89 for the routing/distance bug this fixes.
+resource azureMaps 'Microsoft.Maps/accounts@2024-03-01' = {
+  name: azureMapsAccountName
+  location: azureMapsLocation
+  sku: {
+    name: 'G2'  // Gen2 — includes the free tier + PAYG overflow
+  }
+  kind: 'Gen2'
+  properties: {
+    disableLocalAuth: true  // enforce Entra-authenticated access; no shared keys
+  }
+}
+
+// Grant the Function App's managed identity "Azure Maps Data Reader" over the
+// Maps account, so the API can authenticate via RBAC (Entra token) instead of a
+// shared key. Role definition GUID is the well-known Maps Data Reader built-in.
+resource azureMapsDataReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: azureMaps
+  name: guid(functionAppName, azureMapsAccountName, 'Azure Maps Data Reader')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '423170ca-a3f1-4610-bda8-02f53d6d862c')
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
   }
 }
 

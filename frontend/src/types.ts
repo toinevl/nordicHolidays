@@ -58,6 +58,10 @@ export type ItineraryStop = {
   culinaryNotes: string
   tags?: string[]
   userNotes?: string
+  /** Real driving distance from previous stop (km), from Azure Maps (#89). Absent on pre-#89 itineraries. */
+  km?: number
+  /** Real driving time from previous stop (min), from Azure Maps (#89). Absent on pre-#89 itineraries. */
+  driveTimeMin?: number
 }
 
 export type Itinerary = {

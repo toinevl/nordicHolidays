@@ -18,6 +18,18 @@ export type ItineraryStop = {
   accommodation: string
   culinaryNotes: string
   userNotes?: string
+  /**
+   * Real driving distance in km from the previous stop (0 for the first stop).
+   * Populated server-side from Azure Maps (#89); absent on itineraries
+   * generated before #89 shipped (frontend falls back to client-side
+   * haversine in that case).
+   */
+  km?: number
+  /**
+   * Real driving time in minutes from the previous stop (0 for the first stop).
+   * Populated server-side from Azure Maps (#89); absent on pre-#89 itineraries.
+   */
+  driveTimeMin?: number
 }
 
 export type Itinerary = {

@@ -5,6 +5,7 @@ import { withCors, corsPreflightResponse } from '../lib/cors'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 import { checkAndIncrementRateLimit } from '../lib/rateLimit'
 import { haversineKm } from '../lib/geo'
+import { getRouteSegments } from '../lib/routing'
 import type { Itinerary, Preferences } from '../types'
 import { GenerateRequestBodySchema, logError } from '../lib/schemas'
 
@@ -185,6 +186,30 @@ export async function generateHandler(
       const stop = input.stops[index]
       ctx?.warn(`generateHandler: promoting ${stop.city} to overnight stop (${Math.round(km)} km from ${baseCity})`)
       stop.nights = 1
+    }
+
+    // #89: enrich each stop with real driving distance/time from Azure Maps.
+    // Falls back gracefully to haversine (no multiplier) when Maps isn't
+    // configured or a lookup fails — generation never blocks on routing.
+    // Hand-edited/reordered stops get recomputed by the frontend's own
+    // fallback; these server-side values are authoritative only for the
+    // freshly-generated shape the model just produced.
+    try {
+      const coords = input.stops.map(s => ({ lat: s.lat, lng: s.lng }))
+      const segments = await getRouteSegments(coords, ctx)
+      input.stops = input.stops.map((stop, i) => ({
+        ...stop,
+        km: segments[i].km,
+        driveTimeMin: segments[i].driveTimeMin,
+      }))
+      const sources = segments.map(s => s.source)
+      const mapsHits = sources.filter(s => s === 'azure-maps' || s === 'cache').length
+      const fallbackHits = sources.filter(s => s === 'haversine-fallback').length
+      ctx?.log(`generateHandler: routing enrichment — ${mapsHits} Azure Maps/cache hits, ${fallbackHits} haversine fallbacks (of ${segments.length} segments)`, { tags: ['routing'] })
+    } catch (err) {
+      // Should be unreachable (getRouteSegments catches internally), but
+      // belt-and-braces: never let distance enrichment break generation.
+      ctx?.warn(`generateHandler: routing enrichment failed entirely, stops will have no km/driveTimeMin: ${err instanceof Error ? err.message : String(err)}`)
     }
 
     const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString() }
