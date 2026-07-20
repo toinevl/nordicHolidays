@@ -178,11 +178,19 @@ resource generateHandlerAlertRule 'Microsoft.Insights/scheduledQueryRules@2023-0
     criteria: {
       allOf: [
         {
+          // #90: fixed 2026-07-19. The original query had three bugs that made
+          // every Bicep deploy fail with "'summarize' operator: Failed to resolve
+          // scalar expression named 'TimeGenerated'":
+          //   1. App Insights `traces` exposes `timestamp`, not `TimeGenerated`
+          //   2. `severityLevel` is a string ('Warning'/'Error'/...), not a number;
+          //      `>= 3` was invalid — use =~ 'Error' or == 'Error' instead
+          //   3. The inner `where Count >= 1` was redundant (the criteria threshold
+          //      already enforces it) and the summarize-by-bin shape occasionally
+          //      confused the rule evaluator; dropped in favour of a flat count
           query: '''traces
             | where message startswith "generateHandler:"
-            | where severityLevel >= 3
-            | summarize Count = count() by bin(TimeGenerated, 5m)
-            | where Count >= 1'''
+            | where severityLevel == 'Error'
+            | summarize Count = count()'''
           timeAggregation: 'Count'
           operator: 'GreaterThanOrEqual'
           threshold: 1
@@ -294,7 +302,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2024-04-01' = {
 // Azure Maps account (#89) — real driving distances/times via Route Directions API.
 // Gen2 (S0) tier has a free monthly quota that comfortably covers generation volume;
 // see wishlist #89 for the routing/distance bug this fixes.
-resource azureMaps 'Microsoft.Maps/accounts@2024-03-01' = {
+resource azureMaps 'Microsoft.Maps/accounts@2021-02-01' = {
   name: azureMapsAccountName
   location: azureMapsLocation
   sku: {
@@ -308,12 +316,13 @@ resource azureMaps 'Microsoft.Maps/accounts@2024-03-01' = {
 
 // Grant the Function App's managed identity "Azure Maps Data Reader" over the
 // Maps account, so the API can authenticate via RBAC (Entra token) instead of a
-// shared key. Role definition GUID is the well-known Maps Data Reader built-in.
+// shared key. Role definition GUID verified via `az role definition list --name
+// "Azure Maps Data Reader"` on 2026-07-19 (#89).
 resource azureMapsDataReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: azureMaps
   name: guid(functionAppName, azureMapsAccountName, 'Azure Maps Data Reader')
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '423170ca-a3f1-4610-bda8-02f53d6d862c')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '423170ca-a8f6-4b0f-8487-9e4eb8f49bfa')
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
