@@ -271,7 +271,6 @@ export async function getRouteSegments(
   ctx?: InvocationContext,
 ): Promise<RouteSegment[]> {
   if (coords.length === 0) return []
-  const segments: RouteSegment[] = [{ km: 0, driveTimeMin: 0, source: 'haversine-fallback' }]
 
   const mapsClientId = process.env.AZURE_MAPS_CLIENT_ID
   const mapsEnabled = !!mapsClientId
@@ -280,54 +279,77 @@ export async function getRouteSegments(
     return null
   })
 
-  for (let i = 1; i < coords.length; i++) {
-    const origin = coords[i - 1]
-    const dest = coords[i]
+  // Parallel resolution of each consecutive coordinate pair. Previously this
+  // was a sequential `await` loop, so an N-stop itinerary with a cold cache
+  // paid ~N × 300ms serial latency for the Azure Maps round-trips. Each pair
+  // resolves independently (cache lookup → API → fallback), so we can fan out
+  // with Promise.all without any cross-pair dependency. Per-pair failures
+  // already degrade to haversine inside the resolver; the outer catch is just
+  // a belt-and-braces guard so one rejection never breaks the whole array.
+  const pairs: Array<[Coordinate, Coordinate]> = []
+  for (let i = 1; i < coords.length; i++) pairs.push([coords[i - 1], coords[i]])
 
-    // (1) memory
-    const memHit = memGet(origin, dest)
-    if (memHit) {
-      segments.push(memHit)
-      continue
+  const rest = await Promise.all(
+    pairs.map(([origin, dest]) =>
+      resolveSegment(origin, dest, { table, mapsClientId, mapsEnabled, ctx }).catch((err) => {
+        ctx?.warn(`routing: resolver failed for ${roundCoord(origin)}→${roundCoord(dest)}, falling back to haversine: ${err instanceof Error ? err.message : String(err)}`)
+        return haversineFallback(origin, dest)
+      }),
+    ),
+  )
+
+  return [{ km: 0, driveTimeMin: 0, source: 'haversine-fallback' }, ...rest]
+}
+
+/**
+ * Resolve a single origin→destination segment through the cache layers and
+ * (on miss) the Azure Maps API. Extracted from getRouteSegments so each pair
+ * can be resolved concurrently with Promise.all. Never throws — any failure
+ * degrades to the haversine fallback.
+ */
+async function resolveSegment(
+  origin: Coordinate,
+  dest: Coordinate,
+  deps: { table: import('@azure/data-tables').TableClient | null; mapsClientId: string | undefined; mapsEnabled: boolean; ctx?: InvocationContext },
+): Promise<RouteSegment> {
+  const { table, mapsClientId, mapsEnabled, ctx } = deps
+
+  // (1) memory
+  const memHit = memGet(origin, dest)
+  if (memHit) return memHit
+
+  // (2) table
+  if (table) {
+    const tableHit = await readCachedRoute(table, origin, dest).catch((err) => {
+      ctx?.warn(`routing: table read failed for ${roundCoord(origin)}→${roundCoord(dest)}: ${err instanceof Error ? err.message : String(err)}`)
+      return null
+    })
+    if (tableHit) {
+      memSet(origin, dest, tableHit)
+      return tableHit
     }
-
-    // (2) table
-    if (table) {
-      const tableHit = await readCachedRoute(table, origin, dest).catch((err) => {
-        ctx?.warn(`routing: table read failed for ${roundCoord(origin)}→${roundCoord(dest)}: ${err instanceof Error ? err.message : String(err)}`)
-        return null
-      })
-      if (tableHit) {
-        memSet(origin, dest, tableHit)
-        segments.push(tableHit)
-        continue
-      }
-    }
-
-    // (3) Azure Maps (or fallback if not configured)
-    if (mapsEnabled && mapsClientId) {
-      try {
-        const fresh = await queryMapsRoute(origin, dest, mapsClientId)
-        memSet(origin, dest, fresh)
-        if (table) {
-          await writeCachedRoute(table, origin, dest, fresh).catch((err) => {
-            ctx?.warn(`routing: table write failed for ${roundCoord(origin)}→${roundCoord(dest)}: ${err instanceof Error ? err.message : String(err)}`)
-          })
-        }
-        segments.push(fresh)
-        continue
-      } catch (err) {
-        ctx?.warn(`routing: Azure Maps query failed for ${roundCoord(origin)}→${roundCoord(dest)}, falling back to haversine: ${err instanceof Error ? err.message : String(err)}`)
-      }
-    }
-
-    // (4) fallback
-    const fb = haversineFallback(origin, dest)
-    memSet(origin, dest, fb)
-    segments.push(fb)
   }
 
-  return segments
+  // (3) Azure Maps (or fallback if not configured)
+  if (mapsEnabled && mapsClientId) {
+    try {
+      const fresh = await queryMapsRoute(origin, dest, mapsClientId)
+      memSet(origin, dest, fresh)
+      if (table) {
+        await writeCachedRoute(table, origin, dest, fresh).catch((err) => {
+          ctx?.warn(`routing: table write failed for ${roundCoord(origin)}→${roundCoord(dest)}: ${err instanceof Error ? err.message : String(err)}`)
+        })
+      }
+      return fresh
+    } catch (err) {
+      ctx?.warn(`routing: Azure Maps query failed for ${roundCoord(origin)}→${roundCoord(dest)}, falling back to haversine: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  // (4) fallback
+  const fb = haversineFallback(origin, dest)
+  memSet(origin, dest, fb)
+  return fb
 }
 
 /**

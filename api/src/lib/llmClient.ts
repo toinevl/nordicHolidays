@@ -15,5 +15,7 @@ export function getLlmClient(): OpenAI {
 }
 
 export function getModel(): string {
-  return process.env.LLM_MODEL ?? 'gpt-4o'
+  // Default matches the production deployment (infra/main.bicep LLM_MODEL).
+  // Override per-env via LLM_MODEL for local experimentation.
+  return process.env.LLM_MODEL ?? 'gpt-5.4-nano'
 }

@@ -251,4 +251,34 @@ describe('getRouteSegments with Azure Maps configured (mocked)', () => {
     expect(url.searchParams.get('query')).toContain(':')
     expect(url.searchParams.get('query')).toContain(',')
   })
+
+  it('resolves multi-stop routes concurrently, not sequentially', async () => {
+    // Regression guard for the parallelization of getRouteSegments (#92):
+    // with N uncached pairs, all N fetches must be in-flight before the first
+    // one resolves. We assert this by making each mock fetch only settle when
+    // a shared latch has seen every call start.
+    const { DefaultAzureCredential } = await import('@azure/identity')
+    vi.spyOn(DefaultAzureCredential.prototype, 'getToken').mockResolvedValue({
+      token: 'fake-token',
+      expiresOnTimestamp: Date.now() + 3600000,
+    })
+
+    const started: number[] = []
+    let resolveAll!: () => void
+    const allStarted = new Promise<void>((r) => { resolveAll = r })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      started.push(Date.now())
+      if (started.length === 3) resolveAll()
+      await allStarted
+      return new Response(JSON.stringify(mockMapsResponse(100, 60)), { status: 200 })
+    })
+
+    const segs = await getRouteSegments([HELSINGBORG, GOTHENBURG, STOCKHOLM, MALMO])
+    expect(segs).toHaveLength(4)
+    expect(segs.slice(1).every((s) => s.source === 'azure-maps')).toBe(true)
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
+    // If resolution were sequential, the third fetch wouldn't start until the
+    // first two had settled — but the latch can't release until all three have
+    // started. This would hang/timeout on a serial implementation.
+  })
 })

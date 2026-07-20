@@ -41,10 +41,10 @@ describe('getModel', () => {
   beforeEach(() => { vi.resetModules() })
   afterEach(() => { delete process.env.LLM_MODEL })
 
-  it('defaults to gpt-4o', async () => {
+  it('defaults to the production model (gpt-5.4-nano)', async () => {
     delete process.env.LLM_MODEL
     const { getModel } = await import('./llmClient')
-    expect(getModel()).toBe('gpt-4o')
+    expect(getModel()).toBe('gpt-5.4-nano')
   })
 
   it('returns LLM_MODEL env var when set', async () => {
