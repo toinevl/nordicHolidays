@@ -52,3 +52,4 @@ api/dist/
 frontend/public/trips/
 frontend/public/sitemap.xml
 frontend/public/robots.txt
+__pycache__
