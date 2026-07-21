@@ -172,6 +172,61 @@ describe('POST /api/itineraries', () => {
     expect(client.createEntity).toHaveBeenCalledOnce()
   })
 
+  it('accepts stops with km/driveTimeMin from #89 Azure Maps enrichment (regression for #95)', async () => {
+    // #89 added server-side driving-distance enrichment: generate.ts now
+    // populates stop.km and stop.driveTimeMin before returning. But the zod
+    // ItineraryStopSchema used .strict(), which rejected unknown keys — so
+    // every itinerary generated after #89 shipped failed to save with a
+    // 400 "Invalid request body". This test reproduces that exact shape.
+    const client = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const itin: Itinerary = {
+      title: 'Enriched Trip',
+      totalDays: 5,
+      startCity: 'Stockholm',
+      endCity: 'Göteborg',
+      stops: [
+        {
+          day: 1,
+          city: 'Stockholm',
+          region: 'Uppland',
+          lat: 59.3293,
+          lng: 18.0686,
+          nights: 2,
+          highlights: ['Gamla Stan'],
+          accommodation: 'Hotel A',
+          culinaryNotes: 'Meatballs',
+          km: 0,
+          driveTimeMin: 0,
+        },
+        {
+          day: 3,
+          city: 'Göteborg',
+          region: 'Västergötland',
+          lat: 57.7089,
+          lng: 11.9746,
+          nights: 1,
+          highlights: ['Archipelago'],
+          accommodation: 'Hotel B',
+          culinaryNotes: 'Fika',
+          km: 395,
+          driveTimeMin: 268,
+        },
+      ],
+      generatedAt: '2026-07-20T12:00:00.000Z',
+    }
+    const req = { json: async () => ({ name: 'Enriched Trip', itinerary: itin }), method: 'POST', headers: new Map() } as any
+    const result = await saveItineraryHandler(req, makeContext())
+    expect(result.status).toBe(201)
+    expect(client.createEntity).toHaveBeenCalledOnce()
+    // Verify the enrichment fields were persisted to the entity
+    const call = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    const savedStops = JSON.parse(call.itineraryJson).stops
+    expect(savedStops[0].km).toBe(0)
+    expect(savedStops[1].km).toBe(395)
+    expect(savedStops[1].driveTimeMin).toBe(268)
+  })
+
   it('validates and includes valid JPEG data URI thumbnail', async () => {
     const client = makeClient()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)

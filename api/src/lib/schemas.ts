@@ -35,6 +35,15 @@ export const ItineraryStopSchema = z.object({
   accommodation: z.string().max(500),
   culinaryNotes: z.string().max(500),
   userNotes: z.string().max(2000).optional(),
+  /**
+   * Real driving distance/time from the previous stop. Populated server-side
+   * by Azure Maps enrichment (#89). Optional because pre-#89 itineraries and
+   * hand-edited/reordered stops may not have them (frontend falls back to
+   * haversine). Must be in the schema because .strict() rejects unknown keys
+   * — their omission here caused every post-#89 save to 400 (#95).
+   */
+  km: z.number().nonnegative().optional(),
+  driveTimeMin: z.number().nonnegative().optional(),
 }).strict()
 
 /**
