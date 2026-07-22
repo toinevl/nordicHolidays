@@ -249,6 +249,7 @@ const itineraryView = new ItineraryView(
   onSaveNoteForMain,
   onUndoForMain,
   onAddStopForMain,
+  () => generatorPanel.open(),
 )
 
 const mapView = new MapView('map', (stop, opts) => {

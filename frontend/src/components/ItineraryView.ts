@@ -12,6 +12,7 @@ import { AddStopForm } from './AddStopForm'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
+export type OpenGeneratorCallback = () => void
 export type UpdateStopCallback = (stopId: number, updates: Record<string, unknown>) => void
 export type ReorderStopCallback = (stopId: number, direction: 'up' | 'down') => void
 export type RemoveStopCallback = (stopId: number) => void
@@ -111,6 +112,7 @@ export class ItineraryView {
   private onSaveNoteCallback?: (stop: ItineraryStop, note: string) => Promise<void>
   private onUndoCallback?: () => void
   private onAddStopCallback?: AddStopCallback
+  private onOpenGeneratorCallback?: OpenGeneratorCallback
 
   constructor(
     onFilterChange: FilterChangeCallback,
@@ -120,6 +122,7 @@ export class ItineraryView {
     onSaveNote?: (stop: ItineraryStop, note: string) => Promise<void>,
     onUndo?: () => void,
     onAddStop?: AddStopCallback,
+    onOpenGenerator?: OpenGeneratorCallback,
   ) {
     this.onFilterChange = onFilterChange
     this.onStopSelect = onStopSelect
@@ -128,6 +131,7 @@ export class ItineraryView {
     this.onSaveNoteCallback = onSaveNote
     this.onUndoCallback = onUndo
     this.onAddStopCallback = onAddStop
+    this.onOpenGeneratorCallback = onOpenGenerator
   }
 
   render(stops: Stop[], culinary: CulinaryRegion[], accommodations: Accommodation[]): void {
@@ -581,6 +585,18 @@ export class ItineraryView {
           form.getElement().querySelector<HTMLInputElement>('.add-stop-city')?.focus()
         })
         tl.appendChild(addBtn)
+      }
+    }
+
+    // "Regenerate route" button under the timeline (#98)
+    if (this.onOpenGeneratorCallback) {
+      const existingRegen = tl.querySelector('.btn-regenerate-route')
+      if (!existingRegen) {
+        const regenBtn = document.createElement('button')
+        regenBtn.className = 'btn btn--primary btn--full btn-regenerate-route'
+        regenBtn.textContent = t('itinerary.regenerateRoute')
+        regenBtn.addEventListener('click', () => { this.onOpenGeneratorCallback!() })
+        tl.appendChild(regenBtn)
       }
     }
   }

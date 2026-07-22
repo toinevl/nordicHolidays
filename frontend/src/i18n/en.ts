@@ -91,6 +91,7 @@ export const en: LocaleStrings = {
     confirmRemove: 'Remove {city}?',
     confirmRemoveYes: 'Yes, remove',
     confirmRemoveKeep: 'Keep',
+    regenerateRoute: 'Regenerate route',
   },
   season: {
     skane: 'Mild climate. Warm summers, colourful autumns.',

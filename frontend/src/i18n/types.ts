@@ -91,6 +91,7 @@ export interface LocaleStrings {
     confirmRemove: string
     confirmRemoveYes: string
     confirmRemoveKeep: string
+    regenerateRoute: string
   }
   map: {
     legendOvernight: string

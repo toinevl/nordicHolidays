@@ -91,6 +91,7 @@ export const nl: LocaleStrings = {
     confirmRemove: '{city} verwijderen?',
     confirmRemoveYes: 'Ja, verwijder',
     confirmRemoveKeep: 'Behouden',
+    regenerateRoute: 'Route opnieuw genereren',
   },
   season: {
     skane: 'Mild klimaat. Warme zomers, kleurrijke herfsten.',
