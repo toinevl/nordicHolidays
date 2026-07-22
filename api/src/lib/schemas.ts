@@ -100,6 +100,10 @@ export const GenerateRequestBodySchema = z.object({
   country: z.string().max(2).default('SE'),
   lang: z.enum(['en', 'nl', 'de']).default('en'),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  existingStops: z.array(z.object({
+    city: z.string().max(200),
+    nights: z.number().int().nonnegative(),
+  })).max(50).optional(),
 }).strict()
 
 export const ItineraryPutBodySchema = z.object({

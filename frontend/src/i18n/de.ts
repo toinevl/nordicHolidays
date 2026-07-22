@@ -87,6 +87,10 @@ export const de: LocaleStrings = {
     findActivities: 'Aktivitäten in {city}',
     rentCar: 'Mietwagen für diese Reise',
     tripStarting: '{totalDays}-Tage-Reise ab {date}',
+    addStop: 'Stopp hinzufügen',
+    confirmRemove: '{city} entfernen?',
+    confirmRemoveYes: 'Ja, entfernen',
+    confirmRemoveKeep: 'Behalten',
   },
   season: {
     skane: 'Mildes Klima. Warme Sommer, bunte Herbsttage.',

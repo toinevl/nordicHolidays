@@ -206,3 +206,11 @@ where English is still the default or only option. This milestone closes those g
   - New: frontend/src/lib/travelDates.ts (locale-aware date formatting)
   - API: startDate persisted as top-level column on save, returned in list summaries
   - 178 API + 186 frontend tests pass, all 3 CI workflows green
+
+- [ ] (A) Itinerary management: add/delete destinations + route-aware regeneration +feature +ui +api @me #98
+  - [ ] Delete confirmation: inline "Remove {city}? Yes/Keep" on stop cards (prevent accidental deletion)
+  - [ ] AddStopForm component: inline form with city combobox + nights selector + Add/Cancel buttons
+  - [ ] Wire AddStopForm into timeline: "+ Add stop" button at bottom, appends stop + patches server
+  - [ ] Extend generate API: accept `existingStops` in request body, inject into LLM prompt
+  - [ ] Wire Regenerate button: pass current stop cities as `existingStops` for route-aware re-generation
+  - [ ] Tests + typecheck + CI green

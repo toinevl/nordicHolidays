@@ -49,8 +49,8 @@ export function warmUpApi(): void {
 export const apiClient = {
   getPreferences: () => request<Preferences>('/api/preferences'),
   savePreferences: (prefs: Preferences) => request<Preferences>('/api/preferences', { method: 'PUT', body: JSON.stringify(prefs) }),
-  generateItinerary: (prefs: Preferences, lang: Locale = 'en') =>
-    request<Itinerary>('/api/generate', { method: 'POST', body: JSON.stringify({ ...prefs, lang }) }),
+  generateItinerary: (prefs: Preferences, lang: Locale = 'en', existingStops?: Array<{ city: string; nights: number }>) =>
+    request<Itinerary>('/api/generate', { method: 'POST', body: JSON.stringify({ ...prefs, lang, existingStops }) }),
   listItineraries: () => request<SavedItinerarySummary[]>('/api/itineraries'),
   getItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}`),
   saveItinerary: (name: string, itinerary: Itinerary, thumbnail?: string) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) }),

@@ -39,7 +39,11 @@ const SEASONAL_CONTEXT: Record<number, string> = {
   12: 'December — winter. Very short days (5-6h south, polar night north). Snow and ice. Christmas markets in cities. Aurora season. Many attractions closed; winter activities (skiing, ice hotels) begin opening. Dress for sub-zero.',
 }
 
-function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' | 'de' = 'en'): string {
+function buildUserMessage(
+  prefs: Preferences,
+  lang: 'en' | 'nl' | 'de' = 'en',
+  existingStops?: Array<{ city: string; nights: number }>,
+): string {
   const countryName = COUNTRY_NAMES[prefs.country] ?? 'the selected Nordic country'
   const parts: string[] = [
     `Create a ${prefs.tripDays}-day Nordic road trip itinerary in ${countryName}.`,
@@ -56,6 +60,10 @@ function buildUserMessage(prefs: Preferences, lang: 'en' | 'nl' | 'de' = 'en'): 
   }
   if (prefs.mustVisit.length > 0) parts.push(`Must include: ${prefs.mustVisit.join(', ')}`)
   if (prefs.avoid.length > 0) parts.push(`Avoid: ${prefs.avoid.join(', ')}`)
+  if (existingStops && existingStops.length > 0) {
+    const stopList = existingStops.map(s => `${s.city} (${s.nights === 0 ? 'day trip' : s.nights + 'n'})`).join(' → ')
+    parts.push(`The current route includes these stops — respect their order and include all of them: ${stopList}`)
+  }
   parts.push('Plan logical routing, mix of famous and off-the-beaten-track stops, with authentic local recommendations.')
   const langInstruction =
     lang === 'nl' ? 'Genereer de reisroute in het Nederlands.'
@@ -157,7 +165,7 @@ export async function generateHandler(
       max_completion_tokens: maxTokens,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: buildUserMessage(prefs, lang) },
+        { role: 'user', content: buildUserMessage(prefs, lang, body.existingStops) },
       ],
       tools: [ITINERARY_FUNCTION],
       tool_choice: 'required',

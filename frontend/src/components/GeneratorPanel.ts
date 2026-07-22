@@ -357,6 +357,11 @@ export class GeneratorPanel {
     const startDate = (this.panel.querySelector('#gen-start-date') as HTMLInputElement)?.value || undefined
     const prefs: Preferences = { ...this.store.getState().preferences, startCity, endCity, tripDays, startDate }
 
+    // On regenerate (an itinerary is already loaded), pass the current stop cities
+    // so the LLM builds a route that respects the user's edits (#98).
+    const currentItinerary = this.store.getState().currentItinerary
+    const existingStops = currentItinerary?.stops?.map(s => ({ city: s.city, nights: s.nights }))
+
     this.store.setState({ preferences: prefs })
     try { await apiClient.savePreferences(prefs) } catch { /* non-critical */ }
 
@@ -365,7 +370,7 @@ export class GeneratorPanel {
     this.store.setState({ isGenerating: true })
 
     try {
-      const itinerary = await apiClient.generateItinerary(prefs, this.store.getState().locale)
+      const itinerary = await apiClient.generateItinerary(prefs, this.store.getState().locale, existingStops)
       this.store.setState({ currentItinerary: itinerary, isGenerating: false, unsaved: true, activeTripName: null })
       this.onGenerate(itinerary)
       this.close()

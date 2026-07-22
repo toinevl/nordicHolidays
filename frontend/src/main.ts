@@ -155,6 +155,37 @@ function onRemoveStopForMain(stopId: number): void {
   }
 }
 
+function onAddStopForMain(stop: { city: string; region: string; lat: number; lng: number; nights: number }): void {
+  const state = store.getState()
+  const itinerary = state.currentItinerary
+  if (!itinerary || !Array.isArray(itinerary.stops)) return
+
+  const maxDay = itinerary.stops.reduce((max, s) => Math.max(max, s.day), 0)
+  const newStop = {
+    day: maxDay + 1,
+    city: stop.city,
+    region: stop.region,
+    lat: stop.lat,
+    lng: stop.lng,
+    nights: stop.nights,
+    highlights: [] as string[],
+    accommodation: '',
+    culinaryNotes: '',
+  }
+
+  const stops = [...itinerary.stops, newStop]
+  const next = { ...itinerary, stops }
+  store.setState({ currentItinerary: next, unsaved: true })
+  itineraryView.renderFromItinerary(next)
+  mapView.replaceStops(toMapStops(next))
+  if (state.activeTripId) {
+    apiClient
+      .updateItinerary(state.activeTripId, { stops })
+      .then((updated) => itineraryView.setHasPreviousVersion(Boolean(updated.hasPreviousVersion)))
+      .catch(() => toast.error(t('saved.saveFailed')))
+  }
+}
+
 function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
   const state = store.getState()
   if (!state.currentItinerary || !Array.isArray(state.currentItinerary.stops)) {
@@ -217,6 +248,7 @@ const itineraryView = new ItineraryView(
   onRemoveStopForMain,
   onSaveNoteForMain,
   onUndoForMain,
+  onAddStopForMain,
 )
 
 const mapView = new MapView('map', (stop, opts) => {

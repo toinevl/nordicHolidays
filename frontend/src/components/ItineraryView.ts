@@ -8,6 +8,7 @@ import { isDayTrip, baseFor } from '../lib/dayTrips'
 import { lodgingUrl, activityUrl, carRentalUrl } from '../lib/affiliate'
 import { affiliateConfig } from '../config'
 import { formatStopDateRange, formatTripStart } from '../lib/travelDates'
+import { AddStopForm } from './AddStopForm'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
@@ -15,6 +16,7 @@ export type UpdateStopCallback = (stopId: number, updates: Record<string, unknow
 export type ReorderStopCallback = (stopId: number, direction: 'up' | 'down') => void
 export type RemoveStopCallback = (stopId: number) => void
 export type SaveNoteCallback = (stop: ItineraryStop, note: string) => Promise<void>
+export type AddStopCallback = (stop: { city: string; region: string; lat: number; lng: number; nights: number }) => void
 
 export function applyInlineEditToItinerary(
   currentItinerary: Record<string, unknown> | null,
@@ -108,6 +110,7 @@ export class ItineraryView {
   private onRemoveStop: RemoveStopCallback
   private onSaveNoteCallback?: (stop: ItineraryStop, note: string) => Promise<void>
   private onUndoCallback?: () => void
+  private onAddStopCallback?: AddStopCallback
 
   constructor(
     onFilterChange: FilterChangeCallback,
@@ -116,6 +119,7 @@ export class ItineraryView {
     onRemoveStop: RemoveStopCallback,
     onSaveNote?: (stop: ItineraryStop, note: string) => Promise<void>,
     onUndo?: () => void,
+    onAddStop?: AddStopCallback,
   ) {
     this.onFilterChange = onFilterChange
     this.onStopSelect = onStopSelect
@@ -123,6 +127,7 @@ export class ItineraryView {
     this.onRemoveStop = onRemoveStop
     this.onSaveNoteCallback = onSaveNote
     this.onUndoCallback = onUndo
+    this.onAddStopCallback = onAddStop
   }
 
   render(stops: Stop[], culinary: CulinaryRegion[], accommodations: Accommodation[]): void {
@@ -491,7 +496,39 @@ export class ItineraryView {
         event.stopPropagation()
         const stopId = Number(button.getAttribute('data-id'))
         if (!Number.isFinite(stopId)) return
-        this.onRemoveStop(stopId)
+
+        const card = button.closest('.t-card') as HTMLElement | null
+        if (!card) return
+        const actionsEl = card.querySelector('.stop-actions') as HTMLElement | null
+
+        // If already confirming, execute the removal
+        if (card.querySelector('.remove-confirm')) {
+          this.onRemoveStop(stopId)
+          return
+        }
+
+        // Show inline confirm UI
+        const stop = this.stops.find(s => s.id === stopId)
+        const cityName = stop ? stop.dest : ''
+        const confirmEl = document.createElement('div')
+        confirmEl.className = 'remove-confirm'
+        confirmEl.innerHTML = `
+          <span class="remove-confirm-text">${tpl('itinerary.confirmRemove', { city: cityName })}</span>
+          <button type="button" class="btn btn--small btn--danger btn-confirm-remove">${t('itinerary.confirmRemoveYes')}</button>
+          <button type="button" class="btn btn--small btn--ghost btn-cancel-remove">${t('itinerary.confirmRemoveKeep')}</button>
+        `
+        actionsEl?.classList.add('hidden')
+        card.appendChild(confirmEl)
+
+        confirmEl.querySelector('.btn-confirm-remove')?.addEventListener('click', (e) => {
+          e.stopPropagation()
+          this.onRemoveStop(stopId)
+        })
+        confirmEl.querySelector('.btn-cancel-remove')?.addEventListener('click', (e) => {
+          e.stopPropagation()
+          confirmEl.remove()
+          actionsEl?.classList.remove('hidden')
+        })
       })
     })
 
@@ -526,6 +563,26 @@ export class ItineraryView {
 
     this.applyTimelineFilter()
     if (this.stops[0]) this.onStopSelect(this.stops[0], { fly: false })
+
+    // "+ Add stop" button at the bottom of the timeline (#98)
+    if (this.onAddStopCallback) {
+      const existingBtn = tl.querySelector('.btn-add-stop')
+      if (!existingBtn) {
+        const addBtn = document.createElement('button')
+        addBtn.className = 'btn btn--secondary btn--full btn-add-stop'
+        addBtn.textContent = `+ ${t('itinerary.addStop')}`
+        addBtn.addEventListener('click', () => {
+          addBtn.remove()
+          const form = new AddStopForm(
+            (stop) => { this.onAddStopCallback!(stop) },
+            () => { form.getElement().remove(); tl.appendChild(addBtn) },
+          )
+          tl.appendChild(form.getElement())
+          form.getElement().querySelector<HTMLInputElement>('.add-stop-city')?.focus()
+        })
+        tl.appendChild(addBtn)
+      }
+    }
   }
 
   private applyTimelineFilter(): void {
