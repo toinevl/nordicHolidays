@@ -207,10 +207,11 @@ where English is still the default or only option. This milestone closes those g
   - API: startDate persisted as top-level column on save, returned in list summaries
   - 178 API + 186 frontend tests pass, all 3 CI workflows green
 
-- [ ] (A) Itinerary management: add/delete destinations + route-aware regeneration +feature +ui +api @me #98
-  - [ ] Delete confirmation: inline "Remove {city}? Yes/Keep" on stop cards (prevent accidental deletion)
-  - [ ] AddStopForm component: inline form with city combobox + nights selector + Add/Cancel buttons
-  - [ ] Wire AddStopForm into timeline: "+ Add stop" button at bottom, appends stop + patches server
-  - [ ] Extend generate API: accept `existingStops` in request body, inject into LLM prompt
-  - [ ] Wire Regenerate button: pass current stop cities as `existingStops` for route-aware re-generation
-  - [ ] Tests + typecheck + CI green
+- [x] (A) Itinerary management: add/delete destinations + route-aware regeneration +feature +ui +api @me #98 — done 2026-07-22 (0a732c6)
+  - [x] Delete confirmation: inline "Remove {city}? Yes/Keep" on stop cards (prevent accidental deletion)
+  - [x] AddStopForm component: inline form with city combobox + nights selector + Add/Cancel buttons
+  - [x] Wire AddStopForm into timeline: "+ Add stop" button at bottom, appends stop + patches server
+  - [x] Extend generate API: accept `existingStops` in request body, inject into LLM prompt
+  - [x] Wire Regenerate button: pass current stop cities as `existingStops` for route-aware re-generation
+  - [x] Tests + typecheck + CI green
+  - 178 API + 190 frontend tests pass, all 3 CI workflows green

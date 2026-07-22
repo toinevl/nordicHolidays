@@ -4,7 +4,7 @@
 
 **Fjordvia** — AI-Planned Road Trips Across the Nordics. Plan your Nordic holiday by selecting a start and end point — we’ll generate the rest with AI.
 
-**Live app:** <https://nordicholidays.azurestaticapps.net> (Fjordvia will live at <https://fjordvia.com> once the domain binding lands — tracked separately as wishlist #80)
+**Live app:** <https://sweden.van-vliet.eu> — AI road-trip planner for the Nordics
 
 ---
 
@@ -18,7 +18,11 @@
 - **Navigation export** — send any itinerary to **Google Maps** (multi-stop driving route) or **Waze** (navigate to final destination) via deep-link; also export as **GPX** (sat-nav waypoints) or **iCal** (calendar events)
 - **Day-by-day timeline** — stop cards with drive distances, tips, and region colour tags
 - **Season & weather callouts** — packing and activity advice per trip
-- **Regenerate** — instantly produce a fresh itinerary with the same parameters
+- **Optional trip start date** — generates a route tailored to the season (#96)
+- **Date-aware itinerary view** — calendar dates shown on every stop, trip summary, and exports (#97)
+- **Itinerary management** — add or remove destinations inline, and regenerate the route while respecting your manual edits (#98)
+- **Undo** — revert a single edit cycle if the regeneration or removal wasn’t what you wanted
+- **Notes** — per-stop user notes persisted alongside AI suggestions
 
 ---
 
