@@ -196,3 +196,10 @@ where English is still the default or only option. This milestone closes those g
       invalid format 400, existing behavior preserved). 178 API + 186 frontend tests pass.
   - Backward compatible: startDate is optional. Absent = generic Nordic guidance (current behavior).
   - CI/CD: all 3 workflows green (CI, Deploy API, Deploy Frontend).
+
+- [ ] (B) Surface travel dates throughout the app experience +feature +ui @me #97 dep:#96
+  - [ ] Itinerary view: show actual calendar dates per stop (derived from startDate + day number)
+  - [ ] Itinerary header/summary: "14-day trip starting 1 July 2026"
+  - [ ] Saved trips panel: show travel date in trip cards
+  - [ ] Export (PDF/calendar): include dates
+  - [ ] i18n: date formatting keys in en/nl/de

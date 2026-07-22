@@ -66,6 +66,7 @@ export type SavedItinerarySummary = {
   startCity: string
   endCity: string
   thumbnail?: string
+  startDate?: string
 }
 
 export type CitySuggestion = {

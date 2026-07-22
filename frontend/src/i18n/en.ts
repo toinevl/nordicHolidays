@@ -86,6 +86,7 @@ export const en: LocaleStrings = {
     findHotels: 'Find hotels in {city}',
     findActivities: 'Things to do in {city}',
     rentCar: 'Rent a car for this trip',
+    tripStarting: '{totalDays}-day trip from {date}',
   },
   season: {
     skane: 'Mild climate. Warm summers, colourful autumns.',

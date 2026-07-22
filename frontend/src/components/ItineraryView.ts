@@ -1,12 +1,13 @@
 import type { Stop, CulinaryRegion, Accommodation, Itinerary, ItineraryStop } from '../types'
 import { haversineKm, formatDriveTime } from '../lib/distance'
 import { getSeasonInfo } from '../data/seasonData'
-import { t, tpl } from '../i18n/index'
+import { t, tpl, getLocale } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
 import { itineraryToGPX, itineraryToICS, downloadFile, itineraryToGoogleMapsUrl, itineraryToWazeUrl } from '../lib/export'
 import { isDayTrip, baseFor } from '../lib/dayTrips'
 import { lodgingUrl, activityUrl, carRentalUrl } from '../lib/affiliate'
 import { affiliateConfig } from '../config'
+import { formatStopDateRange, formatTripStart } from '../lib/travelDates'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
@@ -220,22 +221,20 @@ export class ItineraryView {
 
   renderFromItinerary(itinerary: Itinerary): void {
     this.currentItinerary = itinerary
+    const locale = getLocale()
+    const sd = itinerary.startDate
     const stops: Stop[] = itinerary.stops.map((s, i) => {
       const prev = itinerary.stops[i - 1]
       const from = prev ? prev.city : ''
-      // #89: prefer real Azure Maps driving distance/time when the API
-      // populated them. Fall back to client-side haversine (no multiplier)
-      // for hand-edited/reordered stops or pre-#89 itineraries. The previous
-      // haversine × 1.3 constant was the root cause of #89 (errors up to
-      // 300km on fjord routes); it is intentionally NOT used as a fallback.
       const apiKm = typeof s.km === 'number' ? s.km : (prev ? haversineKm([prev.lng, prev.lat], [s.lng, s.lat]) : 0)
       const apiTimeMin = typeof s.driveTimeMin === 'number' ? s.driveTimeMin : (apiKm > 0 ? Math.round((apiKm / 80) * 60) : 0)
       const km = i === 0 ? 0 : apiKm
       const time = km > 0 ? formatDriveTime(i === 0 ? 0 : apiTimeMin) : ''
+      const stopDate = sd ? formatStopDateRange(sd, s.day, s.nights, locale) : ''
       return {
         id: i + 1,
         days: String(s.day),
-        dates: '',
+        dates: stopDate,
         dest: s.city,
         region: s.region,
         coords: [s.lng, s.lat] as [number, number],
@@ -263,6 +262,15 @@ export class ItineraryView {
 
     const titleEl = document.querySelector('.hero-title, h1, .page-title') as HTMLElement | null
     if (titleEl) titleEl.textContent = itinerary.title
+
+    // Surface the trip start date in the route summary header (#97)
+    if (sd) {
+      const formatted = formatTripStart(sd, locale)
+      const subtitleEl = document.querySelector('.hero-subtitle, .page-subtitle') as HTMLElement | null
+      if (subtitleEl && formatted) {
+        subtitleEl.textContent = tpl('itinerary.tripStarting', { totalDays: String(itinerary.totalDays), date: formatted })
+      }
+    }
 
     this.updateUndoButtonVisibility()
   }

@@ -91,6 +91,8 @@ export type SavedItinerarySummary = {
   startCity: string
   endCity: string
   thumbnail?: string
+  /** Optional trip start date (YYYY-MM-DD) for seasonal context (#96/#97) */
+  startDate?: string
 }
 
 export type { Locale } from './i18n/types'

@@ -37,7 +37,7 @@ export function itineraryToGPX(itinerary: Itinerary): string {
 <gpx version="1.1" creator="Fjordvia" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
     <name>${escapeXml(itinerary.title)}</name>
-    <desc>${escapeXml(itinerary.startCity)} to ${escapeXml(itinerary.endCity)} - ${itinerary.totalDays} days</desc>
+    <desc>${escapeXml(itinerary.startCity)} to ${escapeXml(itinerary.endCity)} - ${itinerary.totalDays} days${itinerary.startDate ? ' starting ' + itinerary.startDate : ''}</desc>
     <time>${now}</time>
   </metadata>
 ${waypoints}
@@ -49,17 +49,21 @@ ${waypoints}
  * Attempts to calculate dates based on generatedAt timestamp and day numbers.
  */
 export function itineraryToICS(itinerary: Itinerary): string {
-  // Parse the generatedAt date as the trip start date
-  // If not available, use today
-  let startDate: Date
-  try {
-    startDate = new Date(itinerary.generatedAt)
-    // If parsing failed or date is invalid, use today
-    if (isNaN(startDate.getTime())) {
+  // Use the trip's startDate if available (#97), otherwise fall back to
+  // generatedAt, and finally today.
+  let startDate: Date | undefined
+  if (itinerary.startDate) {
+    startDate = new Date(itinerary.startDate + 'T00:00:00Z')
+  }
+  if (!startDate || isNaN(startDate.getTime())) {
+    try {
+      startDate = new Date(itinerary.generatedAt)
+      if (isNaN(startDate.getTime())) {
+        startDate = new Date()
+      }
+    } catch {
       startDate = new Date()
     }
-  } catch {
-    startDate = new Date()
   }
 
   const events = itinerary.stops

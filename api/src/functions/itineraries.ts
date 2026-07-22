@@ -52,6 +52,7 @@ function normalizeSummary(values: {
   startCity?: string | null
   endCity?: string | null
   thumbnail?: string | null
+  startDate?: string | null
 }): SavedItinerarySummary {
   return {
     id: values.id ?? '',
@@ -60,6 +61,7 @@ function normalizeSummary(values: {
     startCity: values.startCity ?? '',
     endCity: values.endCity ?? '',
     thumbnail: values.thumbnail ?? undefined,
+    startDate: values.startDate ?? undefined,
   }
 }
 
@@ -71,6 +73,7 @@ function entityToSummary(e: Record<string, unknown>, includeThumbnail = true): S
     startCity: e.startCity as string | null,
     endCity: e.endCity as string | null,
     thumbnail: includeThumbnail ? ((e.thumbnail as string | undefined) ?? null) : undefined,
+    startDate: (e.startDate as string | undefined) ?? null,
   })
 }
 
@@ -192,6 +195,7 @@ export async function saveItineraryHandler(
       createdAt: new Date().toISOString(),
       startCity: body.itinerary.startCity,
       endCity: body.itinerary.endCity,
+      startDate: body.itinerary.startDate ?? null,
       itineraryJson: JSON.stringify(body.itinerary),
       thumbnail: thumb,
     })

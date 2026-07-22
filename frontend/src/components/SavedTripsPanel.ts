@@ -165,11 +165,12 @@ export class SavedTripsPanel {
       }
       container.innerHTML = list.map((item, idx) => {
         const thumbUrl = validateThumbnailUrl(item.thumbnail)
+        const tripDate = item.startDate ? ` · ${item.startDate}` : ''
         return `
         <div class="saved-card saved-card-enter" data-id="${item.id}" style="animation-delay:${idx * 0.06}s">
           ${thumbUrl ? `<img class="saved-thumb" src="${thumbUrl}" alt="" />` : ''}
           <div class="saved-card-name">${escapeHtml(item.name)}</div>
-          <div class="saved-card-meta">${escapeHtml(item.startCity)} → ${escapeHtml(item.endCity)} · ${item.createdAt.slice(0, 10)}</div>
+          <div class="saved-card-meta">${escapeHtml(item.startCity)} → ${escapeHtml(item.endCity)}${tripDate}</div>
           <div class="saved-card-actions">
             <button class="btn btn--small btn--secondary btn-load" data-id="${item.id}">${t('saved.load')}</button>
           </div>

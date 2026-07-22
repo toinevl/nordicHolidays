@@ -86,6 +86,7 @@ export const nl: LocaleStrings = {
     findHotels: 'Hotels zoeken in {city}',
     findActivities: 'Activiteiten in {city}',
     rentCar: 'Huur een auto voor deze reis',
+    tripStarting: '{totalDays}-daagse reis vanaf {date}',
   },
   season: {
     skane: 'Mild klimaat. Warme zomers, kleurrijke herfsten.',
