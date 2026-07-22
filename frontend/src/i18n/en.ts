@@ -8,6 +8,7 @@ export const en: LocaleStrings = {
     searchCity: 'Search city...',
     customCity: 'Add custom city',
     tripLength: 'Trip length (nights)',
+    startDate: 'Start date (optional)',
     mustVisit: 'Must-visit places',
     pressEnter: 'Press Enter to add',
     addPlace: 'Add place',

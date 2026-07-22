@@ -5,6 +5,12 @@ export type Preferences = {
   endCity: string
   tripDays: number
   country: string
+  /**
+   * Optional trip start date (ISO YYYY-MM-DD). When set, the LLM tailors
+   * recommendations to the season — daylight hours, weather, road conditions,
+   * seasonal closures. Absent = generic Nordic guidance (#96).
+   */
+  startDate?: string
 }
 
 export type ItineraryStop = {
@@ -40,6 +46,11 @@ export type Itinerary = {
   stops: ItineraryStop[]
   generatedAt: string
   thumbnail?: string
+  /**
+   * Optional trip start date (ISO YYYY-MM-DD). Set from the request preferences
+   * during generation; round-trips through save/patch (#96).
+   */
+  startDate?: string
   /**
    * Whether a pre-edit snapshot exists that `POST /itineraries/{id}/undo`
    * can restore. Only meaningful on responses that come from an entity read

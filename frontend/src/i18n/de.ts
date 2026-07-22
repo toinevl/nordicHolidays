@@ -8,6 +8,7 @@ export const de: LocaleStrings = {
     searchCity: 'Stadt suchen...',
     customCity: 'Eigene Stadt hinzufügen',
     tripLength: 'Reisedauer (Nächte)',
+    startDate: 'Startdatum (optional)',
     mustVisit: 'Pflichtziele',
     pressEnter: 'Enter drücken zum Hinzufügen',
     addPlace: 'Ort hinzufügen',

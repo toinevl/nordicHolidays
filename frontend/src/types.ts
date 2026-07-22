@@ -44,6 +44,8 @@ export type Preferences = {
   endCity: string
   tripDays: number
   country: string
+  /** Optional trip start date (YYYY-MM-DD) for seasonal tailoring (#96) */
+  startDate?: string
 }
 
 export type ItineraryStop = {
@@ -72,6 +74,8 @@ export type Itinerary = {
   stops: ItineraryStop[]
   generatedAt: string
   thumbnail?: string
+  /** Optional trip start date (YYYY-MM-DD) for seasonal context (#96) */
+  startDate?: string
   /**
    * Whether the API holds a pre-edit snapshot that POST /itineraries/{id}/undo
    * can restore (single-level undo, #51). Absent/false for itineraries that

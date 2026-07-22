@@ -8,6 +8,7 @@ export interface LocaleStrings {
     searchCity: string
     customCity: string
     tripLength: string
+    startDate: string
     mustVisit: string
     pressEnter: string
     addPlace: string

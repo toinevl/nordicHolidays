@@ -60,6 +60,7 @@ export const ItinerarySchema = z.object({
   stops: z.array(ItineraryStopSchema).max(365),
   generatedAt: z.string().optional(),
   thumbnail: z.string().max(1 * 1024 * 1024).optional(), // 1MB max at schema level; validateThumbnail enforces 48KB
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).strict()
 
 /**
@@ -84,6 +85,7 @@ export const PreferencesSchema = z.object({
   endCity: z.string().max(200),
   tripDays: z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
   country: z.string().max(2).default('SE'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).strict()
 
 /**
@@ -97,6 +99,7 @@ export const GenerateRequestBodySchema = z.object({
   tripDays: z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
   country: z.string().max(2).default('SE'),
   lang: z.enum(['en', 'nl', 'de']).default('en'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).strict()
 
 export const ItineraryPutBodySchema = z.object({
@@ -104,6 +107,7 @@ export const ItineraryPutBodySchema = z.object({
   startCity: z.string().max(200).optional(),
   endCity: z.string().max(200).optional(),
   stops: z.array(ItineraryStopSchema).max(365).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).strict()
 
 export const ItineraryPatchBodySchema = z.object({
@@ -111,6 +115,7 @@ export const ItineraryPatchBodySchema = z.object({
   startCity: z.string().max(200).optional(),
   endCity: z.string().max(200).optional(),
   stops: z.array(ItineraryStopSchema).max(365).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).strict()
 
 /**

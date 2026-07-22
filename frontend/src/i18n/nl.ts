@@ -8,6 +8,7 @@ export const nl: LocaleStrings = {
     searchCity: 'Zoek stad...',
     customCity: 'Stad toevoegen',
     tripLength: 'Reisduur (nachten)',
+    startDate: 'Vertrekdatum (optioneel)',
     mustVisit: 'Verplichte bestemmingen',
     pressEnter: 'Druk Enter om toe te voegen',
     addPlace: 'Plaats toevoegen',

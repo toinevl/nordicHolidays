@@ -162,6 +162,70 @@ describe('POST /api/generate', () => {
     expect(userMessage).toContain('Generate the itinerary in English')
   })
 
+  it('injects seasonal context when startDate is provided', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Göteborg', endCity: 'Stockholm', tripDays: 14, startDate: '2026-12-15' }),
+    } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).toContain('2026-12-15')
+    expect(userMessage).toContain('December')
+    expect(userMessage).toContain('polar night')
+    expect(userMessage).toContain('Christmas markets')
+  })
+
+  it('does not inject seasonal context when startDate is absent', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Göteborg', endCity: 'Stockholm', tripDays: 14 }),
+    } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(userMessage).not.toContain('The trip starts on')
+  })
+
+  it('sets startDate on the response itinerary', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Göteborg', endCity: 'Stockholm', tripDays: 14, startDate: '2026-07-01' }),
+    } as any
+    const result = await generateHandler(req)
+    const body = JSON.parse(result.body as string) as Itinerary
+
+    expect(result.status).toBe(200)
+    expect(body.startDate).toBe('2026-07-01')
+  })
+
+  it('returns 400 for invalid startDate format', async () => {
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'A', endCity: 'A', tripDays: 7, startDate: 'not-a-date' }),
+    } as any
+    const result = await generateHandler(req)
+    expect(result.status).toBe(400)
+  })
+
   it('rejects request without identity', async () => {
     ;(resolveOwnerId as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Missing or invalid identity'))
     ;(authErrorResponse as ReturnType<typeof vi.fn>).mockReturnValueOnce({

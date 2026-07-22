@@ -94,8 +94,12 @@ export class GeneratorPanel {
           <p id="gen-end-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
         </div>
         <div class="form-group">
-          <label class="form-label">${t('generator.tripLength')}</label>
+          <label class="form-label" for="gen-days">${t('generator.tripLength')}</label>
           <input id="gen-days" class="form-input" type="number" min="7" max="30" value="21" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="gen-start-date">${t('generator.startDate')}</label>
+          <input id="gen-start-date" class="form-input" type="date" />
         </div>
         <div class="form-group">
           <label class="form-label">${t('generator.mustVisit')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
@@ -126,10 +130,12 @@ export class GeneratorPanel {
     const endInput = this.panel.querySelector('#gen-end') as HTMLInputElement
     const daysInput = this.panel.querySelector('#gen-days') as HTMLInputElement
     const countryInput = this.panel.querySelector('#gen-country') as HTMLSelectElement
+    const dateInput = this.panel.querySelector('#gen-start-date') as HTMLInputElement
     if (startInput) startInput.value = prefs.startCity
     if (endInput) endInput.value = prefs.endCity
     if (daysInput) daysInput.value = String(prefs.tripDays)
     if (countryInput) countryInput.value = prefs.country
+    if (dateInput) dateInput.value = prefs.startDate ?? ''
     this.renderTags('must-visit-tags', 'mustVisit')
     this.renderTags('avoid-tags', 'avoid')
     this.syncRegenerateVisibility()
@@ -146,6 +152,11 @@ export class GeneratorPanel {
     this.panel.querySelector('#gen-country')?.addEventListener('change', (event) => {
       const value = (event.target as HTMLSelectElement).value
       this.store.setState({ preferences: { ...this.store.getState().preferences, country: value } })
+    })
+
+    this.panel.querySelector('#gen-start-date')?.addEventListener('change', (event) => {
+      const value = (event.target as HTMLInputElement).value
+      this.store.setState({ preferences: { ...this.store.getState().preferences, startDate: value } })
     })
 
     this.panel.querySelector('#btn-generate')?.addEventListener('click', () => this.handleGenerate())
@@ -308,9 +319,11 @@ export class GeneratorPanel {
       const startInput = this.panel.querySelector('#gen-start') as HTMLInputElement
       const endInput = this.panel.querySelector('#gen-end') as HTMLInputElement
       const daysInput = this.panel.querySelector('#gen-days') as HTMLInputElement
+      const dateInput = this.panel.querySelector('#gen-start-date') as HTMLInputElement
       if (startInput) startInput.value = prefs.startCity
       if (endInput) endInput.value = prefs.endCity
       if (daysInput) daysInput.value = String(prefs.tripDays)
+      if (dateInput) dateInput.value = prefs.startDate ?? ''
       this.renderTags('must-visit-tags', 'mustVisit')
       this.renderTags('avoid-tags', 'avoid')
     } catch { /* use defaults */ }
@@ -341,7 +354,8 @@ export class GeneratorPanel {
       this.onError('Minimum trip duration is 7 days')
       return
     }
-    const prefs: Preferences = { ...this.store.getState().preferences, startCity, endCity, tripDays }
+    const startDate = (this.panel.querySelector('#gen-start-date') as HTMLInputElement)?.value || undefined
+    const prefs: Preferences = { ...this.store.getState().preferences, startCity, endCity, tripDays, startDate }
 
     this.store.setState({ preferences: prefs })
     try { await apiClient.savePreferences(prefs) } catch { /* non-critical */ }

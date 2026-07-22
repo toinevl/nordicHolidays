@@ -179,3 +179,18 @@ where English is still the default or only option. This milestone closes those g
 - [ ] (B) Locale persistence is not respected on initial page load for SEO — the 20 landing pages link to `/?country=XX&days=N` without a `&lang=` param, so a DE visitor who clicks from a German blog lands on the English app even if they previously set DE. Add `lang` detection from (1) URL param, (2) `document.documentElement.lang` of the referring SEO page, (3) `navigator.language`, (4) localStorage — in that priority order +i18n +ux @me #85
 - [ ] (C) B2B landing page (#77) is English-only — the B2B section copy (hero, features, pricing, case studies) uses i18n keys and has NL/DE translations, but the section is only rendered once on page load with the current locale; switching locale after page load does not re-render the B2B section (same stale-locale pattern as #26/#27 for static HTML chrome). Wire `applyStaticI18n()` or the locale-switch callback to re-render `B2BSection` +i18n +ui @me #86
 - [ ] (C) Widget footer (#75) and map fallback message (#82) do not re-render on locale switch — same stale-text-on-locale-change pattern; both use `t()` at render time but are never re-rendered after the initial call +i18n +ui @me #87
+
+- [ ] (B) Add optional start date to itinerary generation so results are tailored to the season +feature +api +ui @me #96 — in progress 2026-07-22
+  - Currently the LLM prompt hardcodes "September is peak season" — wrong for any other date.
+    Preferences have no date field; stops carry only `day: number` (relative), not calendar dates.
+  - Scope:
+    - [ ] API types: add `startDate?: string` (YYYY-MM-DD) to Preferences + Itinerary
+    - [ ] API schemas: add validated `startDate` to GenerateRequestBodySchema, PreferencesSchema, ItinerarySchema
+    - [ ] API prompt: remove hardcoded September line; add month-aware seasonal context in buildUserMessage()
+      (daylight hours, weather, road conditions, seasonal closures, appropriate activities per Nordic month)
+    - [ ] API generate: set itinerary.startDate from request; pass to LLM message
+    - [ ] Frontend types + store: add startDate to Preferences, defaultPreferences
+    - [ ] Frontend GeneratorPanel: add `<input type="date">` between trip length and must-visit
+    - [ ] i18n: add generator.startDate key in en/nl/de
+    - [ ] Tests: API (startDate flows to LLM message, schema validation), frontend (date field renders)
+  - Backward compatible: startDate is optional. Absent = generic Nordic guidance (current behavior).
