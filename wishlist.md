@@ -197,9 +197,12 @@ where English is still the default or only option. This milestone closes those g
   - Backward compatible: startDate is optional. Absent = generic Nordic guidance (current behavior).
   - CI/CD: all 3 workflows green (CI, Deploy API, Deploy Frontend).
 
-- [ ] (B) Surface travel dates throughout the app experience +feature +ui @me #97 dep:#96
-  - [ ] Itinerary view: show actual calendar dates per stop (derived from startDate + day number)
-  - [ ] Itinerary header/summary: "14-day trip starting 1 July 2026"
-  - [ ] Saved trips panel: show travel date in trip cards
-  - [ ] Export (PDF/calendar): include dates
-  - [ ] i18n: date formatting keys in en/nl/de
+- [x] (B) Surface travel dates throughout the app experience +feature +ui @me #97 dep:#96 — done 2026-07-22 (1d371f0)
+  - [x] Itinerary view: show actual calendar dates per stop (derived from startDate + day number)
+  - [x] Itinerary header/summary: "14-day trip from 1 July 2026" subtitle
+  - [x] Saved trips panel: show travel date in trip cards
+  - [x] Export (PDF/calendar): ICS uses real startDate; GPX metadata includes start date
+  - [x] i18n: date formatting keys + tripStarting template in en/nl/de
+  - New: frontend/src/lib/travelDates.ts (locale-aware date formatting)
+  - API: startDate persisted as top-level column on save, returned in list summaries
+  - 178 API + 186 frontend tests pass, all 3 CI workflows green
