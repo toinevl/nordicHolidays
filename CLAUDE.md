@@ -121,6 +121,23 @@ guarantee it fits — validate against the real data shape in play, since two
 use cases can have wildly different dimensions (a 40px reveal trigger vs. a
 12,000px scrollable section).
 
+**This rule was not specific enough on its own.** Immediately after writing
+it (still 2026-07-23), #102's scroll-cue shipped to *production* with a
+severe visual overlap on `.hero-actions` — caught only by a user report, not
+by this rule, because "verify live" was followed at exactly one 1400×900
+desktop viewport and mobile was never checked (#106). The rule was true but
+under-specified; satisfying its letter still missed its point. Minimum
+viewport checklist, non-negotiable for any hero/nav/fixed-position CSS
+change — desktop alone is not "verified":
+
+- [ ] **Desktop** — `browser_resize` to `1400×900`, screenshot
+- [ ] **Mobile** — `browser_resize` to `390×844`, screenshot, and check
+      `getBoundingClientRect()` overlap between any two elements sharing the
+      same stacking region (hero-overlay content, scroll-cue, status-bar,
+      etc.) — mobile's compressed vertical space is exactly where
+      independently-positioned absolute/fixed elements collide that never
+      would at desktop width
+
 ## Parallel wishlist items via subagents
 
 When multiple backlog items are independent, dispatch one background agent
