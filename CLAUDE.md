@@ -87,6 +87,40 @@ deep, not a full version history — if multi-version history is ever wanted,
 it needs a real design pass (separate table/partition per version), not an
 incremental extension of this column.
 
+## UI/layout changes: typecheck+tests+build passing does not mean the UI works
+
+Two bugs shipped in the same session (#103, #104, 2026-07-23) with a fully
+green pipeline — typecheck clean, all tests passing, production build clean
+— and were only caught by actually rendering the page in a browser
+(Playwright screenshot + computed-style/bounding-rect inspection):
+
+1. **`#nav` and `#status-bar`** were both `position: fixed; top: 0`.
+   `#status-bar`'s higher z-index and opaque background fully painted over
+   `#nav`, hiding the logo and all 5 nav-links on every page load since the
+   status bar was added. No unit test or typecheck catches "element B is
+   visually painted over element A" — the elements both exist correctly in
+   the DOM, just at the same screen coordinates.
+2. **Active-section nav highlighting** was first built with an
+   `IntersectionObserver` ratio-threshold (copied from the working
+   `initScrollReveal()` pattern in `ItineraryView.ts:663`), but silently
+   never fired for `#itinerary` — that section is 12,691px tall (the full
+   21-day timeline), so a full viewport is only ~7% of its height and never
+   crosses a 0.25 ratio threshold. The pure `pickActiveSection()` function
+   was unit-tested and logically correct; the *algorithm choice* just didn't
+   fit this section's actual content scale. Fixed by switching to a
+   position-based scrollspy technique (section whose top most recently
+   crossed a reference line), which is height-independent.
+
+**Rule:** after any change to fixed/sticky positioning, z-index, or
+scroll/`IntersectionObserver`-driven behavior, verify live in a browser
+before declaring it done — check computed bounding rects of every
+fixed/sticky element for overlap, and exercise scroll-driven logic against
+the *real* content (the actual 21-day itinerary, not a short test fixture).
+Reusing an existing pattern from elsewhere in the codebase does not
+guarantee it fits — validate against the real data shape in play, since two
+use cases can have wildly different dimensions (a 40px reveal trigger vs. a
+12,000px scrollable section).
+
 ## Parallel wishlist items via subagents
 
 When multiple backlog items are independent, dispatch one background agent
