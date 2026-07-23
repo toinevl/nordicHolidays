@@ -80,29 +80,42 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
   background-size: 400px 400px;
 }
 
-/* NAV */
+/* NAV
+   Unscrolled, nav floats transparently over the hero map — map tile colors
+   are unpredictable (light ocean blue, pale green land), so dark --ink text
+   can lose all contrast. Same problem .hero-overlay already solves for its
+   own text: a dark scrim + light "immersive" (--text-on-night) tokens.
+   Reuse that here; nav.scrolled switches back to dark text on its opaque
+   light background once past the hero. */
 nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   padding: 0 2rem; height: 56px;
   display: flex; align-items: center; justify-content: space-between;
-  background: transparent;
+  background: linear-gradient(to bottom, rgba(21,17,14,0.45) 0%, rgba(21,17,14,0) 100%);
   transition: background 0.3s;
 }
 nav.scrolled { background: rgba(255,253,249,0.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
 .nav-logo {
   font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700;
-  color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
+  color: var(--text-on-night); text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
+  transition: color 0.2s;
 }
-.nav-logo em { color: var(--primary); font-style: normal; }
+.nav-logo em { color: var(--primary-light); font-style: normal; transition: color 0.2s; }
 .nav-logo-icon { display: block; width: 28px; height: 28px; }
 .nav-links { display: flex; gap: 2rem; list-style: none; }
 .nav-links a {
   font-family: var(--font-mono); font-size: 0.68rem; font-weight: 400;
   letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--ink-muted); text-decoration: none; transition: color 0.2s;
+  color: var(--text-on-night-muted); text-decoration: none; transition: color 0.2s;
 }
-.nav-links a:hover { color: var(--primary); }
-.nav-links a.active { color: var(--primary); }
+.nav-links a:hover { color: var(--primary-light); }
+.nav-links a.active { color: var(--primary-light); }
+
+nav.scrolled .nav-logo { color: var(--ink); }
+nav.scrolled .nav-logo em { color: var(--primary); }
+nav.scrolled .nav-links a { color: var(--ink-muted); }
+nav.scrolled .nav-links a:hover,
+nav.scrolled .nav-links a.active { color: var(--primary); }
 
 /* HERO */
 #hero { position: relative; height: 70vh; min-height: 480px; overflow: hidden; }
