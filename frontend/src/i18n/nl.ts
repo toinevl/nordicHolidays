@@ -133,6 +133,7 @@ export const nl: LocaleStrings = {
   hero: {
     flyRoute: '▶ Vlieg de Route',
     viewItinerary: 'Bekijk Reisplan ↓',
+    scrollCue: 'Scroll om te ontdekken',
   },
   sections: {
     itineraryLabel: 'Dag voor Dag',

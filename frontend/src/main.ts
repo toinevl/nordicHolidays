@@ -15,6 +15,8 @@ import { affiliateClickPayload, trackAffiliateClick } from './lib/tracking'
 import { B2BSection } from './components/B2BSection'
 import { isWidgetMode, getPartnerSlug, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
 import { WidgetFooter } from './components/WidgetFooter'
+import { isNavScrolled } from './lib/scrollNav'
+import { pickActiveSection } from './lib/activeSection'
 const store = createStore()
 
 // Fire-and-forget warm-up ping to Azure Functions app. Flex Consumption scales to zero when idle;
@@ -84,6 +86,8 @@ function applyStaticI18n(): void {
   })
   // Loading spinner label
   setText('.spinner-label', t('loading.generating'))
+  // Hero scroll cue
+  setText('.scroll-cue-label', t('hero.scrollCue'))
   // Map legend labels (one legend per MapView instance — 2D and 3D map)
   const legendLabels: Array<[string, string]> = [
     ['.map-legend .legend-overnight', `● ${t('map.legendOvernight')}`],
@@ -284,6 +288,30 @@ function handleMapPage(): void {
 
 window.addEventListener('hashchange', handleMapPage)
 handleMapPage()
+
+// Fixed nav gets a solid background once the user scrolls past the transparent hero (#99),
+// and the nav link for the section currently in view gets highlighted (#103).
+const navEl = document.getElementById('nav')
+const NAV_HEIGHT = 56
+const trackedSectionIds = ['hero', 'itinerary', 'culinary-section', 'accom-section']
+const navLinkByHash = new Map<string, HTMLAnchorElement>()
+document.querySelectorAll<HTMLAnchorElement>('.nav-links a').forEach((a) => {
+  const hash = a.getAttribute('href')
+  if (hash?.startsWith('#')) navLinkByHash.set(hash.slice(1), a)
+})
+function setActiveNavLink(id: string | null): void {
+  navLinkByHash.forEach((a, key) => a.classList.toggle('active', key === id))
+}
+function updateOnScroll(): void {
+  navEl?.classList.toggle('scrolled', isNavScrolled(window.scrollY))
+  const sections = trackedSectionIds
+    .map((id) => document.getElementById(id))
+    .filter((el): el is HTMLElement => el !== null)
+    .map((el) => ({ id: el.id, top: el.getBoundingClientRect().top - NAV_HEIGHT }))
+  setActiveNavLink(pickActiveSection(sections))
+}
+window.addEventListener('scroll', updateOnScroll, { passive: true })
+updateOnScroll()
 
 document.getElementById('btn-close-map')?.addEventListener('click', () => {
   window.location.hash = '#hero'

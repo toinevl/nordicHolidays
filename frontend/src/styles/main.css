@@ -102,9 +102,25 @@ nav.scrolled { background: rgba(255,253,249,0.92); backdrop-filter: blur(10px); 
   color: var(--ink-muted); text-decoration: none; transition: color 0.2s;
 }
 .nav-links a:hover { color: var(--primary); }
+.nav-links a.active { color: var(--primary); }
 
 /* HERO */
-#hero { position: relative; height: 100vh; min-height: 600px; overflow: hidden; }
+#hero { position: relative; height: 70vh; min-height: 480px; overflow: hidden; }
+.scroll-cue {
+  position: absolute; left: 50%; bottom: 1.5rem; z-index: 6;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  font-family: var(--font-mono); font-size: var(--fs-x2);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-on-night-muted); text-decoration: none;
+  opacity: 0.85; transition: opacity 0.2s;
+}
+.scroll-cue:hover { opacity: 1; }
+.scroll-cue-chevron { font-size: 1.1rem; line-height: 1; animation: scroll-cue-bounce 1.8s ease-in-out infinite; }
+@keyframes scroll-cue-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
 #map { position: absolute; inset: 0; }
 #map.map-fallback {
   background:
@@ -155,9 +171,9 @@ nav.scrolled { background: rgba(255,253,249,0.92); backdrop-filter: blur(10px); 
 .btn-secondary:hover { background: rgba(232,93,42,0.18); border-color: var(--accent-2); color: var(--accent-2); transform: translateY(-2px); }
 
 /* SECTIONS */
-#itinerary { background: var(--bg); }
-#culinary-section { background: var(--bg-alt); }
-#accom-section { background: var(--bg-alt); }
+#itinerary { background: var(--bg); scroll-margin-top: 56px; }
+#culinary-section { background: var(--bg-alt); scroll-margin-top: 56px; }
+#accom-section { background: var(--bg-alt); scroll-margin-top: 56px; }
 
 .section-wrap { max-width: 1200px; margin: 0 auto; padding: 5rem 2rem; position: relative; }
 .section-label {
@@ -448,7 +464,7 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   .section-num { font-size: 7rem; }
 }
 @media (max-width: 580px) {
-  #hero { height: 85vh; }
+  #hero { height: 65vh; min-height: 420px; }
   nav { padding: 0 1rem; }
   .hero-overlay { padding: 1rem 1.5rem 2rem; max-height: 20vh; }
   .hero-meta { flex-direction: column; gap: 0.35rem; }

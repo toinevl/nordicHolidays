@@ -214,4 +214,19 @@ where English is still the default or only option. This milestone closes those g
   - [x] Extend generate API: accept `existingStops` in request body, inject into LLM prompt
   - [x] Wire Regenerate button: pass current stop cities as `existingStops` for route-aware re-generation
   - [x] Tests + typecheck + CI green
+  - [x] Regenerate route button in the itinerary view, so the obvious next step after edits is a route re-generation
   - 178 API + 190 frontend tests pass, all 3 CI workflows green
+
+## v2.4 — Landing & Navigation, Option A (seeded 2026-07-23)
+
+Fixes the "full page starting map makes navigation difficult" report — hero shrink +
+orientation cues, chosen as the lowest-risk near-term option in
+docs/adr/ADR-001-landing-navigation-approach.md. Full A/B/C comparison in
+.hermes/plans/2026-07-23_193000-landing-navigation-alternatives.md.
+
+- [x] (A) Fix dead `nav.scrolled` bug — CSS class exists (`main.css:91`) but nothing ever adds it, so the fixed nav stays permanently transparent even after scrolling past the hero; add a scroll listener in `main.ts` toggling `nav.classList.toggle('scrolled', window.scrollY > 40)` +bug +ui @me #99 — shipped 2026-07-23: pure `isNavScrolled()` predicate in new `frontend/src/lib/scrollNav.ts` (4 unit tests), wired via a passive scroll listener in `main.ts`
+- [x] (A) Shrink `#hero` from `100vh` to ~`70vh` (`main.css:107`) so the top of `#itinerary` is visible on load, signalling there's more content below the map +ui +improvement @me #100 — shipped 2026-07-23: desktop 100vh→70vh, mobile breakpoint 85vh→65vh (was already smaller than desktop; kept proportional); verified live via Playwright screenshot that itinerary section now peeks into view on load
+- [x] (A) Add `scroll-margin-top: 56px` to `#itinerary`, `#culinary-section`, `#accom-section` so smooth-scroll anchor jumps clear the fixed nav bar instead of landing flush under it +bug +ui @me #101 — shipped 2026-07-23
+- [x] (B) Add a scroll-cue affordance in the hero overlay (animated chevron / "Scroll to explore" micro-copy) so the shrunk hero doesn't read as a dead end +ui @me #102 dep:#100 — shipped 2026-07-23: `.scroll-cue` link + CSS bounce keyframe, i18n'd (`hero.scrollCue` in EN/NL/DE)
+- [x] (B) Add active-section highlighting to `.nav-links a` — reuse the existing `IntersectionObserver` pattern in `ItineraryView.ts:663` — so users always know which section they're viewing while scrolling +ui +improvement @me #103 — shipped 2026-07-23, but **not** via `IntersectionObserver`: live browser testing caught that ratio/threshold-based observation never fires for `#itinerary` (12,691px tall — the full 21-day timeline — so a full viewport is only ~7% of its height, never crossing a 0.25 ratio threshold). Rewrote as the standard scrollspy technique instead: pure `pickActiveSection()` in `frontend/src/lib/activeSection.ts` picks the section whose top has most recently crossed a reference line near the nav (position-based, height-independent — 6 unit tests incl. a regression case for very tall sections), driven by the same scroll listener as #99. Verified live: correct section highlights at top/itinerary/culinary scroll positions.
+- [ ] (A) Nav (`#nav`, z-index 100) is fully hidden underneath `#status-bar` (z-index 110, ~88% opaque background) — both are `position: fixed; top: 0` and status-bar's height (48px) covers all of nav-links' vertical position, so the "Fjordvia" logo and all 5 nav-links (Itinerary/Food/Stay/3D Map/Business) have been invisible on every page load, pre-dating #99–#103; found via Playwright bounding-rect + computed-style inspection while verifying #99/#103 — those two items are functionally correct underneath but currently unobservable by real users until this is fixed +bug +ui @me #104

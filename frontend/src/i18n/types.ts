@@ -174,6 +174,7 @@ export interface LocaleStrings {
   hero: {
     flyRoute: string
     viewItinerary: string
+    scrollCue: string
   }
   sections: {
     itineraryLabel: string

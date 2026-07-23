@@ -133,6 +133,7 @@ export const en: LocaleStrings = {
   hero: {
     flyRoute: '▶ Fly the Route',
     viewItinerary: 'View Itinerary ↓',
+    scrollCue: 'Scroll to explore',
   },
   sections: {
     itineraryLabel: 'Day by Day',
