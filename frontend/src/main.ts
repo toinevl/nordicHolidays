@@ -292,7 +292,8 @@ handleMapPage()
 // Fixed nav gets a solid background once the user scrolls past the transparent hero (#99),
 // and the nav link for the section currently in view gets highlighted (#103).
 const navEl = document.getElementById('nav')
-const NAV_HEIGHT = 56
+// nav (56px) + status-bar (48px) stacked below it (#104) — sections must clear both
+const FIXED_HEADER_HEIGHT = 104
 const trackedSectionIds = ['hero', 'itinerary', 'culinary-section', 'accom-section']
 const navLinkByHash = new Map<string, HTMLAnchorElement>()
 document.querySelectorAll<HTMLAnchorElement>('.nav-links a').forEach((a) => {
@@ -307,7 +308,7 @@ function updateOnScroll(): void {
   const sections = trackedSectionIds
     .map((id) => document.getElementById(id))
     .filter((el): el is HTMLElement => el !== null)
-    .map((el) => ({ id: el.id, top: el.getBoundingClientRect().top - NAV_HEIGHT }))
+    .map((el) => ({ id: el.id, top: el.getBoundingClientRect().top - FIXED_HEADER_HEIGHT }))
   setActiveNavLink(pickActiveSection(sections))
 }
 window.addEventListener('scroll', updateOnScroll, { passive: true })

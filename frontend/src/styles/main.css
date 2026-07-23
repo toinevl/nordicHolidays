@@ -128,7 +128,7 @@ nav.scrolled { background: rgba(255,253,249,0.92); backdrop-filter: blur(10px); 
     url('https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1800&q=80') center/cover;
 }
 .map-message {
-  position: absolute; top: 72px; right: 1rem; z-index: 10;
+  position: absolute; top: 120px; right: 1rem; z-index: 10;
   max-width: 280px; padding: 0.75rem 1rem; border-radius: var(--r);
   background: rgba(21,17,14,0.92); color: var(--text-on-night-muted);
   font-size: 0.78rem; line-height: 1.5; backdrop-filter: blur(10px);
@@ -171,9 +171,9 @@ nav.scrolled { background: rgba(255,253,249,0.92); backdrop-filter: blur(10px); 
 .btn-secondary:hover { background: rgba(232,93,42,0.18); border-color: var(--accent-2); color: var(--accent-2); transform: translateY(-2px); }
 
 /* SECTIONS */
-#itinerary { background: var(--bg); scroll-margin-top: 56px; }
-#culinary-section { background: var(--bg-alt); scroll-margin-top: 56px; }
-#accom-section { background: var(--bg-alt); scroll-margin-top: 56px; }
+#itinerary { background: var(--bg); scroll-margin-top: 104px; }
+#culinary-section { background: var(--bg-alt); scroll-margin-top: 104px; }
+#accom-section { background: var(--bg-alt); scroll-margin-top: 104px; }
 
 .section-wrap { max-width: 1200px; margin: 0 auto; padding: 5rem 2rem; position: relative; }
 .section-label {
@@ -483,7 +483,10 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 
 /* ── STATUS BAR ─────────────────────────────────────────────────────────── */
 .status-bar {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 110;
+  /* Stacked below `nav` (56px), not overlapping it (#104) — both are
+     position:fixed at the top of the viewport; before this, status-bar's
+     higher z-index and opaque background fully hid nav underneath it. */
+  position: fixed; top: 56px; left: 0; right: 0; z-index: 110;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.5rem 1rem;
   background: rgba(255, 253, 249, 0.88);
