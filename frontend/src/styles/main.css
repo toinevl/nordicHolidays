@@ -482,6 +482,12 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   .hero-overlay { padding: 1rem 1.5rem 2rem; max-height: 20vh; }
   .hero-meta { flex-direction: column; gap: 0.35rem; }
   .hero-actions { flex-direction: column; align-items: flex-start; }
+  /* hero-overlay's stacked content (badge/title/meta/actions) already fills
+     nearly the full mobile hero height — the independently-positioned
+     .scroll-cue collides with .hero-actions here (#106). hero-actions'
+     "View Itinerary ↓" link already gives the same "more below" affordance
+     where space is this tight, so drop the cue rather than force a fit. */
+  .scroll-cue { display: none; }
   .route-summary { grid-template-columns: 1fr; }
   .cul-grid { grid-template-columns: 1fr; }
   .section-wrap { padding: 3rem 1.25rem; }
