@@ -109,14 +109,14 @@ export function renderOverview(
         : r.isDayTrip
           ? ' overview-row--trip'
           : ''
-      return `<button class="overview-row${rowCls}" data-stop-index="${r.stopIndex}" data-stop-id="${r.day}" type="button">
+      return `<div class="overview-row${rowCls}" role="button" tabindex="0" data-stop-index="${r.stopIndex}" data-stop-id="${r.day}">
         <div class="overview-cell overview-cell--day">${r.day}</div>
         <div class="overview-cell overview-cell--date">${escapeHtml(dateStr)}</div>
         <div class="overview-cell overview-cell--route">${escapeHtml(r.routeLabel)}${badge}</div>
         <div class="overview-cell overview-cell--km">${escapeHtml(kmStr)}</div>
         <div class="overview-cell overview-cell--time">${escapeHtml(timeStr)}</div>
         <div class="overview-cell overview-cell--hl">${escapeHtml(r.highlightsText)}</div>
-      </button>`
+      </div>`
     })
     .join('')
 
@@ -128,9 +128,16 @@ export function renderOverview(
   container.innerHTML = `<div class="overview-table" role="table">${headerHtml}<div class="overview-body" role="rowgroup">${bodyHtml}</div>${footerHtml}</div>`
 
   container.querySelectorAll<HTMLElement>('.overview-row').forEach((row) => {
-    row.addEventListener('click', () => {
+    const click = () => {
       const idx = Number(row.dataset.stopIndex)
       if (Number.isFinite(idx)) onRowClick(idx)
+    }
+    row.addEventListener('click', click)
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        click()
+      }
     })
   })
 
