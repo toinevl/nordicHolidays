@@ -957,6 +957,7 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   color: var(--ink);
   font-family: inherit;
   font-size: inherit;
+  overflow: hidden; /* prevent content from expanding the row */
 }
 
 .overview-row:hover {
@@ -972,6 +973,9 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   align-items: center;
   gap: 0.25rem;
   line-height: 1.4;
+  min-width: 0; /* CSS Grid fix: allow cells to shrink below content width */
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .overview-cell--day {
