@@ -233,3 +233,20 @@ docs/adr/ADR-001-landing-navigation-approach.md. Full A/B/C comparison in
 - [x] (A) Nav text (logo + `.nav-links a`, both using dark `--ink`/`--ink-muted`) is nearly unreadable while unscrolled, since nav floats transparently over the hero map and the map's tile colors (light ocean blue, pale green land) are unpredictable — same low-contrast problem `.hero-overlay` already solves for its own text via a dark scrim + light `--text-on-night` tokens, but nav never got that treatment; found by user report + confirmed live via Playwright screenshot after #104 made nav visible for the first time +bug +ui +a11y @me #105 — shipped 2026-07-23: gave nav a dark-to-transparent gradient background (matching `.hero-overlay`'s visual language) and switched default (unscrolled) text to the existing `--text-on-night`/`--text-on-night-muted`/`--primary-light` immersive tokens; `nav.scrolled .nav-logo/.nav-links a` overrides restore the original dark `--ink`/`--ink-muted`/`--primary` colors once nav gets its opaque light background past the hero. Verified live via Playwright screenshots: clearly legible over the map (unscrolled) and unchanged dark-on-cream + active-blue highlighting once scrolled.
 - [x] (A) `#102`'s `.scroll-cue` ("Scroll to explore") is positioned independently of `.hero-overlay`'s content flow — on mobile (390px), the hero's compressed vertical space made it collide directly with the "View Itinerary" button, a severe visual overlap reported by the user as the page being "completely unreadable"; shipped to production because #102 was only verified live at one 1400×900 desktop viewport, never at mobile width +bug +ui @me #106 — shipped 2026-07-23: `.scroll-cue { display: none }` under the existing `max-width:580px` breakpoint — `.hero-actions`' "View Itinerary ↓" link already gives the same affordance where space is this tight, so the cue is dropped rather than forced to fit. Verified live at both viewports per the strengthened CLAUDE.md checklist (see grow-up commit `b3a211f`): desktop shows the cue with zero 2D bounding-box overlap against `.hero-actions`; mobile confirms `display:none` and zero-size rect.
 - [~] (A) Nav (Verblijf/3D Kaart/Business) invisible over the 3D map view — `nav.scrolled` (opaque bg + dark text, #105) is driven only by `window.scrollY`, but `#map-page` is a `position:fixed; inset:0` overlay (`main.css:392`) that never scrolls the underlying document; opening it before scrollY>40 (e.g. clicking "3D Map" from the top) leaves nav in its unscrolled transparent/light-text hero styling, which has near-zero contrast against the map's light beige/tan tiles. Confirmed live on fjordvia.com: `nav.className === ""` after `location.hash = '#map-page'` from scrollY=0. Same class of bug as #104/#105, for a context #105 didn't cover +bug +ui @me #107 gh:6
+
+## v2.5 — Trip Overview Table (seeded 2026-07-25)
+
+A compact, scannable trip-overview table inspired by the Zweden_Roadtrip PDF — one row
+per day showing route, distance, drive time, and highlights. Doubles as a navigation
+element (click to scroll to stop) and a print-friendly summary. Full plan:
+.hermes/plans/2026-07-25_130000-trip-overview-table.md
+
+- [x] (A) Trip overview table — compact day-by-day summary with route/distance/time/highlights, click-to-scroll nav, print-optimized +feature +ui @me #108 — shipped 2026-07-25
+  - [x] i18n strings (EN/NL/DE) — overview.title, columnDay, columnRoute, etc.
+  - [x] TripOverview.ts data layer — buildOverviewRows() pure function + 10 tests
+  - [x] TripOverview.ts render layer — CSS grid table + click-to-scroll wiring
+  - [x] HTML section + CSS — #overview section 01 between hero and itinerary, grid table desktop, stacked cards mobile, print rules (timeline hidden in print)
+  - [x] Wire TripOverview into both render paths (render + renderFromItinerary)
+  - [x] Add #overview to scrollspy (trackedSectionIds in main.ts)
+  - [x] Visual verification: 15 rows render with correct route/distance/highlights, NaN day fix for multi-day stops
+  - [x] 210/210 tests pass, typecheck clean, build green

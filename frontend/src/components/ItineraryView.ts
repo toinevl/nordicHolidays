@@ -4,6 +4,7 @@ import { getSeasonInfo } from '../data/seasonData'
 import { t, tpl, getLocale } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
 import { itineraryToGPX, itineraryToICS, downloadFile, itineraryToGoogleMapsUrl, itineraryToWazeUrl } from '../lib/export'
+import { renderOverview } from './TripOverview'
 import { isDayTrip, baseFor } from '../lib/dayTrips'
 import { lodgingUrl, activityUrl, carRentalUrl } from '../lib/affiliate'
 import { affiliateConfig } from '../config'
@@ -142,6 +143,7 @@ export class ItineraryView {
     this.renderRouteTools()
     this.renderTimeline()
     this.renderTripIndex()
+    this.renderOverviewFromStops(stops)
     this.renderCulinary()
     this.renderAccommodations()
     this.initScrollReveal()
@@ -265,6 +267,7 @@ export class ItineraryView {
     this.renderRouteTools()
     this.renderTimeline()
     this.renderTripIndex()
+    this.renderOverviewTable()
     this.renderCulinary()
     this.renderAccommodations()
     this.initScrollReveal()
@@ -400,6 +403,45 @@ export class ItineraryView {
         if (!Number.isFinite(stopId)) return
         this.setSelectedStop(stopId, true)
       })
+    })
+  }
+
+  private renderOverviewTable(): void {
+    const el = document.getElementById('overview-table')
+    if (!el || !this.currentItinerary) return
+    renderOverview(el, this.currentItinerary, (stopIndex: number) => {
+      const stop = this.stops[stopIndex]
+      if (stop) this.setSelectedStop(stop.id, true)
+    })
+  }
+
+  /** Render overview from the static Stop[] shape (initial page load, no Itinerary object). */
+  private renderOverviewFromStops(stops: Stop[]): void {
+    const el = document.getElementById('overview-table')
+    if (!el || stops.length === 0) return
+    const itinerary: Itinerary = {
+      title: document.getElementById('overview-title')?.textContent ?? 'Trip',
+      totalDays: stops.length,
+      startCity: stops[0]?.dest ?? '',
+      endCity: stops[stops.length - 1]?.dest ?? '',
+      stops: stops.map((s) => ({
+        day: parseInt(s.days, 10) || s.id,
+        city: s.dest,
+        region: s.region,
+        lat: s.coords[1],
+        lng: s.coords[0],
+        nights: s.nights,
+        highlights: s.highlights,
+        accommodation: '',
+        culinaryNotes: '',
+        km: s.km,
+        driveTimeMin: 0,
+      })),
+      generatedAt: new Date().toISOString(),
+    }
+    renderOverview(el, itinerary, (stopIndex: number) => {
+      const stop = this.stops[stopIndex]
+      if (stop) this.setSelectedStop(stop.id, true)
     })
   }
 

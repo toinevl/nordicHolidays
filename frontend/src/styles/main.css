@@ -907,3 +907,188 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   .widget-footer { font-size: 0.62rem; }
   .widget-footer-link { font-size: 0.78rem; }
 }
+
+/* ─── Trip Overview Table (#107) ─── */
+
+#overview { scroll-margin-top: 104px; }
+
+.overview-table-wrap {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.overview-table {
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.overview-header {
+  display: grid;
+  grid-template-columns: 44px 90px 1fr 70px 70px 1.8fr;
+  gap: 0;
+  padding: 0.6rem 0;
+  border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 104px;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.overview-header .overview-cell {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  padding: 0 0.5rem;
+}
+
+.overview-row {
+  display: grid;
+  grid-template-columns: 44px 90px 1fr 70px 70px 1.8fr;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--border-light);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s;
+  padding: 0;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.overview-row:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.overview-row--stay { opacity: 0.7; }
+.overview-row--trip { font-style: italic; opacity: 0.85; }
+
+.overview-cell {
+  padding: 0.5rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  line-height: 1.4;
+}
+
+.overview-cell--day {
+  font-weight: 700;
+  color: var(--accent-1);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.overview-cell--date {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+.overview-cell--km,
+.overview-cell--time {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+.overview-cell--hl {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+.overview-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  margin-left: 0.35rem;
+}
+
+.overview-badge--stay {
+  background: color-mix(in srgb, var(--accent-1) 12%, transparent);
+  color: var(--accent-1);
+}
+
+.overview-badge--trip {
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+  color: var(--accent-2);
+}
+
+.overview-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  border-top: 2px solid var(--border);
+}
+
+.overview-total { font-weight: 600; }
+.overview-hint { opacity: 0.7; font-size: 0.7rem; }
+
+/* Mobile: stacked cards */
+@media (max-width: 768px) {
+  .overview-header { display: none; }
+
+  .overview-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    padding: 0.6rem 0.5rem;
+  }
+
+  .overview-cell--day {
+    font-size: 0.75rem;
+  }
+  .overview-cell--day::after { content: ' \00b7'; opacity: 0.5; }
+
+  .overview-cell--date {
+    font-size: 0.72rem;
+  }
+  .overview-cell--date::after { content: ' \00b7'; opacity: 0.5; }
+
+  .overview-cell--route {
+    width: 100%;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding-top: 0.1rem;
+  }
+
+  .overview-cell--km,
+  .overview-cell--time {
+    font-size: 0.72rem;
+  }
+
+  .overview-cell--hl {
+    width: 100%;
+    padding-top: 0.2rem;
+    border-top: 1px solid var(--border-light);
+    margin-top: 0.2rem;
+    font-size: 0.72rem;
+  }
+
+  .overview-footer { flex-direction: column; gap: 0.25rem; align-items: flex-start; }
+}
+
+/* Print: overview is primary artifact, timeline hidden */
+@media print {
+  #itinerary .timeline { display: none !important; }
+  #itinerary .route-tools > div > .route-summary { display: none !important; }
+  #itinerary .filter-panel { display: none !important; }
+
+  .overview-table-wrap { page-break-after: always; }
+  .overview-header { position: static; }
+  .overview-footer { display: none; }
+
+  .overview-row {
+    border-bottom: 1px solid #ccc;
+    page-break-inside: avoid;
+  }
+}

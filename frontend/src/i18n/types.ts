@@ -209,6 +209,22 @@ export interface LocaleStrings {
     poweredBy: string
     planTrip: string
   }
+  overview: {
+    title: string
+    subtitle: string
+    columnDay: string
+    columnDate: string
+    columnRoute: string
+    columnDistance: string
+    columnDriveTime: string
+    columnHighlights: string
+    stayDay: string
+    dayTrip: string
+    dayTripShort: string
+    totalDistance: string
+    noData: string
+    clickHint: string
+  }
 }
 
 export type LocaleKey =
@@ -230,3 +246,4 @@ export type LocaleKey =
   | `footer.${keyof LocaleStrings['footer']}`
   | `loading.${keyof LocaleStrings['loading']}`
   | `widget.${keyof LocaleStrings['widget']}`
+  | `overview.${keyof LocaleStrings['overview']}`

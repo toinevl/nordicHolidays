@@ -294,7 +294,7 @@ handleMapPage()
 const navEl = document.getElementById('nav')
 // nav (56px) + status-bar (48px) stacked below it (#104) — sections must clear both
 const FIXED_HEADER_HEIGHT = 104
-const trackedSectionIds = ['hero', 'itinerary', 'culinary-section', 'accom-section']
+const trackedSectionIds = ['hero', 'overview', 'itinerary', 'culinary-section', 'accom-section']
 const navLinkByHash = new Map<string, HTMLAnchorElement>()
 document.querySelectorAll<HTMLAnchorElement>('.nav-links a').forEach((a) => {
   const hash = a.getAttribute('href')
