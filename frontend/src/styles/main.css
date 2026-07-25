@@ -928,6 +928,10 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   gap: 0;
   padding: 0.6rem 0;
   border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 104px;
+  background: var(--bg);
+  z-index: 10;
 }
 
 .overview-header .overview-cell {
@@ -937,6 +941,12 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   letter-spacing: 0.06em;
   color: var(--ink-muted);
   padding: 0 0.5rem;
+}
+
+.overview-body {
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
 }
 
 .overview-row {
