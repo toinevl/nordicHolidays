@@ -928,10 +928,6 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   gap: 0;
   padding: 0.6rem 0;
   border-bottom: 2px solid var(--border);
-  position: sticky;
-  top: 104px;
-  background: var(--bg);
-  z-index: 10;
 }
 
 .overview-header .overview-cell {
