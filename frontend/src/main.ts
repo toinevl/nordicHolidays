@@ -304,7 +304,11 @@ function setActiveNavLink(id: string | null): void {
   navLinkByHash.forEach((a, key) => a.classList.toggle('active', key === id))
 }
 function updateOnScroll(): void {
-  navEl?.classList.toggle('scrolled', isNavScrolled(window.scrollY))
+  // #map-page (#6) is a fixed-position overlay that never scrolls the
+  // underlying document, so scrollY alone can't be trusted while it's open —
+  // nav must stay opaque there regardless of scroll position.
+  const mapPageOpen = document.getElementById('map-page')?.classList.contains('hidden') === false
+  navEl?.classList.toggle('scrolled', isNavScrolled(window.scrollY, mapPageOpen))
   const sections = trackedSectionIds
     .map((id) => document.getElementById(id))
     .filter((el): el is HTMLElement => el !== null)
@@ -312,6 +316,7 @@ function updateOnScroll(): void {
   setActiveNavLink(pickActiveSection(sections))
 }
 window.addEventListener('scroll', updateOnScroll, { passive: true })
+window.addEventListener('hashchange', updateOnScroll)
 updateOnScroll()
 
 document.getElementById('btn-close-map')?.addEventListener('click', () => {

@@ -17,4 +17,18 @@ describe('isNavScrolled', () => {
   it('returns true when scrolled far down the page', () => {
     expect(isNavScrolled(2000)).toBe(true)
   })
+
+  it('returns true at the top of the page when a fullscreen overlay is open', () => {
+    // #map-page (the 3D map) is position:fixed and never scrolls the
+    // underlying document, so scrollY alone can't tell nav to go opaque.
+    expect(isNavScrolled(0, true)).toBe(true)
+  })
+
+  it('stays true past the threshold when a fullscreen overlay is open', () => {
+    expect(isNavScrolled(2000, true)).toBe(true)
+  })
+
+  it('defaults to scroll-only behavior when the overlay flag is omitted', () => {
+    expect(isNavScrolled(0)).toBe(false)
+  })
 })
