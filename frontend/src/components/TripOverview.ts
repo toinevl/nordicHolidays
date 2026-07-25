@@ -90,10 +90,6 @@ export function renderOverview(
     { cls: 'overview-cell--hl', label: t('overview.columnHighlights') },
   ]
 
-  const headerHtml = `<div class="overview-header">
-    ${headerCells.map((c) => `<div class="overview-cell ${c.cls}">${escapeHtml(c.label)}</div>`).join('')}
-  </div>`
-
   const bodyHtml = rows
     .map((r) => {
       const dateStr = sd ? formatTravelDate(sd, r.day, locale) : ''
@@ -109,14 +105,14 @@ export function renderOverview(
         : r.isDayTrip
           ? ' overview-row--trip'
           : ''
-      return `<div class="overview-row${rowCls}" role="button" tabindex="0" data-stop-index="${r.stopIndex}" data-stop-id="${r.day}">
-        <div class="overview-cell overview-cell--day">${r.day}</div>
-        <div class="overview-cell overview-cell--date">${escapeHtml(dateStr)}</div>
-        <div class="overview-cell overview-cell--route">${escapeHtml(r.routeLabel)}${badge}</div>
-        <div class="overview-cell overview-cell--km">${escapeHtml(kmStr)}</div>
-        <div class="overview-cell overview-cell--time">${escapeHtml(timeStr)}</div>
-        <div class="overview-cell overview-cell--hl">${escapeHtml(r.highlightsText)}</div>
-      </div>`
+      return `<tr class="overview-row${rowCls}" data-stop-index="${r.stopIndex}" data-stop-id="${r.day}">
+        <td class="overview-cell overview-cell--day">${r.day}</td>
+        <td class="overview-cell overview-cell--date">${escapeHtml(dateStr)}</td>
+        <td class="overview-cell overview-cell--route">${escapeHtml(r.routeLabel)}${badge}</td>
+        <td class="overview-cell overview-cell--km">${escapeHtml(kmStr)}</td>
+        <td class="overview-cell overview-cell--time">${escapeHtml(timeStr)}</td>
+        <td class="overview-cell overview-cell--hl">${escapeHtml(r.highlightsText)}</td>
+      </tr>`
     })
     .join('')
 
@@ -125,7 +121,17 @@ export function renderOverview(
     <span class="overview-hint">${escapeHtml(t('overview.clickHint'))}</span>
   </div>`
 
-  container.innerHTML = `<div class="overview-table" role="table">${headerHtml}<div class="overview-body" role="rowgroup">${bodyHtml}</div>${footerHtml}</div>`
+  const colWidths = [
+    { cls: 'overview-cell--day', width: '44px' },
+    { cls: 'overview-cell--date', width: '90px' },
+    { cls: 'overview-cell--route', width: '1fr' },
+    { cls: 'overview-cell--km', width: '70px' },
+    { cls: 'overview-cell--time', width: '70px' },
+    { cls: 'overview-cell--hl', width: '1.8fr' },
+  ]
+  const colgroupHtml = `<colgroup>${colWidths.map(c => `<col style="width:${c.width}">`).join('')}</colgroup>`
+
+  container.innerHTML = `<table class="overview-table" role="table">${colgroupHtml}<thead><tr class="overview-header">${headerCells.map((c) => `<th class="overview-cell ${c.cls}">${escapeHtml(c.label)}</th>`).join('')}</tr></thead><tbody>${bodyHtml}</tbody></table>${footerHtml}`
 
   container.querySelectorAll<HTMLElement>('.overview-row').forEach((row) => {
     const click = () => {

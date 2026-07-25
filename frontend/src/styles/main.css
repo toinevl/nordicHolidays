@@ -915,25 +915,19 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 .overview-table-wrap {
   overflow-x: auto;
   margin: 1.5rem 0;
+  position: relative;
 }
 
 .overview-table {
   width: 100%;
   font-size: 0.875rem;
+  position: relative;
+  display: table;
+  border-collapse: collapse;
 }
 
 .overview-header {
-  display: grid;
-  grid-template-columns: 44px 90px 1fr 70px 70px 1.8fr;
-  gap: 0;
-  padding: 0.6rem 0;
   border-bottom: 2px solid var(--border);
-  position: sticky;
-  top: 104px;
-  background: var(--bg);
-  z-index: 10;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
 }
 
 .overview-header .overview-cell {
@@ -942,18 +936,15 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-muted);
-  padding: 0 0.5rem;
+  padding: 0.75rem 0.5rem;
+  border-bottom: none;
 }
 
 .overview-body {
-  display: flex;
-  flex-direction: column;
-  isolation: isolate;
+  display: table-row-group;
 }
 
 .overview-row {
-  display: grid;
-  grid-template-columns: 44px 90px 1fr 70px 70px 1.8fr;
   width: 100%;
   text-align: left;
   border: none;
@@ -961,11 +952,9 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   background: transparent;
   cursor: pointer;
   transition: background 0.12s;
-  padding: 0;
   color: var(--ink);
   font-family: inherit;
   font-size: inherit;
-  overflow: hidden; /* prevent content from expanding the row */
 }
 
 .overview-row:hover {
@@ -977,13 +966,10 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 
 .overview-cell {
   padding: 0.5rem 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
   line-height: 1.4;
-  min-width: 0; /* CSS Grid fix: allow cells to shrink below content width */
   overflow: hidden;
   word-break: break-word;
+  border-bottom: none;
 }
 
 .overview-cell--day {
