@@ -184,9 +184,9 @@ nav.scrolled .nav-links a.active { color: var(--primary); }
 .btn-secondary:hover { background: rgba(232,93,42,0.18); border-color: var(--accent-2); color: var(--accent-2); transform: translateY(-2px); }
 
 /* SECTIONS */
-#itinerary { background: var(--bg); scroll-margin-top: 104px; }
-#culinary-section { background: var(--bg-alt); scroll-margin-top: 104px; }
-#accom-section { background: var(--bg-alt); scroll-margin-top: 104px; }
+#itinerary { background: var(--bg); scroll-margin-top: var(--fixed-header-height, 104px); }
+#culinary-section { background: var(--bg-alt); scroll-margin-top: var(--fixed-header-height, 104px); }
+#accom-section { background: var(--bg-alt); scroll-margin-top: var(--fixed-header-height, 104px); }
 
 .section-wrap { max-width: 1200px; margin: 0 auto; padding: 5rem 2rem; position: relative; }
 .section-label {
@@ -522,6 +522,19 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 .status-badge:hover { filter: brightness(1.2); }
 .status-badge--saved { background: rgba(59, 79, 232, 0.16); color: var(--primary); border: 1px solid var(--primary); }
 .status-badge--unsaved { background: rgba(232, 93, 42, 0.14); color: #C4662A; border: 1px solid var(--accent-2); }
+
+@media (max-width: 580px) {
+  /* At this width, the trip name + 5-button group (Saved Trips/Generate/
+     locale) no longer fit on one line. The bar's hardcoded height:48px with
+     overflow:visible let that overflow paint over whatever section is
+     scrolled underneath it (#8) instead of growing to fit — same failure
+     family as #104, just the status-bar overflowing itself this time.
+     Let it wrap onto two rows and grow instead. --fixed-header-height (set
+     in main.ts) keeps scroll-margin-top / scrollspy in sync with the
+     resulting height. */
+  .status-bar { height: auto; min-height: 48px; flex-wrap: wrap; row-gap: 0.4rem; padding: 0.5rem 1rem; }
+  .status-trip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55vw; }
+}
 
 /* ── PANELS ─────────────────────────────────────────────────────────────── */
 .panel-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(21,17,14,0.45); display: flex; }
@@ -910,7 +923,7 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 
 /* ─── Trip Overview Table (#107) ─── */
 
-#overview { scroll-margin-top: 104px; }
+#overview { scroll-margin-top: var(--fixed-header-height, 104px); }
 
 .overview-table-wrap {
   overflow-x: auto;
@@ -1033,6 +1046,15 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 
 /* Mobile: stacked cards */
 @media (max-width: 768px) {
+  /* Take the table out of table-layout mode (#7) — otherwise the desktop
+     <colgroup> (44px/90px/1fr/70px/70px/1.8fr) keeps constraining .overview-row
+     even with display:flex, leaving ~65px for a card that should be full-width
+     and breaking city names/highlights mid-word. display:block on the <table>
+     alone isn't enough — <tbody> keeps its UA-default display:table-row-group,
+     which still triggers CSS table-fixup (an anonymous table wrapper) that
+     picks the <colgroup> back up, so it needs the same override. */
+  .overview-table { display: block; }
+  .overview-table > tbody { display: block; }
   .overview-header { display: none; }
 
   .overview-row {

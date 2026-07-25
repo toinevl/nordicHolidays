@@ -292,8 +292,17 @@ handleMapPage()
 // Fixed nav gets a solid background once the user scrolls past the transparent hero (#99),
 // and the nav link for the section currently in view gets highlighted (#103).
 const navEl = document.getElementById('nav')
-// nav (56px) + status-bar (48px) stacked below it (#104) — sections must clear both
-const FIXED_HEADER_HEIGHT = 104
+const statusBarEl = document.getElementById('status-bar')!
+// nav + status-bar stacked below it (#104). Measured, not hardcoded (#8) — on
+// mobile the status-bar can grow past its nominal 48px (wrapped trip name /
+// button row), so a fixed constant drifts and either leaves a gap or, worse,
+// undercounts and lets content sit under the fixed header again.
+function syncFixedHeaderHeight(): void {
+  const h = (navEl?.offsetHeight ?? 0) + statusBarEl.offsetHeight
+  document.documentElement.style.setProperty('--fixed-header-height', `${h}px`)
+}
+new ResizeObserver(syncFixedHeaderHeight).observe(statusBarEl)
+syncFixedHeaderHeight()
 const trackedSectionIds = ['hero', 'overview', 'itinerary', 'culinary-section', 'accom-section']
 const navLinkByHash = new Map<string, HTMLAnchorElement>()
 document.querySelectorAll<HTMLAnchorElement>('.nav-links a').forEach((a) => {
@@ -309,10 +318,11 @@ function updateOnScroll(): void {
   // nav must stay opaque there regardless of scroll position.
   const mapPageOpen = document.getElementById('map-page')?.classList.contains('hidden') === false
   navEl?.classList.toggle('scrolled', isNavScrolled(window.scrollY, mapPageOpen))
+  const fixedHeaderHeight = (navEl?.offsetHeight ?? 0) + statusBarEl.offsetHeight
   const sections = trackedSectionIds
     .map((id) => document.getElementById(id))
     .filter((el): el is HTMLElement => el !== null)
-    .map((el) => ({ id: el.id, top: el.getBoundingClientRect().top - FIXED_HEADER_HEIGHT }))
+    .map((el) => ({ id: el.id, top: el.getBoundingClientRect().top - fixedHeaderHeight }))
   setActiveNavLink(pickActiveSection(sections))
 }
 window.addEventListener('scroll', updateOnScroll, { passive: true })
@@ -327,7 +337,6 @@ document.getElementById('btn-fly')?.addEventListener('click', () => {
   mapView.flyRoute()
 })
 
-const statusBarEl = document.getElementById('status-bar')!
 const statusBar = new StatusBar(
   statusBarEl,
   () => generatorPanel.open(),
