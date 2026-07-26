@@ -6,6 +6,16 @@
   <title>Fjordvia — AI-Planned Road Trips Across the Nordics</title>
   <meta name="description" content="Plan your Nordic road trip with AI — itineraries for Sweden, Norway, Denmark & Finland with maps, food guides, and navigation export." />
 
+  <!-- Set <html lang> from persisted locale before paint (#83) — prevents a flash
+       of the wrong language for returning visitors (screen readers, browser lang detection).
+       Crawlers without JS/localStorage still see the static lang="en" on the <html> tag above. -->
+  <script>
+    try {
+      var l = localStorage.getItem('nordicholidays_locale');
+      if (l === 'nl' || l === 'de') document.documentElement.lang = l;
+    } catch (e) {}
+  </script>
+
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
