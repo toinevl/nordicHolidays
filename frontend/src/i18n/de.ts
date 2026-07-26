@@ -129,6 +129,7 @@ export const de: LocaleStrings = {
     food: 'Essen',
     stay: 'Unterkunft',
     map3d: '3D-Karte',
+    business: 'Geschäftskunden',
   },
   hero: {
     flyRoute: '▶ Route abfliegen',

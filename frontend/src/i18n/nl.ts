@@ -129,6 +129,7 @@ export const nl: LocaleStrings = {
     food: 'Eten',
     stay: 'Verblijf',
     map3d: '3D Kaart',
+    business: 'Zakelijk',
   },
   hero: {
     flyRoute: '▶ Vlieg de Route',

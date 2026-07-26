@@ -170,6 +170,7 @@ export interface LocaleStrings {
     food: string
     stay: string
     map3d: string
+    business: string
   }
   hero: {
     flyRoute: string

@@ -47,6 +47,7 @@ function applyStaticI18n(): void {
   setText('nav [href="#culinary-section"]', t('nav.food'))
   setText('nav [href="#accom-section"]', t('nav.stay'))
   setText('nav [href="#map-page"]', t('nav.map3d'))
+  setText('nav [href="#b2b-page"]', t('nav.business'))
   // Hero buttons
   setText('#btn-fly', t('hero.flyRoute'))
   setText('.hero-actions [href="#itinerary"]', t('hero.viewItinerary'))
@@ -286,8 +287,20 @@ function handleMapPage(): void {
   if (isMapPage) sync3DMap()
 }
 
+// B2B page (#110): same hash-routed overlay pattern as #map-page.
+// Clicking "Business" in the nav navigates to #b2b-page instead of scrolling
+// to an inlined homepage section, keeping the main page consumer-focused.
+function handleB2BPage(): void {
+  const b2bPage = document.getElementById('b2b-page')
+  if (!b2bPage) return
+  const isB2BPage = window.location.hash === '#b2b-page'
+  b2bPage.classList.toggle('hidden', !isB2BPage)
+}
+
 window.addEventListener('hashchange', handleMapPage)
+window.addEventListener('hashchange', handleB2BPage)
 handleMapPage()
+handleB2BPage()
 
 // Fixed nav gets a solid background once the user scrolls past the transparent hero (#99),
 // and the nav link for the section currently in view gets highlighted (#103).
@@ -313,11 +326,13 @@ function setActiveNavLink(id: string | null): void {
   navLinkByHash.forEach((a, key) => a.classList.toggle('active', key === id))
 }
 function updateOnScroll(): void {
-  // #map-page (#6) is a fixed-position overlay that never scrolls the
-  // underlying document, so scrollY alone can't be trusted while it's open —
-  // nav must stay opaque there regardless of scroll position.
-  const mapPageOpen = document.getElementById('map-page')?.classList.contains('hidden') === false
-  navEl?.classList.toggle('scrolled', isNavScrolled(window.scrollY, mapPageOpen))
+  // #map-page (#6) and #b2b-page (#110) are fixed-position overlays that never
+  // scroll the underlying document, so scrollY alone can't be trusted while
+  // either is open — nav must stay opaque there regardless of scroll position.
+  const fullscreenOverlayOpen =
+    document.getElementById('map-page')?.classList.contains('hidden') === false ||
+    document.getElementById('b2b-page')?.classList.contains('hidden') === false
+  navEl?.classList.toggle('scrolled', isNavScrolled(window.scrollY, fullscreenOverlayOpen))
   const fixedHeaderHeight = (navEl?.offsetHeight ?? 0) + statusBarEl.offsetHeight
   const sections = trackedSectionIds
     .map((id) => document.getElementById(id))
@@ -330,6 +345,10 @@ window.addEventListener('hashchange', updateOnScroll)
 updateOnScroll()
 
 document.getElementById('btn-close-map')?.addEventListener('click', () => {
+  window.location.hash = '#hero'
+})
+
+document.getElementById('btn-close-b2b')?.addEventListener('click', () => {
   window.location.hash = '#hero'
 })
 
@@ -456,7 +475,7 @@ if (seoCountry || seoDays) {
   generatorPanel.open()
 }
 
-// B2B landing page section (#77)
+// B2B landing page section (#77), now in a hash-routed overlay (#110)
 new B2BSection().render(document.getElementById('b2b-root')!)
 
 // ---------------------------------------------------------------------------
@@ -483,7 +502,7 @@ if (isWidgetMode()) {
       }
 
       // Strip down to embed mode: hide nav, status bar, B2B section, footer
-      document.querySelectorAll('nav, #status-bar, #b2b-root, footer').forEach((el) => {
+      document.querySelectorAll('nav, #status-bar, #b2b-page, footer').forEach((el) => {
         el.classList.add('hidden')
       })
 

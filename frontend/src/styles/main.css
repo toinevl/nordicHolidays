@@ -409,6 +409,18 @@ tbody td:first-child { font-weight: 600; color: var(--ink); }
   pointer-events: none;
 }
 
+/* B2B PAGE (#110) — full-screen overlay, same pattern as .map-page but scrollable */
+.b2b-page { position: fixed; inset: 0; z-index: 90; background: var(--bg-subtle); overflow-y: auto; }
+.b2b-page.hidden { display: none; }
+.b2b-close {
+  position: fixed; top: 1rem; right: 1rem; z-index: 95;
+  width: 36px; height: 36px; border-radius: var(--r);
+  background: var(--bg-alt); color: var(--ink);
+  border: 1px solid var(--border); cursor: pointer;
+  font-size: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.b2b-close:hover { background: var(--bg-subtle); color: var(--primary); }
+
 /* FOOTER */
 footer { background: var(--bg); color: var(--ink-muted); text-align: center; padding: 4rem 2rem; }
 .footer-stats { display: flex; gap: 3.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2.5rem; }
@@ -768,6 +780,8 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 .b2b-section {
   background: var(--bg-subtle);
   padding: 5rem 2rem 6rem;
+  /* Extra top padding so content clears the fixed .b2b-close button (#110) */
+  padding-top: 4rem;
 }
 .b2b-hero {
   max-width: 800px; margin: 0 auto 3.5rem; text-align: center;
