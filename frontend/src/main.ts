@@ -17,7 +17,15 @@ import { isWidgetMode, getPartnerSlug, loadWidgetConfig, setActiveWidgetConfig }
 import { WidgetFooter } from './components/WidgetFooter'
 import { isNavScrolled } from './lib/scrollNav'
 import { pickActiveSection } from './lib/activeSection'
+import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
 const store = createStore()
+
+// #85: resolve the boot locale from URL param → referrer → navigator.language
+// → localStorage → 'en' BEFORE the first applyStaticI18n() call. The SEO
+// landing pages (#73) link to /?country=XX&days=N without &lang=, so a
+// visitor whose browser/preference is DE previously landed on EN. This
+// runs synchronously at module load, before any rendering.
+setLocale(detectInitialLocaleFromBrowser())
 
 // Fire-and-forget warm-up ping to Azure Functions app. Flex Consumption scales to zero when idle;
 // this ping warms the app while the user is still browsing the static page.
@@ -106,7 +114,20 @@ function changeLocale(lang: Locale): void {
   applyStaticI18n()
   const { currentItinerary } = store.getState()
   if (currentItinerary) itineraryView.renderFromItinerary(currentItinerary)
+  // #86: B2B section is rendered once at boot with t(); re-render it so the
+  // new locale's strings take effect immediately instead of on next page load.
+  const b2bRoot = document.getElementById('b2b-root')
+  if (b2bRoot) new B2BSection().render(b2bRoot)
+  // #87: widget footer + map fallback messages use t() at render time; refresh
+  // them so they don't stay in the old language after a locale switch.
+  widgetFooter?.render()
+  mapView.updateFallbackMessage()
+  map3DView?.updateFallbackMessage()
 }
+
+// #87: held at module scope so changeLocale() can re-render it after a
+// locale switch. null until widget mode actually instantiates it.
+let widgetFooter: WidgetFooter | null = null
 
 const loadingOverlay = document.createElement('div')
 loadingOverlay.className = 'loading-overlay hidden'
@@ -506,8 +527,12 @@ if (isWidgetMode()) {
         el.classList.add('hidden')
       })
 
-      // Render the "Powered by Fjordvia" bar
-      new WidgetFooter(config).render()
+      // Render the "Powered by Fjordvia" bar.
+      // #87: store the instance at module scope so changeLocale() can
+      // re-render it (the footer text uses t() and would otherwise stay
+      // in the boot locale after a switch).
+      widgetFooter = new WidgetFooter(config)
+      widgetFooter.render()
     })
   }
 }

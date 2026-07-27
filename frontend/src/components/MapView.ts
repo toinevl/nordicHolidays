@@ -127,6 +127,21 @@ export class MapView {
     this._container.appendChild(msg)
   }
 
+  /**
+   * Refresh the fallback message text after a locale switch (#87).
+   *
+   * The fallback message is rendered once via `showFallback()` using `t()`
+   * at that moment, so a locale switch leaves it in the old language. This
+   * is a no-op when the fallback is not currently shown (the map rendered
+   * normally), so it's safe to call unconditionally from `changeLocale()`.
+   */
+  updateFallbackMessage(): void {
+    if (!this._container) return
+    const msg = this._container.querySelector<HTMLElement>('.map-message')
+    if (!msg) return // fallback not currently shown — nothing to update
+    msg.innerHTML = `<strong>${t('map.loadFailedTitle')}</strong><br>${t('map.loadFailedBody')}`
+  }
+
   private _addLegend(): void {
     if (!this.map || !this._container) return
     const legend = document.createElement('div')

@@ -7,6 +7,12 @@ import type { WidgetConfig } from '../lib/widget'
  * Renders a small fixed bar at the bottom of the page linking to fjordvia.com.
  * The link uses the partner's accent color when a WidgetConfig is supplied;
  * otherwise it falls back to the default CSS variable (--accent-2).
+ *
+ * Locale staleness fix (#87): the footer text (`widget.poweredBy`) is set
+ * from `t()` at render time, so a locale switch after the first render
+ * would leave it in the old language. `render()` is idempotent (a second
+ * call updates the existing element's text instead of appending a second
+ * bar) so `changeLocale()` can call it again safely.
  */
 export class WidgetFooter {
   private el: HTMLElement | null = null
@@ -14,7 +20,14 @@ export class WidgetFooter {
   constructor(private readonly config: WidgetConfig | null = null) {}
 
   render(): void {
-    if (this.el) return // already rendered
+    // Already rendered: update the translated text in place (#87) rather
+    // than appending a duplicate bar. The accent colour was applied on
+    // first render and doesn't change with locale, so we leave it alone.
+    if (this.el) {
+      const text = this.el.querySelector<HTMLElement>('.widget-footer-text')
+      if (text) text.textContent = t('widget.poweredBy')
+      return
+    }
     const accent = this.config?.accentColor
     this.el = document.createElement('div')
     this.el.className = 'widget-footer'
