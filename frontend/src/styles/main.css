@@ -62,7 +62,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: var(--fs-md);
   background: var(--bg);
   color: var(--ink);
