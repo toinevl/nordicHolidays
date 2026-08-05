@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Multi-region architecture** — the codebase now supports multiple travel regions (Nordic = Fjordvia, US = RouteKit) from a single shared codebase. Region is selected at build time via `VITE_REGION` (frontend) and `REGION` (API) env vars.
+  - `frontend/src/region/` — RegionConfig interface, Nordic data pack (extracted from existing hardcoded values), US data pack (73 cities, Pacific Coast Highway default itinerary, 6 US culinary regions)
+  - `api/src/region/` — ApiRegionConfig with PromptTemplate, Nordic config (extracted COUNTRY_NAMES/SEASONAL_CONTEXT/buildUserMessage), US config (US seasonal context, US prompt, border constraint)
+  - Existing data files (cities.ts, seasonData.ts, defaultItinerary.ts) refactored to thin re-exports from region config
+  - GeneratorPanel ALLOWED_COUNTRIES, generate.ts prompt, schemas.ts country default all pulled from regionConfig
+- **i18n audit test** (`i18nAudit.test.ts`) — automated scan that fails if any component .ts file contains hardcoded English UI strings bypassing the `t()`/`tpl()` system
+- **Complete localization** — 15+ previously hardcoded English strings across GeneratorPanel, ItineraryView, B2BSection, and index.html now route through the i18n system (validation messages, accommodation badges, "Must try" label, section descriptions, hero content, footer tagline)
+
+---
+
 ## [1.0.0] — 2026-06-28
 
 First stable release. Full-stack AI itinerary generator for Nordic road trips,

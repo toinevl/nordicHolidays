@@ -1,8 +1,12 @@
-# Fjordvia
+# Fjordvia / RouteKit
 
 [![CI](https://github.com/toinevl/nordicHolidays/actions/workflows/ci.yml/badge.svg)](https://github.com/toinevl/nordicHolidays/actions/workflows/ci.yml)
 
-**Fjordvia** — AI-Planned Road Trips Across the Nordics. Plan your Nordic holiday by selecting a start and end point — we’ll generate the rest with AI.
+**Fjordvia** — AI-Planned Road Trips Across the Nordics. Plan your Nordic holiday by selecting a start and end point — we'll generate the rest with AI.
+
+**RouteKit** — AI-Planned Road Trips Across the United States. Same engine, US data pack.
+
+Both apps share a single codebase. Region-specific data (countries, cities, seasons, default itinerary, LLM prompt, branding) is config-driven and selected at build time.
 
 **Live app:** <https://sweden.van-vliet.eu> — AI road-trip planner for the Nordics
 
@@ -47,6 +51,43 @@ Runs Azure Functions locally at http://localhost:7071.
 cd frontend && npm test
 cd api && npm test
 ```
+
+---
+
+## Multi-Region Support
+
+This codebase serves multiple travel regions from a single shared codebase. The active region is selected at build time via the `VITE_REGION` (frontend) and `REGION` (API) environment variables.
+
+| Region | Brand | Env value | Countries | Default trip |
+|--------|-------|-----------|-----------|-------------|
+| Nordic | Fjordvia | `nordic` (default) | SE, NO, DK, FI | Sweden 21-day Grand Tour |
+| US | RouteKit | `us` | US | Pacific Coast Highway + Rockies |
+
+### What's region-specific
+
+- Countries (dropdown + LLM prompt), cities (autocomplete), season data (UI tooltips)
+- Default itinerary (stops, culinary regions, accommodations)
+- Map defaults (center/zoom), brand name, hero content, footer tagline
+- API: LLM prompt template, 12-month seasonal context, border constraint
+
+### Region config location
+
+```
+frontend/src/region/   types.ts · nordic.ts · us.ts · index.ts (resolver)
+api/src/region/        types.ts · nordic.ts · us.ts · index.ts (resolver)
+```
+
+### Deploying for US
+
+Set `VITE_REGION=us` in the frontend build env and `REGION=us` in the API app settings. No code changes needed — the region config resolver picks up the US data pack automatically.
+
+### Adding a new region
+
+1. Create `frontend/src/region/<name>.ts` implementing `RegionConfig`
+2. Create `api/src/region/<name>.ts` implementing `ApiRegionConfig`
+3. Register both in their respective `index.ts` files
+4. Add region-specific i18n keys (country names, season notes, hero content)
+5. Set `VITE_REGION` / `REGION` env var at deploy time
 
 ---
 

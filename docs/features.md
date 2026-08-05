@@ -15,11 +15,13 @@ The map is powered by **MapLibre GL** and renders automatically whenever an itin
 
 The **GeneratorPanel** (right-hand side) drives AI-powered trip creation.
 
-1. Choose a Nordic region (or "Full country") and trip duration.
+1. Choose a country/region and trip duration.
 2. Optionally set a start city and adjust interests/pace.
 3. Click **Generate** — the frontend calls `POST /api/generate`.
 4. The API calls Azure AI Foundry (gpt-4o by default) with **forced tool use**, guaranteeing a structured `Itinerary` JSON response every time (no free-form text to parse).
 5. The itinerary appears immediately in the map and timeline. A **"Unsaved"** badge appears in the StatusBar until the trip is saved.
+
+The countries, cities, seasonal context, and LLM prompt are all region-config-driven (see Multi-Region Support in README.md). The same generation flow works for Nordic and US trips.
 
 Generation typically takes 5–15 seconds depending on trip length.
 
