@@ -59,16 +59,32 @@ function applyStaticI18n(): void {
   // Hero buttons
   setText('#btn-fly', t('hero.flyRoute'))
   setText('.hero-actions [href="#itinerary"]', t('hero.viewItinerary'))
+  // Hero badge + subtitle + meta labels
+  setText('#hero-badge', t('hero.badge'))
+  setText('#hero-sub', t('hero.subtitle'))
+  setText('#meta-days', t('hero.metaDays'))
+  setText('#meta-km', t('hero.metaKm'))
+  setText('#meta-destinations', t('hero.metaDestinations'))
+  setText('#meta-food-regions', t('hero.metaFoodRegions'))
+  // Overview section chrome
+  setText('#overview-label', t('sections.overviewLabel'))
+  setText('#overview-title', t('sections.overviewTitle'))
+  setText('#overview-desc', t('sections.overviewDesc'))
   // Itinerary section chrome
   setText('#itinerary .section-label', t('sections.itineraryLabel'))
   setText('#itinerary .section-title', t('sections.itineraryTitle'))
+  setText('#itinerary-desc', t('sections.itineraryDesc'))
   setText('.filter-title', t('sections.filterTitle'))
   // Culinary section chrome
   setText('#culinary-section .section-label', t('sections.culinaryLabel'))
   setText('#culinary-section .section-title', t('sections.culinaryTitle'))
+  setText('#culinary-desc', t('sections.culinaryDesc'))
   // Accommodation section chrome
   setText('#accom-section .section-label', t('sections.accomLabel'))
   setText('#accom-section .section-title', t('sections.accomTitle'))
+  setText('#accom-desc', t('sections.accomDesc'))
+  const accomTipEl = document.getElementById('accom-tip')
+  if (accomTipEl) accomTipEl.innerHTML = t('sections.accomTip')
   // Accommodation table headers (order matches index.html thead)
   const accomHeaders = [
     t('accom.colDestination'),
@@ -93,6 +109,9 @@ function applyStaticI18n(): void {
   document.querySelectorAll('.stat-lbl').forEach((el, i) => {
     if (footerLabels[i] !== undefined) el.textContent = footerLabels[i]!
   })
+  // Footer tagline + build indicator
+  setText('#footer-tagline', t('footer.tagline'))
+  setText('#build-label', t('footer.buildLocal'))
   // Loading spinner label
   setText('.spinner-label', t('loading.generating'))
   // Hero scroll cue

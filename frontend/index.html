@@ -72,14 +72,14 @@
 <section id="hero">
   <div id="map"></div>
   <div class="hero-overlay">
-    <div class="hero-badge">Road Trip · Aug 25 – Sep 14, 2026</div>
+    <div class="hero-badge" id="hero-badge">Road Trip · Aug 25 – Sep 14, 2026</div>
     <h1 class="hero-title">Fjordvia</h1>
-    <p class="hero-sub">From the Øresund Bridge to the High Coast</p>
+    <p class="hero-sub" id="hero-sub">From the Øresund Bridge to the High Coast</p>
     <div class="hero-meta">
-      <span>📍 21 days</span>
-      <span>🚗 2,830 km</span>
-      <span>🏰 15 destinations</span>
-      <span>🍽️ 6 food regions</span>
+      <span>📍 21 <span class="meta-label" id="meta-days">days</span></span>
+      <span>🚗 2,830 <span class="meta-label" id="meta-km">km</span></span>
+      <span>🏰 15 <span class="meta-label" id="meta-destinations">destinations</span></span>
+      <span>🍽️ 6 <span class="meta-label" id="meta-food-regions">food regions</span></span>
     </div>
     <div class="hero-actions">
       <button class="btn btn-primary" id="btn-fly">▶ Fly the Route</button>
@@ -95,9 +95,9 @@
 <section id="overview">
   <div class="section-wrap">
     <span class="section-num">01</span>
-    <div class="section-label" data-reveal>Trip Overview</div>
+    <div class="section-label" data-reveal id="overview-label">Trip Overview</div>
     <h2 class="section-title" data-reveal style="transition-delay:0.08s" id="overview-title">At a Glance</h2>
-    <p class="section-desc" data-reveal style="transition-delay:0.14s" id="overview-subtitle">Every day, every drive, every highlight — scan the full trip or click a row for details.</p>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s" id="overview-desc">Every day, every drive, every highlight — scan the full trip or click a row for details.</p>
     <div class="overview-table-wrap" id="overview-table"></div>
   </div>
 </section>
@@ -107,7 +107,7 @@
     <span class="section-num">02</span>
     <div class="section-label" data-reveal>Day by Day</div>
     <h2 class="section-title" data-reveal style="transition-delay:0.08s">The Full Route</h2>
-    <p class="section-desc" data-reveal style="transition-delay:0.14s">21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.</p>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s" id="itinerary-desc">21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.</p>
     <div class="route-tools">
       <div>
         <div class="route-summary" id="route-summary"></div>
@@ -128,7 +128,7 @@
     <span class="section-num">03</span>
     <div class="section-label" data-reveal>Eat &amp; Drink</div>
     <h2 class="section-title" data-reveal style="transition-delay:0.08s">Culinary Highlights</h2>
-    <p class="section-desc" data-reveal style="transition-delay:0.14s">Six distinct food cultures — Gothenburg shellfish, Dalarna game, High Coast smoked fish, and Stockholm's new Nordic kitchen.</p>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s" id="culinary-desc">Six distinct food cultures — Gothenburg shellfish, Dalarna game, High Coast smoked fish, and Stockholm's new Nordic kitchen.</p>
     <div class="cul-grid" id="cul-grid"></div>
   </div>
 </section>
@@ -138,8 +138,8 @@
     <span class="section-num">04</span>
     <div class="section-label" data-reveal>Where to Sleep</div>
     <h2 class="section-title" data-reveal style="transition-delay:0.08s">Accommodation Guide</h2>
-    <p class="section-desc" data-reveal style="transition-delay:0.14s">All stops filtered for: free cancellation · private bathroom · terrace or balcony where available.</p>
-    <div class="accom-tip" data-reveal style="transition-delay:0.18s"><strong>Booking tip:</strong> Use Booking.com's "Free cancellation" filter. For lake lodges and Höga Kusten, book 2–3 months ahead — they sell out. Search <em>gäststugor</em> (guest cottages) directly for the most authentic Swedish stays.</div>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s" id="accom-desc">All stops filtered for: free cancellation · private bathroom · terrace or balcony where available.</p>
+    <div class="accom-tip" data-reveal style="transition-delay:0.18s" id="accom-tip"><strong>Booking tip:</strong> Use Booking.com's "Free cancellation" filter. For lake lodges and Höga Kusten, book 2–3 months ahead — they sell out. Search <em>gäststugor</em> (guest cottages) directly for the most authentic Swedish stays.</div>
     <div class="table-wrap" data-reveal style="transition-delay:0.22s">
       <table>
         <thead>
@@ -175,9 +175,9 @@
   <div class="footer-div"></div>
   <div class="footer-brand">
     <img src="/icon.svg" alt="Fjordvia" class="footer-logo-icon" width="36" height="36" />
-    <p class="footer-txt">Fjordvia<br>Netherlands → anywhere in the Nordics</p>
+    <p class="footer-txt">Fjordvia<br><span id="footer-tagline">Netherlands → anywhere in the Nordics</span></p>
   </div>
-  <div class="build-indicator" id="build-indicator"><span class="build-dot"></span><span>Build local</span></div>
+  <div class="build-indicator" id="build-indicator"><span class="build-dot"></span><span id="build-label">Build local</span></div>
 </footer>
 
 <script type="module" src="/src/main.ts"></script>

@@ -77,7 +77,7 @@ export function updateInlineEditStopsOrder(
 }
 
 function tagLabel(tag: string): string {
-  const label = tag === 'offbeat' ? 'Off-beat' : tag[0].toUpperCase() + tag.slice(1)
+  const label = tag === 'offbeat' ? t('tags.offbeat') : tag[0].toUpperCase() + tag.slice(1)
   return escapeHtml(label)
 }
 
@@ -677,7 +677,7 @@ export class ItineraryView {
         <div class="cul-name">${escapeHtml(c.name)}</div>
         <div class="cul-region" style="color:${c.color}">${escapeHtml(c.region)}</div>
         <p class="cul-desc">${escapeHtml(c.desc)}</p>
-        <div class="cul-label">Must try</div>
+        <div class="cul-label">${escapeHtml(t('culinary.mustTry'))}</div>
         <ul class="cul-list">${c.must.map((m) => `<li>${escapeHtml(m)}</li>`).join('')}</ul>
       </div>`)
       .join('')
@@ -686,7 +686,7 @@ export class ItineraryView {
   private renderAccommodations(): void {
     const el = document.getElementById('accom-tbody')
     if (!el) return
-    const pl: Record<string, string> = { free: 'Free cancellation', cond: 'Conditional', mod: 'Moderate' }
+    const pl: Record<string, string> = { free: t('accomPolicy.free'), cond: t('accomPolicy.cond'), mod: t('accomPolicy.mod') }
     const pc: Record<string, string> = { free: 'b-free', cond: 'b-mod', mod: 'b-mod' }
     el.innerHTML = this.accommodations
       .map((a) => `

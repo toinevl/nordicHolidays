@@ -341,17 +341,17 @@ export class GeneratorPanel {
     const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim()
 
     if (!startCity || startCity.startsWith('Select')) {
-      this.onError('Please select a start city')
+      this.onError(t('validation.selectStartCity'))
       return
     }
     if (!endCity || endCity.startsWith('Select')) {
-      this.onError('Please select a finish city')
+      this.onError(t('validation.selectFinishCity'))
       return
     }
 
     const tripDays = parseInt((this.panel.querySelector('#gen-days') as HTMLInputElement)?.value ?? '21', 10)
     if (isNaN(tripDays) || tripDays < 7) {
-      this.onError('Minimum trip duration is 7 days')
+      this.onError(t('validation.minDuration'))
       return
     }
     const startDate = (this.panel.querySelector('#gen-start-date') as HTMLInputElement)?.value || undefined
@@ -376,7 +376,7 @@ export class GeneratorPanel {
       this.close()
     } catch (err) {
       this.store.setState({ isGenerating: false })
-      this.onError(err instanceof Error ? err.message : 'Generation failed')
+      this.onError(err instanceof Error ? err.message : t('validation.generationFailed'))
     } finally {
       btn.textContent = t('generator.generateBtn')
       btn.disabled = false

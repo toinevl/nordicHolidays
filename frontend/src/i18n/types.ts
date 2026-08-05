@@ -133,6 +133,7 @@ export interface LocaleStrings {
     bookDemo: string
     caseStudiesLabel: string
     caseStudiesEmpty: string
+    demoIframeTitle: string
   }
   season: {
     skane: string
@@ -176,14 +177,27 @@ export interface LocaleStrings {
     flyRoute: string
     viewItinerary: string
     scrollCue: string
+    badge: string
+    subtitle: string
+    metaDays: string
+    metaKm: string
+    metaDestinations: string
+    metaFoodRegions: string
   }
   sections: {
+    overviewLabel: string
+    overviewTitle: string
+    overviewDesc: string
     itineraryLabel: string
     itineraryTitle: string
+    itineraryDesc: string
     culinaryLabel: string
     culinaryTitle: string
+    culinaryDesc: string
     accomLabel: string
     accomTitle: string
+    accomDesc: string
+    accomTip: string
     filterTitle: string
   }
   accom: {
@@ -202,6 +216,8 @@ export interface LocaleStrings {
     kilometres: string
     destinations: string
     foodRegions: string
+    tagline: string
+    buildLocal: string
   }
   loading: {
     generating: string
@@ -226,6 +242,23 @@ export interface LocaleStrings {
     noData: string
     clickHint: string
   }
+  validation: {
+    selectStartCity: string
+    selectFinishCity: string
+    minDuration: string
+    generationFailed: string
+  }
+  culinary: {
+    mustTry: string
+  }
+  accomPolicy: {
+    free: string
+    cond: string
+    mod: string
+  }
+  tags: {
+    offbeat: string
+  }
 }
 
 export type LocaleKey =
@@ -248,3 +281,7 @@ export type LocaleKey =
   | `loading.${keyof LocaleStrings['loading']}`
   | `widget.${keyof LocaleStrings['widget']}`
   | `overview.${keyof LocaleStrings['overview']}`
+  | `validation.${keyof LocaleStrings['validation']}`
+  | `culinary.${keyof LocaleStrings['culinary']}`
+  | `accomPolicy.${keyof LocaleStrings['accomPolicy']}`
+  | `tags.${keyof LocaleStrings['tags']}`

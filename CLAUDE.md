@@ -152,3 +152,41 @@ every diff yourself — rerun the test suite, rebuild Bicep, check for
 leftover references — before committing; one agent in this session
 correctly caught and fixed its own stale doc claim, but that only surfaced
 because the diff was actually read, not because the agent's summary said so.
+
+## All user-facing strings MUST go through the i18n system (t() / tpl())
+
+This app supports EN, NL, DE. Every string the user can see — labels,
+descriptions, error messages, button text, badges, tooltips, aria-labels,
+section copy, footer text, toast messages — must be resolved via `t()` or
+`tpl()` from `src/i18n/index.ts`. Hardcoded English string literals in
+components or index.html bypass the locale switch and stay English forever
+when the user selects NL or DE.
+
+**How to get it right:**
+
+1. **Component TS files:** Never put a quoted English string directly in a
+   template literal, `textContent` assignment, or error callback. Always use
+   `t('section.key')`. Add the key to `types.ts` (LocaleStrings interface +
+   LocaleKey union) and to all three locale files (`en.ts`, `nl.ts`, `de.ts`).
+2. **index.html static elements:** Add an `id` (or use an existing one) and
+   extend `applyStaticI18n()` in `main.ts` to call `setText()` with the
+   matching `t()` key.
+3. **Error/validation messages:** These are easy to miss because they live in
+   `if (...) { this.onError('...') }` blocks. Route them through `t()` too.
+
+**Enforcement:** `src/i18n/i18nAudit.test.ts` scans all component .ts files
+for hardcoded English string literals that look like UI text and fails if it
+finds any outside an allowlist (Error() constructor args, console messages,
+CSS values, brand names, technical identifiers). Keep that test passing.
+
+**Exceptions (allowed as hardcoded):**
+- `Error(...)` constructor messages (dev-facing, caught internally)
+- `console.warn/error` strings (dev console only)
+- Brand name "Fjordvia" (untranslatable)
+- CSS class names, property values, technical identifiers
+- `aria-label` values that are pure technical identifiers (e.g. "Close")
+
+(2026-08-04: 15+ strings found hardcoded across GeneratorPanel, ItineraryView,
+B2BSection, and index.html during a localization audit. The i18n key parity
+test only checks that NL/DE have every key EN has — it does not verify that
+all UI strings actually use the i18n system in the first place.)

@@ -45,7 +45,7 @@ export class B2BSection {
           <div class="b2b-demo-frame">
             <iframe
               src="/?embed=1"
-              title="Fjordvia live demo"
+              title="${t('b2b.demoIframeTitle')}"
               loading="lazy"
               allowfullscreen
             ></iframe>

@@ -149,7 +149,7 @@ export function renderOverview(
 
   // Update section title/subtitle
   const titleEl = document.getElementById('overview-title')
-  const subtitleEl = document.getElementById('overview-subtitle')
+  const subtitleEl = document.getElementById('overview-desc')
   if (titleEl) titleEl.textContent = itinerary.title
   if (subtitleEl) subtitleEl.textContent = tpl('overview.subtitle', { n: String(itinerary.totalDays) })
 }
