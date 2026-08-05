@@ -58,6 +58,9 @@ param alertName string = 'generateHandler-errors-alert'
 @description('Action group name for alert notifications')
 param actionGroupName string = 'nordic-holidays-alerts'
 
+@description('Travel region label — controls which region data pack the API and frontend use. Nordic = Fjordvia, US = RouteKit.')
+param region string = 'nordic'
+
 // Variables
 var serverFarmName = 'ASP-${resourceGroup().name}-846d'
 var corsAllowedOrigins = union(allowedCorsOrigins, ['https://${staticWebApp.properties.defaultHostname}'])
@@ -296,6 +299,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2024-04-01' = {
     AZURE_FOUNDRY_ENDPOINT: 'https://proj-tvv-openclaw-resource.cognitiveservices.azure.com/openai'
     AZURE_FOUNDRY_API_KEY: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/AZURE-FOUNDRY-API-KEY)'
     AZURE_MAPS_CLIENT_ID: azureMaps.properties.uniqueId  // #89 — Maps account resourceId for RBAC auth
+    REGION: region  // Multi-region: 'nordic' (default) or 'us' — selects the API region data pack
   }
 }
 

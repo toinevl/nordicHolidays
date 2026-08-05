@@ -1,6 +1,14 @@
 # NordicHolidays Azure Infrastructure as Code
 
-This directory contains Bicep Infrastructure as Code (IaC) templates that **capture the manually-built Azure stack as of 2026-06-12** for the NordicHolidays application.
+This directory contains Bicep Infrastructure as Code (IaC) templates for the
+nordicHolidays application — both the Nordic (Fjordvia) and US (RouteKit) deployments.
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `main.bicep` + `main.bicepparam` | Nordic deployment (rgNordicHolidays) — the original |
+| `us.bicep` + `us.bicepparam` | US deployment (rgRouteKit) — shares App Insights, Key Vault, Maps from rgNordicHolidays |
 
 ## Purpose
 
@@ -117,6 +125,62 @@ See `main.bicepparam` for all parameters. Key parameters:
 | `functionAppName` | `nordic-holidays-api` | Name of the Function App |
 | `location` | `westeurope` | Azure region |
 | `nodeVersion` | `22` | Node.js runtime version for Function App |
+
+## US Deployment (RouteKit)
+
+The US region deploys to a separate resource group (`rgRouteKit`) for complete
+isolation of compute and data. It shares three resources from `rgNordicHolidays`
+to avoid duplication:
+
+| Shared resource | Why it's shared |
+|----------------|-----------------|
+| Application Insights | Same telemetry dashboard for both regions |
+| Key Vault | Same AI Foundry API key — no need for a second vault |
+| Azure Maps account | Same routing/distance API — Gen2 free tier covers both |
+
+### Deploying the US stack
+
+```bash
+# 1. Create the resource group
+az group create --name rgRouteKit --location eastus
+
+# 2. Deploy
+az deployment group create \
+  --resource-group rgRouteKit \
+  --template-file infra/us.bicep \
+  --parameters @infra/us.bicepparam
+
+# 3. Grant the Function App access to shared resources in rgNordicHolidays.
+#    Cross-RG role assignments can't be done in Bicep (resourceGroup scope),
+#    so run these manually after the deployment.
+PRINCIPAL_ID=$(az functionapp identity show --resource-group rgRouteKit --name routekit-api --query principalId -o tsv)
+
+# Key Vault Secrets User (read the AI Foundry API key)
+az role assignment create \
+  --resource-group rgNordicHolidays \
+  --assignee-object-id "$PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Key Vault Secrets User"
+
+# Azure Maps Data Reader (real driving distances)
+az role assignment create \
+  --resource-group rgNordicHolidays \
+  --assignee-object-id "$PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Azure Maps Data Reader"
+```
+
+### GitHub Actions
+
+Two separate workflows deploy the US region:
+- `deploy-routekit-frontend.yml` — builds with `VITE_REGION=us`, deploys to the RouteKit SWA
+- `deploy-routekit-api.yml` — deploys the API with `REGION=us` app setting
+
+Required GitHub secrets/vars:
+- `ROUTEKIT_SWA_API_TOKEN` — Static Web App deployment token
+- `ROUTEKIT_SWA_URL` — Full URL (e.g. `https://routekit.azurestaticapps.net`)
+- `ROUTEKIT_FUNCTION_APP_NAME` — Function App name (`routekit-api`)
+- `ROUTEKIT_ALLOWED_ORIGINS` — CORS origins for the US frontend
 
 ## References
 
