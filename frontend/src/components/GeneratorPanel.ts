@@ -3,18 +3,18 @@ import type { Store } from '../store'
 import { apiClient } from '../api/client'
 import { searchLocalCities, searchNominatim, type CitySuggestion } from '../lib/citySearch'
 import { t } from '../i18n/index'
+import type { LocaleKey } from '../i18n/types'
 import { escapeHtml } from '../lib/escape'
+import { regionConfig } from '../region'
 
 export type GenerateCallback = (itinerary: Itinerary) => void
 export type GenerateErrorCallback = (message: string) => void
 type CityField = 'startCity' | 'endCity'
 
-const ALLOWED_COUNTRIES = [
-  { code: 'SE', label: t('country.se') },
-  { code: 'NO', label: t('country.no') },
-  { code: 'DK', label: t('country.dk') },
-  { code: 'FI', label: t('country.fi') },
-]
+const ALLOWED_COUNTRIES = regionConfig.countries.map(country => ({
+  code: country.code,
+  label: t(country.labelKey as LocaleKey),
+}))
 
 function cityKey(city: CitySuggestion): string {
   return `${city.name.toLocaleLowerCase()}-${city.countryCode.toLocaleLowerCase()}`

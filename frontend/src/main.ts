@@ -18,6 +18,7 @@ import { WidgetFooter } from './components/WidgetFooter'
 import { isNavScrolled } from './lib/scrollNav'
 import { pickActiveSection } from './lib/activeSection'
 import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
+import { regionConfig } from './region'
 const store = createStore()
 
 // #85: resolve the boot locale from URL param → referrer → navigator.language
@@ -302,7 +303,7 @@ const mapView = new MapView('map', (stop, opts) => {
   itineraryView.setSelectedStop(stop.id, opts?.scroll ?? false)
   mapView.setActiveMarker(stop.id)
   mapView.flyTo(stop)
-})
+}, { center: regionConfig.mapDefaults.center, zoom: regionConfig.mapDefaults.zoom })
 
 let map3DView: MapView | null = null
 
@@ -314,7 +315,7 @@ function sync3DMap(): void {
       mapView.setActiveMarker(stop.id)
       mapView.flyTo(stop)
       if (map3DView) map3DView.flyTo(stop)
-    }, { pitch: 0, zoom: 5, dragRotate: false })
+    }, { pitch: 0, zoom: regionConfig.mapDefaults.zoom, dragRotate: false, center: regionConfig.mapDefaults.center })
   }
   map3DView.replaceStops(toMapStops({ ...(itinerary ?? STOPS) } as Itinerary))
 }
@@ -466,7 +467,7 @@ store.subscribe(() => {
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
 store.setState({
   currentItinerary: {
-    title: 'Fjordvia',
+    title: regionConfig.brandName,
     totalDays: STOPS.reduce((sum, s) => sum + s.nights, 0),
     startCity: STOPS[0]?.dest ?? '',
     endCity: STOPS[STOPS.length - 1]?.dest ?? '',

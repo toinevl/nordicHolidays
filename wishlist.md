@@ -256,3 +256,26 @@ element (click to scroll to stop) and a print-friendly summary. Full plan:
 - [x] (A) Trip-index (#69) and overview table (#108) navigation is not independent — clicking a stop should be a pure in-page action (select + smooth scroll), but instead requires / triggers full page navigation, breaking the SPA flow; investigate whether `.trip-index-link` / overview click handlers are being bypassed by anchor `href` navigation or a missing `preventDefault` +bug +ui @me #111 — investigated 2026-07-25: non-reproducible. Both navigation elements use `<button>`/`<tr>` with `addEventListener('click', ...)`, not `<a href>`. Trip-index: `setSelectedStop(stopId, true)` with `scrollIntoView({behavior:'smooth'})` (verified: scrolled Y:16656→2991). Overview table: `onRowClick(stopIndex)` → `setSelectedStop` (verified: scrolled Y:2307→6301, active card set). No full-page navigation occurs. The original report may have been based on a different state of the codebase or a misunderstanding of the SPA behavior.
 
 - [x] (B) Move B2B/monetization content out of the main page and into a separate B2B page/route — currently the `#b2b` section (hero pitch, feature cards, live demo iframe, pricing grid, case studies, mailto CTAs from #77) is inlined on the homepage and "Business" is one of 6 items in `.nav-links`, which dilutes the consumer focus of the main page; relocate to a dedicated route (e.g. `#b2b-page` SPA view or a `/business` page) with nav reduced to a single "Business" entry that navigates there instead of scrolling to a homepage section, and hide the B2B entry entirely in widget mode (`isWidgetMode()`) +feature +ui @me #112 — shipped 2026-07-25: B2B content moved to a `#b2b-page` full-screen overlay (same hash-routed pattern as `#map-page`), with a close button, scrollable content, and the nav link updated from `#b2b` (scroll anchor) to `#b2b-page` (SPA route). `handleB2BPage()` in main.ts toggles visibility on hash change. The `updateOnScroll()` overlay check now covers both `#map-page` and `#b2b-page` so nav stays opaque over either. Widget mode hides the whole `#b2b-page` (was `#b2b-root`). New `nav.business` i18n key in EN/NL/DE (Business/Zakelijk/Geschäftskunden). 213/213 tests pass, typecheck clean, build green. Verified live: overlay opens via nav click and direct `#b2b-page` URL, close button returns to `#hero`, B2B content (hero/pricing/demo) renders inside the overlay, nav gets `scrolled` class.
+
+## Multi-Region: United States Region Support
+
+Goal: Make the codebase multi-region so a single shared codebase can serve both
+the Nordic app (Fjordvia) and a US road-trip app. Region differences are driven
+by a build-time config (VITE_REGION), with per-region data packs and branding.
+
+Architecture: frontend/src/region/ holds types.ts + nordic.ts + us.ts + index.ts.
+The active region is selected by import.meta.env.VITE_REGION (default: nordic).
+The API mirrors this with api/src/region/ and REGION env var.
+
+- [x] (A) Create frontend/src/region/types.ts — RegionConfig interface defining all region-specific fields: brandName, countries, defaultCountry, cities, seasonData, defaultItinerary, mapDefaults, heroContent, footerTagline +feature @me #113
+- [x] (A) Create frontend/src/region/nordic.ts — extract all current Nordic-specific data into RegionConfig shape (existing data relocated) +feature @me #114
+- [x] (A) Create frontend/src/region/index.ts — resolver reads VITE_REGION, exports active config +feature @me #115
+- [x] (A) Refactor frontend data files (cities, seasonData, defaultItinerary) to pull from region config +feature @me #116
+- [x] (A) Refactor GeneratorPanel ALLOWED_COUNTRIES + i18n season keys to use region config +feature @me #117
+- [x] (A) Refactor index.html + main.ts hero/footer/title from region config +feature @me #118
+- [x] (A) Create api/src/region/ (types, nordic, us, index) — mirror on API side: COUNTRY_NAMES, SEASONAL_CONTEXT, prompt, allowed countries +feature @me #119
+- [x] (A) Refactor api/src/functions/generate.ts + schemas.ts to use API region config +feature @me #120
+- [x] (A) Create frontend/src/region/us.ts — US data pack: 50+ US cities, US season data, US default itinerary, US map defaults +feature @me #121
+- [x] (A) Create api/src/region/us.ts — US API pack: US country names, US seasonal context, US LLM prompt +feature @me #122
+- [x] (A) Add VITE_REGION / REGION env handling to build config +feature @me #123
+- [x] (B) Update CLAUDE.md with multi-region architecture notes +feature @me #124

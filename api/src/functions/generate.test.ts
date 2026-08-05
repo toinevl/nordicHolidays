@@ -347,7 +347,7 @@ describe('POST /api/generate', () => {
 
     const callArgs = mockCreate.mock.calls[0][0]
     const userMessage = callArgs.messages.find((m: { role: string }) => m.role === 'user').content as string
-    expect(userMessage).toContain('the selected Nordic country')
+    expect(userMessage).toContain('Nordic country')
   })
 
   it('SYSTEM_PROMPT mentions day trips and nights guidance', () => {

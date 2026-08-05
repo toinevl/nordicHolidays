@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { InvocationContext } from '@azure/functions'
+import { regionConfig } from '../region'
 
 /**
  * Safely log an error via the invocation context.
@@ -84,7 +85,7 @@ export const PreferencesSchema = z.object({
   startCity: z.string().max(200),
   endCity: z.string().max(200),
   tripDays: z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
-  country: z.string().max(2).default('SE'),
+  country: z.string().max(2).default(regionConfig.defaultCountry),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).strict()
 
@@ -97,7 +98,7 @@ export const GenerateRequestBodySchema = z.object({
   startCity: z.string().max(200),
   endCity: z.string().max(200),
   tripDays: z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
-  country: z.string().max(2).default('SE'),
+  country: z.string().max(2).default(regionConfig.defaultCountry),
   lang: z.enum(['en', 'nl', 'de']).default('en'),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   existingStops: z.array(z.object({

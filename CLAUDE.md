@@ -153,6 +153,38 @@ leftover references — before committing; one agent in this session
 correctly caught and fixed its own stale doc claim, but that only surfaced
 because the diff was actually read, not because the agent's summary said so.
 
+## Multi-region architecture (Nordic + US from one codebase)
+
+The app supports multiple travel regions (Nordic = Fjordvia, US = RouteKit)
+from a single shared codebase. Region-specific data lives behind a
+RegionConfig interface and is selected at build time via the VITE_REGION
+(frontend) and REGION (API) environment variables. Default is 'nordic'.
+
+**Region config locations:**
+- `frontend/src/region/` — types.ts (RegionConfig), nordic.ts, us.ts, index.ts (resolver)
+- `api/src/region/` — types.ts (ApiRegionConfig), nordic.ts, us.ts, index.ts (resolver)
+
+**What's region-specific:**
+- countries (dropdown + LLM prompt), cities (search), season data (UI tooltips)
+- default itinerary (stops, culinary regions, accommodations)
+- map defaults (center/zoom), brand name, hero content, footer tagline
+- API: LLM prompt template, seasonal context (12 months), border constraint
+
+**What's shared (region-agnostic):**
+- All component logic, i18n system, map rendering, itinerary CRUD
+- Azure Functions framework, auth, rate limiting, routing (Azure Maps)
+
+**Adding a new region:**
+1. Create `frontend/src/region/<name>.ts` implementing RegionConfig
+2. Create `api/src/region/<name>.ts` implementing ApiRegionConfig
+3. Register both in their respective `index.ts` files
+4. Add region-specific i18n keys (country names, season notes, hero content)
+5. Set VITE_REGION / REGION env var at deploy time
+
+**Testing:** the i18nAudit.test.ts guard ensures no hardcoded English UI strings
+bypass the t() system. When adding a new region, add i18n keys for all
+region-specific strings just like any other UI text.
+
 ## All user-facing strings MUST go through the i18n system (t() / tpl())
 
 This app supports EN, NL, DE. Every string the user can see — labels,
