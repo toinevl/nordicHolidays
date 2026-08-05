@@ -340,11 +340,11 @@ export class GeneratorPanel {
     const startCity = (this.panel.querySelector('#gen-start') as HTMLInputElement)?.value.trim()
     const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim()
 
-    if (!startCity || startCity.startsWith('Select')) {
+    if (!startCity) {
       this.onError(t('validation.selectStartCity'))
       return
     }
-    if (!endCity || endCity.startsWith('Select')) {
+    if (!endCity) {
       this.onError(t('validation.selectFinishCity'))
       return
     }

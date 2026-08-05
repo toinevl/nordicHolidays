@@ -188,8 +188,8 @@ export class MapView {
       ctx.font = 'bold 18px sans-serif'
       ctx.textAlign = 'center'
 
-      const displayStart = startCity.startsWith('Select') ? 'Start' : startCity
-      const displayEnd = endCity.startsWith('Select') ? 'Finish' : endCity
+      const displayStart = startCity || 'Start'
+      const displayEnd = endCity || 'Finish'
 
       ctx.fillText(displayStart, 80, 60)
       ctx.fillText('→', 160, 60)

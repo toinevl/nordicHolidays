@@ -1,3 +1,5 @@
+import { regionConfig } from './region'
+
 export type Preferences = {
   mustVisit: string[]
   avoid: string[]
@@ -83,10 +85,10 @@ export type CitySuggestion = {
 export const DEFAULT_PREFERENCES: Preferences = {
   mustVisit: [],
   avoid: [],
-  startCity: 'Select a start city',
-  endCity: 'Select a finish city',
+  startCity: '',
+  endCity: '',
   tripDays: 21,
-  country: 'SE',
+  country: regionConfig.defaultCountry,
 }
 
 export type Profile = {

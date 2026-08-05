@@ -16,7 +16,7 @@ function entityToPreferences(entity: Record<string, unknown>): Preferences {
     startCity: (raw.startCity as string) || DEFAULT_PREFERENCES.startCity,
     endCity: (raw.endCity as string) || DEFAULT_PREFERENCES.endCity,
     tripDays: typeof raw.tripDays === 'number' ? (raw.tripDays as number) : DEFAULT_PREFERENCES.tripDays,
-    country: (raw.country as string) || DEFAULT_PREFERENCES.country || 'SE',
+    country: (raw.country as string) || DEFAULT_PREFERENCES.country,
   }
 }
 
