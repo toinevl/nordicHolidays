@@ -1,5 +1,6 @@
 import type { AppState, Preferences, Locale } from './types'
 import { setLocale, LOCALE_STORAGE_KEY } from './i18n/index'
+import { regionConfig } from './region'
 
 function readInitialLocale(): Locale {
   try {
@@ -16,7 +17,7 @@ const defaultPreferences: Preferences = {
   startCity: '',
   endCity: '',
   tripDays: 21,
-  country: 'SE',
+  country: regionConfig.defaultCountry,
   startDate: '',
 }
 

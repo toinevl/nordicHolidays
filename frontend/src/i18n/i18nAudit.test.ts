@@ -139,3 +139,68 @@ describe('i18n audit: no hardcoded English UI strings in components', () => {
     })
   }
 })
+
+describe('region audit: no hardcoded country codes outside region config', () => {
+  // Files that ARE allowed to contain country codes (they ARE the region config
+  // or test fixtures that test region config)
+  const ALLOWED_FILES = new Set([
+    'src/region/nordic.ts',
+    'src/region/us.ts',
+    'src/region/types.ts',
+  ])
+
+  const checkFiles = [...componentFiles, MAIN_TS]
+    .filter(f => !f.includes('.test.'))
+    .filter(f => existsSync(f))
+    .map(f => f.replace(join(__dirname, '..') + '/', ''))
+    .filter(f => !ALLOWED_FILES.has(f))
+
+  // Add store.ts and any other non-component source files
+  const extraFiles = [
+    join(__dirname, '..', 'store.ts'),
+    join(__dirname, '..', 'types.ts'),
+    join(__dirname, '..', 'config.ts'),
+  ].filter(existsSync)
+
+  const allCheckFiles = [...componentFiles, MAIN_TS, ...extraFiles]
+    .filter(f => !f.includes('.test.'))
+    .filter(f => existsSync(f))
+
+  for (const file of allCheckFiles) {
+    const relPath = file.replace(join(__dirname, '..') + '/', '')
+    if (ALLOWED_FILES.has(relPath)) continue
+
+    it(`${relPath} has no hardcoded country codes`, () => {
+      const content = readFileSync(file, 'utf-8')
+      // Look for country codes used as default values: country: 'SE' or = 'SE' etc.
+      // Allow imports, comments, and i18n key references (country.se)
+      const violations: string[] = []
+      const lines = content.split('\n')
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        // Skip comments, imports, type declarations
+        if (line.startsWith('//') || line.startsWith('import ') || line.startsWith('*')) continue
+        // Skip lines that reference regionConfig (that's the correct pattern)
+        if (line.includes('regionConfig')) continue
+        // Skip lines that use i18n key references like 'country.se'
+        if (line.includes("country.") && line.includes("'")) continue
+
+        // Check for hardcoded country codes as default values
+        // Pattern: country: 'XX' or countryCode: 'XX' (but not in region/ data files)
+        if (/country(?:Code)?:\s*['"][A-Z]{2}['"]/.test(line)) {
+          violations.push(`  L${i + 1}: ${line.trim()}`)
+        }
+      }
+
+      if (violations.length > 0) {
+        expect.fail(
+          `Hardcoded country code found in ${relPath}.\n` +
+          `Use regionConfig.defaultCountry instead — hardcoding a country code\n` +
+          `breaks multi-region deployments (the US site would default to Sweden).\n\n` +
+          violations.join('\n')
+        )
+      }
+    })
+  }
+})
