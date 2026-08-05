@@ -49,6 +49,7 @@ jobs:
         working-directory: frontend
         env:
           VITE_REGION: 'us'
+          VITE_API_BASE: 'https://${{ vars.ROUTEKIT_FUNCTION_APP_NAME }}.azurewebsites.net'
           VITE_ENTRA_CLIENT_ID: ${{ secrets.VITE_ENTRA_CLIENT_ID }}
           VITE_ENTRA_TENANT_ID: ${{ secrets.VITE_ENTRA_TENANT_ID }}
           VITE_TRAVELPAYOUTS_MARKER: ${{ vars.TRAVELPAYOUTS_MARKER }}

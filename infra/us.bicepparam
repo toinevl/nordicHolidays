@@ -3,7 +3,7 @@ using './us.bicep'
 param storageAccountName = 'routekit'
 param functionAppName = 'routekit-api'
 param staticWebAppName = 'routekit'
-param location = 'eastus'
+param location = 'eastus2'
 param staticWebAppSku = 'Free'
 param customDomainNames = []
 param allowedCorsOrigins = [
