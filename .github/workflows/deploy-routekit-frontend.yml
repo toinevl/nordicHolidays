@@ -76,7 +76,7 @@ jobs:
             body=$(echo "$response" | head -n -1)
             status=$(echo "$response" | tail -n 1)
             if [ "$status" = "200" ]; then
-              if echo "$body" | grep -q '<div id="status-bar"'; then
+              if echo "$body" | grep -q '<header id="header"'; then
                 echo "✓ RouteKit frontend is live (200)"
                 exit 0
               else

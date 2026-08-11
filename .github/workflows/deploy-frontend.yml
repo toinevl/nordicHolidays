@@ -86,7 +86,7 @@ jobs:
 
             if [ "$status" = "200" ]; then
               # Check for stable markers in the HTML
-              if echo "$body" | grep -q '<div id="status-bar"'; then
+              if echo "$body" | grep -q '<header id="header"'; then
                 echo "✓ Frontend is live (200) with expected marker"
                 exit 0
               else
