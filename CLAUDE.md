@@ -153,6 +153,19 @@ leftover references — before committing; one agent in this session
 correctly caught and fixed its own stale doc claim, but that only surfaced
 because the diff was actually read, not because the agent's summary said so.
 
+When delegating research tasks (e.g. prospect lists, market scans) that
+involve iterative web search: (1) set a realistic output target — 25–30
+solid entries beats 50 that never get written; (2) include an explicit
+checkpoint: "after ~15 searches, write your findings to the file with what
+you have, even if you haven't reached the target count"; (3) say
+"prioritize writing the file with partial results over finding every last
+entry." Subagents have no awareness of tool-call budgets — without a
+forced write checkpoint, they will burn through their entire search budget
+chasing the next entry and never reach the `write_file` step. (2026-08-09:
+the #78 B2B prospect subagent hit the 50-call `loop_web_search_cap`
+guardrail with a file full of good data, one `write_file` call away from
+success — but it never stopped searching to write it.)
+
 ## Multi-region architecture (Nordic + US from one codebase)
 
 The app supports multiple travel regions (Nordic = Fjordvia, US = RouteKit)
