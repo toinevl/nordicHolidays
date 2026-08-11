@@ -51,23 +51,41 @@
   </script>
 </head>
 <body>
-<div id="status-bar" class="status-bar"></div>
 <div class="grain"></div>
 
-<nav id="nav">
-  <a class="nav-logo" href="#hero">
-    <img src="/icon.svg" alt="Fjordvia" class="nav-logo-icon" width="28" height="28" />
-    <span>Fjord<em>via</em></span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="#overview">Overview</a></li>
-    <li><a href="#itinerary">Itinerary</a></li>
-    <li><a href="#culinary-section">Food</a></li>
-    <li><a href="#accom-section">Stay</a></li>
-    <li><a href="#map-page">3D Map</a></li>
-    <li><a href="#b2b-page">Business</a></li>
-  </ul>
-</nav>
+<header id="header">
+  <div class="header-inner">
+    <a class="nav-logo" href="#hero">
+      <img src="/icon.svg" alt="Fjordvia" class="nav-logo-icon" width="28" height="28" />
+      <span>Fjord<em>via</em></span>
+    </a>
+    <nav class="header-nav">
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#itinerary">Itinerary</a></li>
+        <li><a href="#culinary-section">Food</a></li>
+        <li><a href="#accom-section">Stay</a></li>
+        <li><a href="#map-page">3D Map</a></li>
+      </ul>
+    </nav>
+    <div class="header-actions">
+      <button class="header-btn" id="btn-share" title="Share this trip">🔗</button>
+      <div class="locale-switcher" id="locale-switcher">
+        <button class="header-btn locale-current" id="locale-current" aria-haspopup="true" aria-expanded="false">EN</button>
+        <div class="locale-dropdown hidden" id="locale-dropdown">
+          <button data-locale="en" class="locale-option locale-option--active">EN</button>
+          <button data-locale="nl" class="locale-option">NL</button>
+          <button data-locale="de" class="locale-option">DE</button>
+        </div>
+      </div>
+      <button class="header-btn header-trips" id="btn-open-saved">☰</button>
+      <button class="btn btn-primary header-generate" id="btn-open-generator">Plan Trip</button>
+      <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
 
 <section id="hero">
   <div id="map"></div>
@@ -176,6 +194,7 @@
   <div class="footer-brand">
     <img src="/icon.svg" alt="Fjordvia" class="footer-logo-icon" width="36" height="36" />
     <p class="footer-txt">Fjordvia<br><span id="footer-tagline">Netherlands → anywhere in the Nordics</span></p>
+    <a href="#b2b-page" class="footer-business-link">Business</a>
   </div>
   <div class="build-indicator" id="build-indicator"><span class="build-dot"></span><span id="build-label">Build local</span></div>
 </footer>

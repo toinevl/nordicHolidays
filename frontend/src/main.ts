@@ -51,12 +51,11 @@ function setText(selector: string, text: string): void {
 }
 function applyStaticI18n(): void {
   document.documentElement.lang = getLocale()
-  // Nav links
-  setText('nav [href="#itinerary"]', t('nav.itinerary'))
-  setText('nav [href="#culinary-section"]', t('nav.food'))
-  setText('nav [href="#accom-section"]', t('nav.stay'))
-  setText('nav [href="#map-page"]', t('nav.map3d'))
-  setText('nav [href="#b2b-page"]', t('nav.business'))
+  // Nav links in unified header
+  setText('#header [href="#itinerary"]', t('nav.itinerary'))
+  setText('#header [href="#culinary-section"]', t('nav.food'))
+  setText('#header [href="#accom-section"]', t('nav.stay'))
+  setText('#header [href="#map-page"]', t('nav.map3d'))
   // Hero buttons
   setText('#btn-fly', t('hero.flyRoute'))
   setText('.hero-actions [href="#itinerary"]', t('hero.viewItinerary'))
@@ -343,23 +342,15 @@ window.addEventListener('hashchange', handleB2BPage)
 handleMapPage()
 handleB2BPage()
 
-// Fixed nav gets a solid background once the user scrolls past the transparent hero (#99),
+// Fixed header gets a solid background once the user scrolls past the transparent hero (#99),
 // and the nav link for the section currently in view gets highlighted (#103).
-const navEl = document.getElementById('nav')
-const statusBarEl = document.getElementById('status-bar')!
-// nav + status-bar stacked below it (#104). Measured, not hardcoded (#8) — on
-// mobile the status-bar can grow past its nominal 48px (wrapped trip name /
-// button row), so a fixed constant drifts and either leaves a gap or, worse,
-// undercounts and lets content sit under the fixed header again.
-function syncFixedHeaderHeight(): void {
-  const h = (navEl?.offsetHeight ?? 0) + statusBarEl.offsetHeight
-  document.documentElement.style.setProperty('--fixed-header-height', `${h}px`)
-}
-new ResizeObserver(syncFixedHeaderHeight).observe(statusBarEl)
-syncFixedHeaderHeight()
+const headerEl = document.getElementById('header')
+// Single 56px header — no second status-bar row anymore.
+const FIXED_HEADER_HEIGHT = 56
+
 const trackedSectionIds = ['hero', 'overview', 'itinerary', 'culinary-section', 'accom-section']
 const navLinkByHash = new Map<string, HTMLAnchorElement>()
-document.querySelectorAll<HTMLAnchorElement>('.nav-links a').forEach((a) => {
+document.querySelectorAll<HTMLAnchorElement>('#nav-links a').forEach((a) => {
   const hash = a.getAttribute('href')
   if (hash?.startsWith('#')) navLinkByHash.set(hash.slice(1), a)
 })
@@ -367,23 +358,51 @@ function setActiveNavLink(id: string | null): void {
   navLinkByHash.forEach((a, key) => a.classList.toggle('active', key === id))
 }
 function updateOnScroll(): void {
-  // #map-page (#6) and #b2b-page (#110) are fixed-position overlays that never
+  // #map-page and #b2b-page are fixed-position overlays that never
   // scroll the underlying document, so scrollY alone can't be trusted while
-  // either is open — nav must stay opaque there regardless of scroll position.
+  // either is open — header must stay opaque there regardless of scroll position.
   const fullscreenOverlayOpen =
     document.getElementById('map-page')?.classList.contains('hidden') === false ||
     document.getElementById('b2b-page')?.classList.contains('hidden') === false
-  navEl?.classList.toggle('scrolled', isNavScrolled(window.scrollY, fullscreenOverlayOpen))
-  const fixedHeaderHeight = (navEl?.offsetHeight ?? 0) + statusBarEl.offsetHeight
+  headerEl?.classList.toggle('scrolled', isNavScrolled(window.scrollY, fullscreenOverlayOpen))
   const sections = trackedSectionIds
     .map((id) => document.getElementById(id))
     .filter((el): el is HTMLElement => el !== null)
-    .map((el) => ({ id: el.id, top: el.getBoundingClientRect().top - fixedHeaderHeight }))
+    .map((el) => ({ id: el.id, top: el.getBoundingClientRect().top - FIXED_HEADER_HEIGHT }))
   setActiveNavLink(pickActiveSection(sections))
 }
 window.addEventListener('scroll', updateOnScroll, { passive: true })
 window.addEventListener('hashchange', updateOnScroll)
 updateOnScroll()
+
+// Mobile hamburger menu
+const hamburger = document.getElementById('hamburger')
+const mobileMenu = document.createElement('div')
+mobileMenu.className = 'mobile-menu'
+mobileMenu.innerHTML = `
+  <ul>
+    <li><a href="#overview">${t('sections.overviewLabel')}</a></li>
+    <li><a href="#itinerary">${t('nav.itinerary')}</a></li>
+    <li><a href="#culinary-section">${t('nav.food')}</a></li>
+    <li><a href="#accom-section">${t('nav.stay')}</a></li>
+    <li><a href="#map-page">${t('nav.map3d')}</a></li>
+  </ul>
+`
+document.body.appendChild(mobileMenu)
+
+hamburger?.addEventListener('click', () => {
+  const isOpen = mobileMenu.classList.contains('open')
+  mobileMenu.classList.toggle('open')
+  hamburger.setAttribute('aria-expanded', String(!isOpen))
+})
+
+// Close mobile menu on navigation
+mobileMenu.querySelectorAll('a').forEach(a => {
+  a.addEventListener('click', () => {
+    mobileMenu.classList.remove('open')
+    hamburger?.setAttribute('aria-expanded', 'false')
+  })
+})
 
 document.getElementById('btn-close-map')?.addEventListener('click', () => {
   window.location.hash = '#hero'
@@ -397,8 +416,9 @@ document.getElementById('btn-fly')?.addEventListener('click', () => {
   mapView.flyRoute()
 })
 
+const headerStatusEl = document.getElementById('header')!
 const statusBar = new StatusBar(
-  statusBarEl,
+  headerStatusEl,
   () => generatorPanel.open(),
   () => savedPanel.open(),
   (id: string) => {
@@ -457,6 +477,11 @@ const generatorPanel = new GeneratorPanel(
     toast.error(tpl('toast.generationFailed', { msg }))
   }
 )
+
+// Bind header buttons now that both panels exist (#126 — moved out of
+// StatusBar constructor to avoid temporal-dead-zone with const declarations)
+document.getElementById('btn-open-generator')?.addEventListener('click', () => generatorPanel.open())
+document.getElementById('btn-open-saved')?.addEventListener('click', () => savedPanel.open())
 
 store.subscribe(() => {
   statusBar.syncFromStore(store)
@@ -543,7 +568,7 @@ if (isWidgetMode()) {
       }
 
       // Strip down to embed mode: hide nav, status bar, B2B section, footer
-      document.querySelectorAll('nav, #status-bar, #b2b-page, footer').forEach((el) => {
+      document.querySelectorAll('#header, #b2b-page, footer').forEach((el) => {
         el.classList.add('hidden')
       })
 

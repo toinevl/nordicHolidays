@@ -80,42 +80,128 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
   background-size: 400px 400px;
 }
 
-/* NAV
-   Unscrolled, nav floats transparently over the hero map — map tile colors
-   are unpredictable (light ocean blue, pale green land), so dark --ink text
-   can lose all contrast. Same problem .hero-overlay already solves for its
-   own text: a dark scrim + light "immersive" (--text-on-night) tokens.
-   Reuse that here; nav.scrolled switches back to dark text on its opaque
-   light background once past the hero. */
-nav {
+/* UNIFIED HEADER — single 56px bar replacing the old two-bar nav+status-bar stack */
+#header {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  padding: 0 2rem; height: 56px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: linear-gradient(to bottom, rgba(21,17,14,0.45) 0%, rgba(21,17,14,0) 100%);
-  transition: background 0.3s;
+  height: 56px;
+  background: linear-gradient(to bottom, rgba(21,17,14,0.55) 0%, rgba(21,17,14,0.1) 100%);
+  transition: background 0.3s, backdrop-filter 0.3s, border-color 0.3s;
+  border-bottom: 1px solid transparent;
 }
-nav.scrolled { background: rgba(255,253,249,0.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+#header.scrolled {
+  background: rgba(255,253,249,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.header-inner {
+  max-width: 1400px; margin: 0 auto; height: 100%;
+  padding: 0 2rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
 .nav-logo {
   font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700;
   color: var(--text-on-night); text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
-  transition: color 0.2s;
+  transition: color 0.2s; flex-shrink: 0;
 }
 .nav-logo em { color: var(--primary-light); font-style: normal; transition: color 0.2s; }
 .nav-logo-icon { display: block; width: 28px; height: 28px; }
-.nav-links { display: flex; gap: 2rem; list-style: none; }
+#header.scrolled .nav-logo { color: var(--ink); }
+#header.scrolled .nav-logo em { color: var(--primary); }
+
+.header-nav { flex: 1; display: flex; justify-content: center; }
+.nav-links { display: flex; gap: 1.75rem; list-style: none; }
 .nav-links a {
   font-family: var(--font-mono); font-size: 0.68rem; font-weight: 400;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--text-on-night-muted); text-decoration: none; transition: color 0.2s;
+  padding: 0.35rem 0;
 }
 .nav-links a:hover { color: var(--primary-light); }
 .nav-links a.active { color: var(--primary-light); }
+#header.scrolled .nav-links a { color: var(--ink-muted); }
+#header.scrolled .nav-links a:hover,
+#header.scrolled .nav-links a.active { color: var(--primary); }
 
-nav.scrolled .nav-logo { color: var(--ink); }
-nav.scrolled .nav-logo em { color: var(--primary); }
-nav.scrolled .nav-links a { color: var(--ink-muted); }
-nav.scrolled .nav-links a:hover,
-nav.scrolled .nav-links a.active { color: var(--primary); }
+/* Header action buttons */
+.header-actions {
+  display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
+}
+.header-btn {
+  background: none; border: none; color: var(--text-on-night-muted);
+  cursor: pointer; padding: 0.35rem; border-radius: var(--r);
+  font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500;
+  transition: color 0.2s, background 0.2s; line-height: 1;
+  display: flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px;
+}
+.header-btn:hover { color: var(--primary-light); }
+#header.scrolled .header-btn { color: var(--ink-muted); }
+#header.scrolled .header-btn:hover { color: var(--primary); }
+
+#btn-share { font-size: 0.9rem; }
+
+.header-generate {
+  font-size: 0.68rem; padding: 0.45rem 1rem; letter-spacing: 0.07em;
+}
+
+/* Locale dropdown */
+.locale-switcher { position: relative; }
+.locale-current {
+  text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+}
+.locale-dropdown {
+  position: absolute; top: 100%; right: 0; margin-top: 0.4rem;
+  background: rgba(255,253,249,0.96); backdrop-filter: blur(12px);
+  border: 1px solid var(--border); border-radius: var(--r);
+  display: flex; flex-direction: column; gap: 0.15rem;
+  padding: 0.35rem; min-width: 48px; z-index: 10;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+.locale-dropdown.hidden { display: none; }
+.locale-option {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500;
+  color: var(--ink-muted); padding: 0.3rem 0.6rem; border-radius: var(--r);
+  text-align: center; transition: all 0.15s;
+}
+.locale-option:hover { background: var(--bg-subtle); color: var(--primary); }
+.locale-option--active { color: var(--primary); font-weight: 600; }
+
+/* Hamburger */
+.hamburger {
+  display: none; flex-direction: column; gap: 4px;
+  background: none; border: none; cursor: pointer; padding: 0.35rem;
+}
+.hamburger span {
+  display: block; width: 20px; height: 2px; border-radius: 1px;
+  background: var(--text-on-night-muted); transition: all 0.25s;
+}
+#header.scrolled .hamburger span { background: var(--ink-muted); }
+.hamburger[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.hamburger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.hamburger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* Mobile menu overlay */
+.mobile-menu {
+  position: fixed; top: 56px; left: 0; right: 0; z-index: 99;
+  background: rgba(255,253,249,0.98); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem 1.5rem;
+  transform: translateY(-100%); opacity: 0; pointer-events: none;
+  transition: transform 0.3s, opacity 0.3s;
+}
+.mobile-menu.open { transform: translateY(0); opacity: 1; pointer-events: all; }
+.mobile-menu ul { list-style: none; }
+.mobile-menu li { border-bottom: 1px solid var(--border); }
+.mobile-menu li:last-child { border-bottom: none; }
+.mobile-menu a {
+  display: block; padding: 0.85rem 0;
+  font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink); text-decoration: none; transition: color 0.2s;
+}
+.mobile-menu a:hover { color: var(--primary); }
+.mobile-menu a.active { color: var(--primary); }
 
 /* HERO */
 #hero { position: relative; height: 70vh; min-height: 480px; overflow: hidden; }
@@ -141,7 +227,7 @@ nav.scrolled .nav-links a.active { color: var(--primary); }
     url('https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1800&q=80') center/cover;
 }
 .map-message {
-  position: absolute; top: 120px; right: 1rem; z-index: 10;
+  position: absolute; top: 72px; right: 1rem; z-index: 10;
   max-width: 280px; padding: 0.75rem 1rem; border-radius: var(--r);
   background: rgba(21,17,14,0.92); color: var(--text-on-night-muted);
   font-size: 0.78rem; line-height: 1.5; backdrop-filter: blur(10px);
@@ -184,9 +270,9 @@ nav.scrolled .nav-links a.active { color: var(--primary); }
 .btn-secondary:hover { background: rgba(232,93,42,0.18); border-color: var(--accent-2); color: var(--accent-2); transform: translateY(-2px); }
 
 /* SECTIONS */
-#itinerary { background: var(--bg); scroll-margin-top: var(--fixed-header-height, 104px); }
-#culinary-section { background: var(--bg-alt); scroll-margin-top: var(--fixed-header-height, 104px); }
-#accom-section { background: var(--bg-alt); scroll-margin-top: var(--fixed-header-height, 104px); }
+#itinerary { background: var(--bg); scroll-margin-top: 56px; }
+#culinary-section { background: var(--bg-alt); scroll-margin-top: 56px; }
+#accom-section { background: var(--bg-alt); scroll-margin-top: 56px; }
 
 .section-wrap { max-width: 1200px; margin: 0 auto; padding: 5rem 2rem; position: relative; }
 .section-label {
@@ -428,6 +514,13 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 .stat-lbl { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; }
 .footer-div { width: 36px; height: 1px; background: var(--border); margin: 2rem auto; }
 .footer-brand { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+.footer-business-link {
+  font-family: var(--font-mono); font-size: 0.68rem; font-weight: 400;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-muted); text-decoration: none; transition: color 0.2s;
+  padding-left: 0.75rem; border-left: 1px solid var(--border);
+}
+.footer-business-link:hover { color: var(--primary); }
 .footer-logo-icon { display: block; width: 36px; height: 36px; }
 .footer-txt { font-size: 0.83rem; line-height: 1.75; text-align: left; }
 .build-indicator {
@@ -486,19 +579,17 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   .filter-panel { position: static; }
   .cul-grid { grid-template-columns: 1fr 1fr; }
   .nav-links { display: none; }
+  .header-nav { display: none; }
+  .hamburger { display: flex; }
+  .header-generate { display: none; }
   .section-num { font-size: 7rem; }
 }
 @media (max-width: 580px) {
   #hero { height: 65vh; min-height: 420px; }
-  nav { padding: 0 1rem; }
+  .header-inner { padding: 0 1rem; }
   .hero-overlay { padding: 1rem 1.5rem 2rem; max-height: 20vh; }
   .hero-meta { flex-direction: column; gap: 0.35rem; }
   .hero-actions { flex-direction: column; align-items: flex-start; }
-  /* hero-overlay's stacked content (badge/title/meta/actions) already fills
-     nearly the full mobile hero height — the independently-positioned
-     .scroll-cue collides with .hero-actions here (#106). hero-actions'
-     "View Itinerary ↓" link already gives the same "more below" affordance
-     where space is this tight, so drop the cue rather than force a fit. */
   .scroll-cue { display: none; }
   .route-summary { grid-template-columns: 1fr; }
   .cul-grid { grid-template-columns: 1fr; }
@@ -508,45 +599,16 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
   .t-item { grid-template-columns: 24px 1fr; gap: 0.85rem; }
   .dot { width: 26px; height: 26px; font-size: var(--fs-x2); }
   .timeline::before { left: 11px; }
+  /* On small screens, hide the text label and keep just icons in the header */
+  .header-btn { min-width: 36px; min-height: 36px; }
 }
 
 /* maplibre-gl base styles are imported via npm in main.ts */
 
-/* ── STATUS BAR ─────────────────────────────────────────────────────────── */
-.status-bar {
-  /* Stacked below `nav` (56px), not overlapping it (#104) — both are
-     position:fixed at the top of the viewport; before this, status-bar's
-     higher z-index and opaque background fully hid nav underneath it. */
-  position: fixed; top: 56px; left: 0; right: 0; z-index: 110;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 253, 249, 0.88);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
-  height: 48px;
-}
-.status-btn { background: none; border: 1px solid var(--border); color: var(--ink); padding: 0.25rem 0.75rem; border-radius: var(--r); cursor: pointer; font-family: var(--font-mono); font-size: 0.75rem; }
-.status-btn:hover { border-color: var(--primary); color: var(--primary); }
-.locale-btn--active { color: var(--primary) !important; font-weight: 600; }
-.status-center { display: flex; align-items: center; gap: 0.5rem; }
-.status-trip-name { font-family: var(--font-serif); font-size: 1rem; color: var(--ink); }
-.status-badge { font-size: 0.65rem; padding: 0.125rem 0.5rem; border-radius: 999px; font-family: var(--font-mono); cursor: pointer; }
-.status-badge:hover { filter: brightness(1.2); }
-.status-badge--saved { background: rgba(59, 79, 232, 0.16); color: var(--primary); border: 1px solid var(--primary); }
-.status-badge--unsaved { background: rgba(232, 93, 42, 0.14); color: #C4662A; border: 1px solid var(--accent-2); }
-
-@media (max-width: 580px) {
-  /* At this width, the trip name + 5-button group (Saved Trips/Generate/
-     locale) no longer fit on one line. The bar's hardcoded height:48px with
-     overflow:visible let that overflow paint over whatever section is
-     scrolled underneath it (#8) instead of growing to fit — same failure
-     family as #104, just the status-bar overflowing itself this time.
-     Let it wrap onto two rows and grow instead. --fixed-header-height (set
-     in main.ts) keeps scroll-margin-top / scrollspy in sync with the
-     resulting height. */
-  .status-bar { height: auto; min-height: 48px; flex-wrap: wrap; row-gap: 0.4rem; padding: 0.5rem 1rem; }
-  .status-trip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55vw; }
-}
+/* ── HEADER INTEGRATION ─────────────────────────────────────────────────── */
+/* The old status-bar is gone. Trip status (saved/unsaved badge, trip name)
+   now shows as a small inline element in the header on scroll. Managed by
+   StatusBar.ts which updates the elements in the header. */
 
 /* ── PANELS ─────────────────────────────────────────────────────────────── */
 .panel-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(21,17,14,0.45); display: flex; }
@@ -676,7 +738,7 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 
 /* ── PRINT ──────────────────────────────────────────────────────────────── */
 @media print {
-  nav, .status-bar, .panel-overlay, .toast-container, .loading-overlay,
+  #header, .panel-overlay, .toast-container, .loading-overlay,
   .hero-actions, .btn-fly, .filter-panel, .trip-index, #btn-print, .grain { display: none !important; }
 
   body { background: #fff; color: #111; font-size: 12pt; }
@@ -937,7 +999,7 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 
 /* ─── Trip Overview Table (#107) ─── */
 
-#overview { scroll-margin-top: var(--fixed-header-height, 104px); }
+#overview { scroll-margin-top: 56px; }
 
 .overview-table-wrap {
   overflow-x: auto;
