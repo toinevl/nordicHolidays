@@ -278,4 +278,8 @@ The API mirrors this with api/src/region/ and REGION env var.
 - [x] (A) Create frontend/src/region/us.ts — US data pack: 50+ US cities, US season data, US default itinerary, US map defaults +feature @me #121
 - [x] (A) Create api/src/region/us.ts — US API pack: US country names, US seasonal context, US LLM prompt +feature @me #122
 - [x] (A) Add VITE_REGION / REGION env handling to build config +feature @me #123
-- [x] (B) Update CLAUDE.md with multi-region architecture notes +feature @me #124
+- [x] (A) Update CLAUDE.md with multi-region architecture notes +feature @me #124
+
+## v2.6 — Input Consistency (seeded 2026-08-09)
+
+- [ ] (A) Must-visit and avoid fields are plain text inputs with no dynamic city lookup — the start/end city fields in `GeneratorPanel.ts` use `bindCityLookup()` (local `searchLocalCities` + Nominatim autocomplete, dropdown with keyboard nav, region/country meta per suggestion), but the must-visit (`#must-visit-input`) and avoid (`#avoid-input`) fields use `bindTagInput()`, which blindly accepts whatever the user types on Enter into a tag list. A user typing "Malmo" instead of "Malmö" or misspelling a place sends bad data to the LLM with no correction or validation. Both fields should reuse the same `bindCityLookup` combobox pattern (adapted for tag-mode: selecting a suggestion adds it as a tag instead of replacing the input value) +bug +ui @me #125
