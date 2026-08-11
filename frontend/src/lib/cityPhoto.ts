@@ -1,18 +1,20 @@
 /**
- * City photo lookup via Wikimedia Commons API (#127).
+ * City photo lookup (#127).
  *
- * Fetches a representative photo for a given city name from Wikimedia Commons.
- * Free, no API key required. Results are cached in-memory to avoid repeat
- * lookups within the same session.
+ * Primary: Wikipedia REST summary API — returns a curated, high-quality
+ * page image for each city. Reliable, consistent, and the images are
+ * editorially selected for the city (not random Commons uploads).
  *
- * The photo URL uses the Wikimedia "Special:Redirect/file" endpoint which
- * serves a thumbnail at a given width — no need to parse the full imageinfo.
+ * Fallback: Wikimedia Commons search API for cities without a Wikipedia
+ * page image.
+ *
+ * Free, no API key required. Results cached in-memory.
  */
 
 const photoCache = new Map<string, string | null>()
 
 /**
- * Fetch a photo URL for a city from Wikimedia Commons.
+ * Fetch a photo URL for a city.
  * Returns null if no suitable image is found.
  * Cached per city name — subsequent calls return instantly.
  */
@@ -20,63 +22,83 @@ export async function getCityPhoto(city: string): Promise<string | null> {
   const key = city.toLowerCase().trim()
   if (photoCache.has(key)) return photoCache.get(key) ?? null
 
+  // Primary: Wikipedia REST summary API (curated page image)
   try {
-    // Search Wikimedia Commons for images of the city
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(city)}`
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } })
+    if (res.ok) {
+      const data = await res.json()
+      // Only accept actual place pages (not disambiguation)
+      if (data.type !== 'disambiguation' && data.thumbnail?.source) {
+        // Wikipedia REST may return 330px, 640px, 960px... depending on
+        // original resolution. Normalize to 330px which is guaranteed
+        // to exist. Strip utm tracking params.
+        const raw = data.thumbnail.source.split('?')[0]
+        const photoUrl = raw.replace(/\/\d+px-/, '/330px-')
+        photoCache.set(key, photoUrl)
+        return photoUrl
+      }
+    }
+  } catch {
+    // Fall through to Commons search
+  }
+
+  // Fallback: Wikimedia Commons search (simpler query works better)
+  try {
     const params = new URLSearchParams({
       action: 'query',
       format: 'json',
       generator: 'search',
-      gsrsearch: `${city} cityscape landmark`,
-      gsrnamespace: '6', // File namespace
+      gsrsearch: city, // simple city name, no extra keywords
+      gsrnamespace: '6',
       gsrlimit: '10',
       prop: 'imageinfo',
       iiprop: 'url|mime|size',
-      iiurlwidth: '600',
+      iiurlwidth: '800',
       origin: '*',
     })
 
     const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`)
-    if (!res.ok) {
-      photoCache.set(key, null)
-      return null
-    }
+    if (!res.ok) { photoCache.set(key, null); return null }
 
     const data = await res.json()
     const pages = data?.query?.pages
-    if (!pages) {
-      photoCache.set(key, null)
-      return null
-    }
+    if (!pages) { photoCache.set(key, null); return null }
 
-    // Find the first suitable image (jpeg, png, or jpg, reasonable size)
     const candidates = Object.values(pages) as Array<{
-      imageinfo?: Array<{
-        url: string
-        thumburl?: string
-        mime: string
-        width: number
-        height: number
-      }>
+      title?: string
+      imageinfo?: Array<{ url: string; thumburl?: string; mime: string; width: number; height: number }>
     }>
 
-    for (const page of candidates) {
-      const info = page.imageinfo?.[0]
-      if (!info) continue
-      if (!['image/jpeg', 'image/png'].includes(info.mime)) continue
-      if (info.width < 400 || info.height < 200) continue
+    // Prefer files where the city name is in the filename
+    const cityLower = city.toLowerCase()
+    const ranked = candidates
+      .filter(p => p.imageinfo?.[0])
+      .map(p => ({
+        info: p.imageinfo![0],
+        inName: (p.title ?? '').toLowerCase().includes(cityLower),
+        ratio: p.imageinfo![0].width / Math.max(p.imageinfo![0].height, 1),
+      }))
+      .filter(c => ['image/jpeg', 'image/png'].includes(c.info.mime) && c.info.width >= 400 && c.info.height >= 250)
+      .sort((a, b) => Number(b.inName) - Number(a.inName)) // city-name-in-filename first
+      // Prefer landscape-ish ratios (between 1.2 and 3.0) for card headers
+      .sort((a, b) => {
+        const aGood = a.ratio >= 1.2 && a.ratio <= 3.0 ? 0 : 1
+        const bGood = b.ratio >= 1.2 && b.ratio <= 3.0 ? 0 : 1
+        return aGood - bGood
+      })
 
-      // Prefer the thumbnail (600px wide) for performance
-      const url = info.thumburl ?? info.url
-      photoCache.set(key, url)
-      return url
+    if (ranked.length > 0) {
+      const photoUrl = ranked[0].info.thumburl ?? ranked[0].info.url
+      photoCache.set(key, photoUrl)
+      return photoUrl
     }
-
-    photoCache.set(key, null)
-    return null
   } catch {
-    photoCache.set(key, null)
-    return null
+    // network error, give up gracefully
   }
+
+  photoCache.set(key, null)
+  return null
 }
 
 /**

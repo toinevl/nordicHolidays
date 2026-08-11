@@ -728,8 +728,10 @@ export class ItineraryView {
       const img = document.createElement('img')
       img.src = url
       img.alt = stop.dest
-      img.loading = 'lazy'
       img.className = 'card-photo-img'
+      // Don't use lazy loading — these are above-the-fold and lazy
+      // can interfere with load/error event firing in some browsers.
+      img.loading = 'eager'
       img.onload = () => {
         container.classList.add('card-photo--loaded')
         const placeholder = container.querySelector('.card-photo-placeholder')
