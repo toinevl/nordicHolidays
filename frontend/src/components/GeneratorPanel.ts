@@ -105,14 +105,20 @@ export class GeneratorPanel {
           <label class="form-label">${t('generator.mustVisit')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
           <div class="tag-input-wrapper">
             <div id="must-visit-tags" class="tag-list"></div>
-            <input id="must-visit-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" />
+            <div class="city-combobox">
+              <input id="must-visit-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="must-visit-results" />
+              <div id="must-visit-results" class="city-results hidden" role="listbox"></div>
+            </div>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">${t('generator.avoid')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
           <div class="tag-input-wrapper">
             <div id="avoid-tags" class="tag-list"></div>
-            <input id="avoid-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" />
+            <div class="city-combobox">
+              <input id="avoid-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="avoid-results" />
+              <div id="avoid-results" class="city-results hidden" role="listbox"></div>
+            </div>
           </div>
         </div>
         <button id="btn-generate" class="btn btn--primary btn--full">${t('generator.generateBtn')}</button>
@@ -145,8 +151,8 @@ export class GeneratorPanel {
     this.panel.querySelector('.panel-close')?.addEventListener('click', () => this.close())
     this.overlay.addEventListener('click', (e) => { if (e.target === this.overlay) this.close() })
 
-    this.bindTagInput('must-visit-input', 'must-visit-tags', 'mustVisit')
-    this.bindTagInput('avoid-input', 'avoid-tags', 'avoid')
+    this.bindTagCityLookup('must-visit-input', 'must-visit-tags', 'must-visit-results', 'mustVisit')
+    this.bindTagCityLookup('avoid-input', 'avoid-tags', 'avoid-results', 'avoid')
     this.bindCityLookup('gen-start', 'gen-start-results', 'gen-start-hint', 'startCity')
     this.bindCityLookup('gen-end', 'gen-end-results', 'gen-end-hint', 'endCity')
     this.panel.querySelector('#gen-country')?.addEventListener('change', (event) => {
@@ -163,18 +169,124 @@ export class GeneratorPanel {
     this.panel.querySelector('#btn-regenerate')?.addEventListener('click', () => this.handleGenerate())
   }
 
-  private bindTagInput(inputId: string, tagsId: string, field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>): void {
-    const input = this.panel.querySelector(`#${inputId}`) as HTMLInputElement
-    input?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && input.value.trim()) {
-        e.preventDefault()
-        const val = input.value.trim()
-        const current = this.store.getState().preferences[field]
-        if (!current.includes(val)) {
-          this.store.setState({ preferences: { ...this.store.getState().preferences, [field]: [...current, val] } })
-          this.renderTags(tagsId, field)
+  private bindTagCityLookup(
+    inputId: string,
+    tagsId: string,
+    resultsId: string,
+    field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>,
+  ): void {
+    const input = this.panel.querySelector<HTMLInputElement>(`#${inputId}`)
+    const resultsEl = this.panel.querySelector<HTMLElement>(`#${resultsId}`)
+    if (!input || !resultsEl) return
+
+    let activeIndex = -1
+    let suggestions: CitySuggestion[] = []
+    let timer = 0
+
+    const addTag = (val: string) => {
+      const trimmed = val.trim()
+      if (!trimmed) return
+      const current = this.store.getState().preferences[field]
+      if (!current.includes(trimmed)) {
+        this.store.setState({ preferences: { ...this.store.getState().preferences, [field]: [...current, trimmed] } })
+        this.renderTags(tagsId, field)
+      }
+      input.value = ''
+    }
+
+    const close = () => {
+      resultsEl.classList.add('hidden')
+      input.setAttribute('aria-expanded', 'false')
+      activeIndex = -1
+    }
+
+    const render = (items: CitySuggestion[]) => {
+      suggestions = items
+      activeIndex = items.length ? 0 : -1
+      input.setAttribute('aria-expanded', String(items.length > 0))
+      resultsEl.classList.toggle('hidden', items.length === 0)
+      resultsEl.innerHTML = items.map((city, index) => {
+        const region = city.region ? `${city.region}, ` : ''
+        const meta = `${region}${city.countryName}`
+        return `
+          <button class="city-option ${index === activeIndex ? 'active' : ''}" type="button" role="option" data-index="${index}" aria-selected="${index === activeIndex}">
+            <span class="city-option__name">${escapeHtml(city.name)}</span>
+            <span class="city-option__meta">${escapeHtml(meta)}</span>
+          </button>
+        `
+      }).join('')
+
+      resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach(btn => {
+        btn.addEventListener('mousedown', event => event.preventDefault())
+        btn.addEventListener('click', () => {
+          const city = suggestions[Number(btn.dataset.index)]
+          if (city) {
+            addTag(city.name)
+            close()
+          }
+        })
+      })
+    }
+
+    const setActive = (nextIndex: number) => {
+      if (!suggestions.length) return
+      activeIndex = (nextIndex + suggestions.length) % suggestions.length
+      resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach((btn, index) => {
+        btn.classList.toggle('active', index === activeIndex)
+        btn.setAttribute('aria-selected', String(index === activeIndex))
+      })
+    }
+
+    const search = async () => {
+      const query = input.value.trim()
+      window.clearTimeout(timer)
+
+      if (query.length < 2) {
+        render([])
+        return
+      }
+
+      const countryCode = this.store.getState().preferences.country
+      const localResults = searchLocalCities(query, countryCode)
+      render(localResults)
+
+      if (localResults.length >= 5) return
+      const requestId = ++this.cityLookupRequest
+      timer = window.setTimeout(async () => {
+        try {
+          const remoteResults = await searchNominatim(query, countryCode)
+          if (requestId !== this.cityLookupRequest) return
+          const seen = new Set(localResults.flatMap(city => [city.id, cityKey(city)]))
+          render([
+            ...localResults,
+            ...remoteResults.filter((city: CitySuggestion) => !seen.has(city.id) && !seen.has(cityKey(city))),
+          ].slice(0, 8))
+        } catch {
+          // Local suggestions are the primary path; remote lookup is optional.
         }
-        input.value = ''
+      }, 250)
+    }
+
+    input.addEventListener('input', () => { void search() })
+    input.addEventListener('focus', () => { void search() })
+    input.addEventListener('blur', () => window.setTimeout(close, 120))
+    input.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setActive(activeIndex + 1)
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setActive(activeIndex - 1)
+      } else if (event.key === 'Enter') {
+        event.preventDefault()
+        if (activeIndex >= 0 && suggestions[activeIndex]) {
+          addTag(suggestions[activeIndex].name)
+        } else if (input.value.trim()) {
+          addTag(input.value.trim())
+        }
+        close()
+      } else if (event.key === 'Escape') {
+        close()
       }
     })
   }

@@ -222,3 +222,27 @@ CSS values, brand names, technical identifiers). Keep that test passing.
 B2BSection, and index.html during a localization audit. The i18n key parity
 test only checks that NL/DE have every key EN has — it does not verify that
 all UI strings actually use the i18n system in the first place.)
+
+## Form-input audit: when you add a UX affordance to one field, audit ALL fields
+
+When adding a UX improvement (autocomplete, validation, formatting, keyboard
+nav) to one input in a form, immediately audit every other input in the same
+form for the same gap. Feature-scoped work tends to improve only the fields
+named in the ticket, leaving sibling fields with a worse experience — and
+nobody notices because each subsequent feature is also scoped narrowly.
+
+Concrete case (#125, found 2026-08-09): `bindCityLookup()` (local search +
+Nominatim autocomplete, dropdown, keyboard nav) was added to start/end city
+fields in commit c3803c8 (Jun 3). The must-visit and avoid tag inputs in the
+same panel — which accept free-text city names — were left with
+`bindTagInput()` (plain text, no suggestions). A user typing "Malmo" instead
+of "Malmö" gets no correction. This survived 15+ subsequent commits touching
+GeneratorPanel because none of them was scoped as "input UX audit" — each
+improved only its own field. The type constraint `CityField = 'startCity' |
+'endCity'` made the omission structural: the combobox method literally
+couldn't be pointed at the tag fields without changing its signature.
+
+**Rule:** the moment you add autocomplete/validation/formatting to any field
+in a form, enumerate every other input in that form and check whether it
+needs the same treatment. Write the audit into the ticket scope — don't rely
+on "I'll notice it later."
