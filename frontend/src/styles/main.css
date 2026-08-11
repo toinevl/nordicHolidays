@@ -375,10 +375,31 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
 .t-card {
   background: var(--bg-alt); border-radius: var(--r);
   border: 1px solid var(--border); border-left: 2px solid transparent;
-  padding: 1.5rem; box-shadow: 0 1px 6px rgba(28,24,20,0.08);
+  padding: 0; box-shadow: 0 1px 6px rgba(28,24,20,0.08);
   transition: transform 0.2s, box-shadow 0.2s, border-left-color 0.2s;
   position: relative; overflow: hidden;
 }
+/* Card photo (#127) — Wikimedia Commons city image at top of each stop card */
+.card-photo {
+  position: relative; width: 100%; height: 180px;
+  overflow: hidden; border-radius: var(--r) var(--r) 0 0;
+  background: linear-gradient(135deg, var(--bg-subtle), var(--border));
+}
+.card-photo-placeholder {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif); font-size: 1.3rem; font-weight: 500;
+  color: var(--ink-muted); opacity: 0.5;
+}
+.card-photo-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; opacity: 0;
+  transition: opacity 0.4s ease-in;
+}
+.card-photo--loaded .card-photo-img { opacity: 1; }
+.card-photo--loaded .card-photo-placeholder { display: none; }
+/* Card inner padding wrapper — photo sits flush at top, content has padding */
+.card-content { padding: 1.5rem; }
 .t-card::before {
   content: attr(data-day);
   position: absolute;
@@ -761,6 +782,7 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
     box-shadow: none; break-inside: avoid; margin-bottom: 1.5rem;
   }
   .t-card::before { display: none; }
+  .card-photo { display: none; }
   .card-dest { color: #111; }
   .card-region { color: #555; }
   .card-nights { background: #111; color: #fff; }

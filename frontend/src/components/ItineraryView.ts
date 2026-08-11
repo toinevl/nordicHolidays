@@ -10,6 +10,7 @@ import { lodgingUrl, activityUrl, carRentalUrl } from '../lib/affiliate'
 import { affiliateConfig } from '../config'
 import { formatStopDateRange, formatTripStart } from '../lib/travelDates'
 import { AddStopForm } from './AddStopForm'
+import { preloadCityPhotos } from '../lib/cityPhoto'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
@@ -147,6 +148,7 @@ export class ItineraryView {
     this.renderCulinary()
     this.renderAccommodations()
     this.initScrollReveal()
+    void this.loadCardPhotos()
   }
 
   private injectPrintButton(): void {
@@ -271,6 +273,7 @@ export class ItineraryView {
     this.renderCulinary()
     this.renderAccommodations()
     this.initScrollReveal()
+    void this.loadCardPhotos()
 
     const titleEl = document.querySelector('.hero-title, h1, .page-title') as HTMLElement | null
     if (titleEl) titleEl.textContent = itinerary.title
@@ -479,6 +482,10 @@ export class ItineraryView {
               ${drive}
             </div>
             <div class="t-card" id="stop-${s.id}" data-day="${s.id}">
+              <div class="card-photo" id="photo-${s.id}">
+                <div class="card-photo-placeholder">${escapeHtml(s.dest)}</div>
+              </div>
+              <div class="card-content">
               <div class="card-head">
                 <div><div class="card-dest">${escapeHtml(s.dest)}</div><div class="card-region region--${regionColorKey(s.region)}">${escapeHtml(s.region)}</div></div>
                 <div class="card-nights">${nights}</div>
@@ -510,6 +517,7 @@ export class ItineraryView {
                 <button type="button" class="btn btn--ghost btn--small" data-action="moveUp" data-id="${s.id}" ${idx === 0 ? 'disabled' : ''}>▲</button>
                 <button type="button" class="btn btn--ghost btn--small" data-action="moveDown" data-id="${s.id}" ${idx === this.stops.length - 1 ? 'disabled' : ''}>▼</button>
                 <button type="button" class="btn btn--ghost btn--small" data-action="remove" data-id="${s.id}">✕</button>
+              </div>
               </div>
             </div>
           </div>
@@ -699,6 +707,37 @@ export class ItineraryView {
         <td class="td-note">${escapeHtml(a.note)}</td>
       </tr>`)
       .join('')
+  }
+
+  /**
+   * Lazy-load a photo for each stop card from Wikimedia Commons (#127).
+   * Fetches are parallelized and cached. If a city has no photo, the
+   * placeholder (city name on a gradient) remains visible.
+   */
+  private async loadCardPhotos(): Promise<void> {
+    const cities = this.stops.map((s) => s.dest)
+    const photoMap = await preloadCityPhotos(cities)
+
+    for (const stop of this.stops) {
+      const container = document.getElementById(`photo-${stop.id}`)
+      if (!container) continue
+
+      const url = photoMap.get(stop.dest)
+      if (!url) continue
+
+      const img = document.createElement('img')
+      img.src = url
+      img.alt = stop.dest
+      img.loading = 'lazy'
+      img.className = 'card-photo-img'
+      img.onload = () => {
+        container.classList.add('card-photo--loaded')
+        const placeholder = container.querySelector('.card-photo-placeholder')
+        if (placeholder) placeholder.remove()
+      }
+      img.onerror = () => img.remove()
+      container.appendChild(img)
+    }
   }
 
   private initScrollReveal(): void {
