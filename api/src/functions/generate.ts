@@ -154,6 +154,24 @@ export async function generateHandler(
       input.stops[0].nights = 1
     }
 
+    // #130: the model's own `totalDays` field is not authoritative — nothing
+    // enforces the "must remain consistent with the sum of nights" prompt
+    // instruction, and the model can drift wildly (e.g. conflating each
+    // hub-and-spoke stop's `nights` with a per-region day count and summing
+    // those, producing 3 stops x 7 "days" = 21 for what was requested as a
+    // 7-day trip). prefs.tripDays is the real, already-clamped duration the
+    // model was told to build to and the same number baked into the prompt
+    // (and thus into the model's own free-text `title`), so it's the single
+    // source of truth for trip length — use it instead of trusting the
+    // model's structured totalDays. This keeps every UI surface that reads
+    // itinerary.totalDays (the "full route" Trip Overview subtitle, the
+    // hero subtitle when a start date is set) consistent with the hero
+    // title's day count.
+    if (input.totalDays !== prefs.tripDays) {
+      ctx?.warn(`generateHandler: correcting model-provided totalDays (${input.totalDays}) to requested tripDays (${prefs.tripDays})`)
+      input.totalDays = prefs.tripDays
+    }
+
     // Promote day trips further than MAX_DAY_TRIP_KM (straight-line) from
     // their base to overnight stops. Bases are resolved against the original
     // stop structure in a first pass so one promotion can't change which base

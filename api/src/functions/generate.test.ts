@@ -459,7 +459,7 @@ describe('POST /api/generate', () => {
     }
     const itin = {
       title: 'West Coast Explorer',
-      totalDays: 5,
+      totalDays: 7,
       startCity: 'Göteborg',
       endCity: 'Göteborg',
       stops: [goteborgBase, distantDayTrip, nearDayTrip],
@@ -468,10 +468,14 @@ describe('POST /api/generate', () => {
     const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
     ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
 
+    // tripDays: 5 would be clamped to 7 by PreferencesSchema (min 7) before
+    // reaching generateHandler — use 7 directly so this fixture matches
+    // itin.totalDays and isn't coupled to the #130 clamp-correction logic,
+    // which is exercised by its own dedicated test below.
     const req = {
       method: 'POST',
       headers: { get: () => null },
-      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Göteborg', endCity: 'Göteborg', tripDays: 5 }),
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Göteborg', endCity: 'Göteborg', tripDays: 7 }),
     } as any
     const result = await generateHandler(req)
 
@@ -484,6 +488,43 @@ describe('POST /api/generate', () => {
     expect(body.stops[1].nights).toBe(1) // promoted from 0 (>150 km away)
     expect(body.stops[2].city).toBe('Marstrand')
     expect(body.stops[2].nights).toBe(0) // stays 0 (<150 km away)
-    expect(body.totalDays).toBe(5) // unchanged
+    expect(body.totalDays).toBe(7) // unchanged — already matches requested tripDays
+  })
+
+  it('#130: overrides a mismatched model-provided totalDays with the requested (clamped) tripDays', async () => {
+    // Reproduces the live bug: hero title correctly says "7-day trip" (it
+    // just echoes the model's free-text title, which reliably parrots the
+    // user's request), but the model's structured totalDays field can drift
+    // wildly from reality — e.g. by conflating each hub-and-spoke stop's
+    // nights with a per-region day allocation and summing those (3 stops x
+    // 7 "days" = 21). The "full route" Trip Overview section renders
+    // straight from itinerary.totalDays, so a bad value there surfaces as
+    // "21 days" for what is actually a 7-day trip.
+    const itin = {
+      title: '7-Day Norway Road Trip',
+      totalDays: 21, // wildly inconsistent with the requested 7-day trip
+      startCity: 'Oslo',
+      endCity: 'Bergen',
+      stops: [
+        { day: 1, city: 'Oslo', region: 'Østlandet', lat: 59.9, lng: 10.7, nights: 2, highlights: ['Opera House'], accommodation: 'City hotel', culinaryNotes: 'Try brunost' },
+        { day: 3, city: 'Geiranger', region: 'Møre og Romsdal', lat: 62.1, lng: 7.2, nights: 2, highlights: ['Fjord views'], accommodation: 'Fjord lodge', culinaryNotes: 'Fresh salmon' },
+        { day: 5, city: 'Bergen', region: 'Vestland', lat: 60.4, lng: 5.3, nights: 2, highlights: ['Bryggen'], accommodation: 'Harbour hotel', culinaryNotes: 'Fish market' },
+      ],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Oslo', endCity: 'Bergen', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+    const body = JSON.parse(result.body as string) as Itinerary
+
+    expect(result.status).toBe(200)
+    expect(body.title).toBe('7-Day Norway Road Trip')
+    expect(body.totalDays).toBe(7) // matches the requested tripDays, not the model's inconsistent 21
   })
 })
