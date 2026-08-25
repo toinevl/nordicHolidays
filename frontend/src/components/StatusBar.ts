@@ -96,7 +96,10 @@ export class StatusBar {
 
     // Status buttons text
     const savedBtn = document.getElementById('btn-open-saved')
-    if (savedBtn) savedBtn.title = t('status.myTripsTitle')
+    if (savedBtn) {
+      savedBtn.title = t('status.myTripsTitle')
+      savedBtn.setAttribute('aria-label', t('status.myTripsTitle'))
+    }
     const genBtn = document.getElementById('btn-open-generator')
     if (genBtn instanceof HTMLElement) genBtn.textContent = t('status.generate')
   }

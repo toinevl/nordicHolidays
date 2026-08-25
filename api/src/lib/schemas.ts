@@ -37,6 +37,14 @@ export const ItineraryStopSchema = z.object({
   culinaryNotes: z.string().max(500),
   userNotes: z.string().max(2000).optional(),
   /**
+   * Category chips (e.g. "city", "historic", "nature", "offbeat") used by the
+   * frontend's itinerary filter chips. Present on the default/region itinerary
+   * data and on hand-edited stops; absent on LLM-generated ones. Must be in
+   * the schema because .strict() rejects unknown keys — same failure mode as
+   * km/driveTimeMin below (#95), this time for `tags` (#132).
+   */
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  /**
    * Real driving distance/time from the previous stop. Populated server-side
    * by Azure Maps enrichment (#89). Optional because pre-#89 itineraries and
    * hand-edited/reordered stops may not have them (frontend falls back to
