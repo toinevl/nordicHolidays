@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
 import { ItineraryView } from './ItineraryView'
+import { setLocale, getLocale, t } from '../i18n'
 
 // Mock IntersectionObserver which is not available in test environment
 global.IntersectionObserver = class IntersectionObserver {
@@ -877,5 +878,66 @@ describe('ItineraryView trip-index car-rental link (#72)', () => {
     const secondBtn = document.querySelectorAll<HTMLButtonElement>('.trip-index-link')[1]
     secondBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
     expect(selected?.textContent).toContain('Västerås')
+  })
+})
+
+// #129: the per-stop ".stop-date" line in the timeline was hardcoded English
+// ("Day ${s.days}"), unlike renderSelectedStop() which correctly uses
+// t('itinerary.dayPrefix'). This is the highest-frequency i18n leak in the app
+// (up to 21 occurrences per trip) since it repeats once per stop card.
+describe('ItineraryView stop-date i18n (#129)', () => {
+  const originalLocale = getLocale()
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="route-summary"></div>
+      <div id="filter-chips"></div>
+      <div id="selected-stop"></div>
+      <div id="timeline"></div>
+      <div id="trip-index"></div>
+      <div id="cul-grid"></div>
+      <div id="accom-tbody"></div>
+      <div id="itinerary"></div>
+    `
+  })
+
+  afterEach(() => {
+    setLocale(originalLocale)
+  })
+
+  function aStop(overrides: Partial<Stop> = {}): Stop {
+    return {
+      id: 1,
+      days: '3',
+      dates: '2026-06-12',
+      dest: 'Malmö',
+      region: 'Skåne',
+      coords: [13.0038, 55.605] as [number, number],
+      tags: [],
+      nights: 2,
+      desc: 'Overnight base',
+      highlights: [],
+      from: 'Amsterdam',
+      km: 100,
+      time: '2h',
+      zoom: 12,
+      pitch: 45,
+      bearing: 0,
+      ...overrides,
+    }
+  }
+
+  it('renders the per-stop date line with the translated day prefix, not the literal English "Day"', () => {
+    setLocale('nl')
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.render([aStop()], [], [])
+
+    const dateEl = document.querySelector('.stop-date')
+    expect(dateEl).not.toBeNull()
+    // NL 'itinerary.dayPrefix' is 'Dag' — the fixed line must use it.
+    expect(dateEl?.textContent).toContain(t('itinerary.dayPrefix'))
+    expect(dateEl?.textContent).toContain('Dag 3')
+    // Must NOT contain the hardcoded English word "Day" (regression guard for #129).
+    expect(dateEl?.textContent).not.toMatch(/\bDay\b/)
   })
 })

@@ -259,6 +259,9 @@ export interface LocaleStrings {
   tags: {
     offbeat: string
   }
+  aria: {
+    routeFilters: string
+  }
 }
 
 export type LocaleKey =
@@ -285,3 +288,4 @@ export type LocaleKey =
   | `culinary.${keyof LocaleStrings['culinary']}`
   | `accomPolicy.${keyof LocaleStrings['accomPolicy']}`
   | `tags.${keyof LocaleStrings['tags']}`
+  | `aria.${keyof LocaleStrings['aria']}`

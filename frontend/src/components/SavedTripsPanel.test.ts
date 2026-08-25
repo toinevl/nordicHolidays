@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SavedItinerarySummary } from '../types'
 import { SavedTripsPanel } from './SavedTripsPanel'
+import { t } from '../i18n'
 
 // Mock store and API
 const mockStore = {
@@ -224,7 +225,11 @@ describe('SavedTripsPanel save feedback', () => {
     btn.click()
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalled())
     expect(alertSpy).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Network down'))
+    // #129: the toast must show the already-translated fallback, never the raw
+    // API/Error message — raw text is always English/technical and ignores the
+    // active locale, producing mixed-language toasts like "Opslaan mislukt: Network down".
+    expect(toast.error).toHaveBeenCalledWith(t('saved.saveFailed'))
+    expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining('Network down'))
   })
 })
 
@@ -331,5 +336,32 @@ describe('SavedTripsPanel load button loading state', () => {
     expect(button.disabled).toBe(false)
     expect(button.textContent).toBe('Load')
     expect(button.classList.contains('btn--loading')).toBe(false)
+  })
+
+  it('shows the translated fallback (not the raw error message) in the toast on load failure', async () => {
+    const { apiClient } = await import('../api/client')
+    ;(apiClient.listItineraries as any).mockResolvedValueOnce([
+      {
+        id: 'trip-1',
+        name: 'Resa till Malmö',
+        startCity: 'Stockholm',
+        endCity: 'Malmö',
+        createdAt: '2026-07-12T12:00:00Z',
+      },
+    ])
+    ;(apiClient.getItinerary as any).mockRejectedValueOnce(new Error('Network error'))
+
+    const panel = new SavedTripsPanel(store, () => {}, async () => undefined, async () => '', toast as any)
+    panel.open()
+    await vi.waitFor(() => expect(document.querySelectorAll('.btn-load').length).toBe(1))
+
+    const button = document.querySelector('.btn-load') as HTMLButtonElement
+    button.click()
+
+    // #129: same fix as save failure above — translated fallback only, never
+    // the raw Error message (always English/technical, ignores active locale).
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect(toast.error).toHaveBeenCalledWith(t('saved.loadFailed'))
+    expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining('Network error'))
   })
 })

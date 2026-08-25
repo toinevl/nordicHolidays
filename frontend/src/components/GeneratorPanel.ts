@@ -488,7 +488,10 @@ export class GeneratorPanel {
       this.close()
     } catch (err) {
       this.store.setState({ isGenerating: false })
-      this.onError(err instanceof Error ? err.message : t('validation.generationFailed'))
+      // #129: never surface the raw API error text (always English/technical) to
+      // the user — always show the translated fallback; log the detail instead.
+      if (err instanceof Error) console.error('[generateItinerary]', err)
+      this.onError(t('validation.generationFailed'))
     } finally {
       btn.textContent = t('generator.generateBtn')
       btn.disabled = false

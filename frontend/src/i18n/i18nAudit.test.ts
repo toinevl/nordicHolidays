@@ -23,6 +23,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const COMPONENTS_DIR = join(__dirname, '..', 'components')
 const MAIN_TS = join(__dirname, '..', 'main.ts')
+const INDEX_HTML = join(__dirname, '..', '..', 'index.html')
 
 // Line-level exemptions: if the line matches any of these, skip it entirely.
 const LINE_ALLOW_PATTERNS: RegExp[] = [
@@ -138,6 +139,70 @@ describe('i18n audit: no hardcoded English UI strings in components', () => {
       }
     })
   }
+})
+
+/**
+ * #129: static links in index.html (nav / footer) that carry hardcoded English
+ * text are NOT covered by the audit above — it only scans components/*.ts and
+ * main.ts, never index.html itself. A link can have a fully-translated i18n key
+ * available (e.g. nav.business) and still never get wired up, because
+ * applyStaticI18n() in main.ts is what actually replaces index.html's static
+ * text at runtime via setText(selector, ...) calls — and it's easy to add a new
+ * link to index.html (or forget one) without adding the matching setText call.
+ *
+ * This closes that gap with a static cross-reference: for each known static
+ * link selector in index.html that must be translated, assert main.ts's
+ * applyStaticI18n() actually contains a setText(...) call wiring it up. This
+ * would have caught both #129 bugs:
+ *   (a) desktop header nav `<a href="#overview">Overview</a>` — never wired
+ *       (mobile menu correctly used t('sections.overviewLabel') for the same
+ *       link, but the desktop header link had no id and no setText call).
+ *   (b) footer `<a class="footer-business-link">Business</a>` — never wired
+ *       despite nav.business existing, fully translated, in all 3 locales.
+ */
+describe('i18n audit: static index.html links must be wired via applyStaticI18n()', () => {
+  const html = readFileSync(INDEX_HTML, 'utf-8')
+  const mainTs = readFileSync(MAIN_TS, 'utf-8')
+
+  // Desktop header nav links live in the #nav-links <ul> — extract every
+  // href="#..." inside that block specifically, so we don't also pick up
+  // unrelated #hero / #itinerary anchors elsewhere on the page (hero CTA, logo, etc).
+  const navLinksBlock = html.match(/<ul class="nav-links"[^>]*>([\s\S]*?)<\/ul>/)?.[1] ?? ''
+  const navHrefs = [...navLinksBlock.matchAll(/href="#([a-zA-Z0-9-]+)"/g)].map(m => m[1])
+
+  it('found the expected desktop nav links in index.html (sanity check the fixture still matches reality)', () => {
+    // If this fails, index.html's nav structure changed — update this test's
+    // assumptions rather than silently losing coverage.
+    expect(navHrefs.length).toBeGreaterThan(0)
+    expect(navHrefs).toContain('overview')
+  })
+
+  for (const href of navHrefs) {
+    it(`desktop header nav link "#${href}" is wired to a translated string in applyStaticI18n()`, () => {
+      // The wiring can be either '#header [href="#X"]' (the pattern already used
+      // for itinerary/food/stay/map3d) — accept any selector referencing this href
+      // inside a setText(...) call.
+      const wired = new RegExp(`setText\\([^)]*\\[href="#${href}"\\][^)]*,`).test(mainTs)
+      expect(
+        wired,
+        `Expected main.ts's applyStaticI18n() to contain a setText(...) call ` +
+        `wiring the header nav link href="#${href}" to a t()/tpl() string. ` +
+        `Without it, this link stays in English forever regardless of locale.`
+      ).toBe(true)
+    })
+  }
+
+  it('footer "Business" link (.footer-business-link) is wired to a translated string in applyStaticI18n()', () => {
+    // Sanity: the link exists in index.html with the expected class.
+    expect(html).toContain('footer-business-link')
+    const wired = /setText\(\s*['"]\.footer-business-link['"]\s*,/.test(mainTs)
+    expect(
+      wired,
+      `Expected main.ts's applyStaticI18n() to contain setText('.footer-business-link', t('nav.business')) ` +
+      `(or equivalent) — nav.business is already fully translated in en/nl/de but the footer link ` +
+      `was never wired to it.`
+    ).toBe(true)
+  })
 })
 
 describe('region audit: no hardcoded country codes outside region config', () => {

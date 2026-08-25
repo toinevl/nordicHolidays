@@ -128,7 +128,11 @@ export class SavedTripsPanel {
 
       this._captureRealThumbnailInBackground()
     } catch (err) {
-      this.toast?.error(`${t('saved.saveFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      // #129: never mix the raw API error text into the toast — it's always
+      // English/technical and produces mixed-language toasts. Log it, show only
+      // the already-translated fallback.
+      if (err instanceof Error) console.error('[saveItinerary]', err)
+      this.toast?.error(t('saved.saveFailed'))
     } finally {
       saveBtn.disabled = false
       saveBtn.textContent = originalText
@@ -196,7 +200,9 @@ export class SavedTripsPanel {
             this.onLoad(itinerary, summary.name, id)
             this.close()
           } catch (err) {
-            this.toast?.error(`${t('saved.loadFailed')}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+            // #129: same fix as saveItinerary above — translated fallback only.
+            if (err instanceof Error) console.error('[getItinerary]', err)
+            this.toast?.error(t('saved.loadFailed'))
           } finally {
             button.disabled = false
             button.textContent = originalText

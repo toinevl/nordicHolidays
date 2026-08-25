@@ -6,6 +6,24 @@ import { getOwnerId } from '../lib/identity'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net'
 
+// #129: carries the HTTP status (and, if the API sends one, a structured error
+// code) separately from the human-readable `.message`. `.message` stays the raw
+// technical detail (status + server text) for logging only — it is NEVER shown
+// to the user directly; callers must branch on `.status`/`.code` (or just fall
+// back to their own translated copy) instead of surfacing `.message` in the UI.
+// This is what the 5 call sites across GeneratorPanel/SavedTripsPanel/main.ts
+// were doing wrong before #129 (raw English/technical text leaking into toasts).
+export class ApiError extends Error {
+  status: number
+  code?: string
+  constructor(message: string, status: number, code?: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    if (code) this.code = code
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken()
   const ownerId = getOwnerId()
@@ -25,15 +43,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (!res.ok) {
       const text = await res.text()
       let errorMessage = `${res.status}: ${text}`
+      let code: string | undefined
       try {
         const json = JSON.parse(text)
         if (json.error && typeof json.error === 'string') {
           errorMessage = `${res.status}: ${json.error}`
         }
+        if (json.code && typeof json.code === 'string') {
+          code = json.code
+        }
       } catch {
         // leave plain text fallback
       }
-      throw new Error(errorMessage)
+      throw new ApiError(errorMessage, res.status, code)
     }
     if (res.status === 204) return undefined as unknown as T
     return res.json() as Promise<T>

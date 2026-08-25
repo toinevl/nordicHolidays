@@ -49,9 +49,14 @@ function setText(selector: string, text: string): void {
   const el = document.querySelector(selector)
   if (el) el.textContent = text
 }
+function setAttr(selector: string, attr: string, value: string): void {
+  const el = document.querySelector(selector)
+  if (el) el.setAttribute(attr, value)
+}
 function applyStaticI18n(): void {
   document.documentElement.lang = getLocale()
   // Nav links in unified header
+  setText('#header [href="#overview"]', t('sections.overviewLabel'))
   setText('#header [href="#itinerary"]', t('nav.itinerary'))
   setText('#header [href="#culinary-section"]', t('nav.food'))
   setText('#header [href="#accom-section"]', t('nav.stay'))
@@ -75,6 +80,7 @@ function applyStaticI18n(): void {
   setText('#itinerary .section-title', t('sections.itineraryTitle'))
   setText('#itinerary-desc', t('sections.itineraryDesc'))
   setText('.filter-title', t('sections.filterTitle'))
+  setAttr('.filter-panel', 'aria-label', t('aria.routeFilters'))
   // Culinary section chrome
   setText('#culinary-section .section-label', t('sections.culinaryLabel'))
   setText('#culinary-section .section-title', t('sections.culinaryTitle'))
@@ -111,6 +117,7 @@ function applyStaticI18n(): void {
   })
   // Footer tagline + build indicator
   setText('#footer-tagline', t('footer.tagline'))
+  setText('.footer-business-link', t('nav.business'))
   setText('#build-label', t('footer.buildLocal'))
   // Loading spinner label
   setText('.spinner-label', t('loading.generating'))
@@ -257,7 +264,9 @@ function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
   ).then((updated) => {
     itineraryView.setHasPreviousVersion(Boolean(updated.hasPreviousVersion))
   }).catch((error) => {
-    toast.error(error instanceof Error ? error.message : t('toast.saveNoteFailed'))
+    // #129: never surface the raw API error text — always the translated fallback.
+    if (error instanceof Error) console.error('[saveStopNote]', error)
+    toast.error(t('toast.saveNoteFailed'))
     throw error
   })
 }
@@ -273,7 +282,9 @@ function onUndoForMain(): void {
       toast.success(t('toast.undone'))
     })
     .catch((error) => {
-      toast.error(error instanceof Error ? error.message : t('toast.undoFailed'))
+      // #129: never surface the raw API error text — always the translated fallback.
+      if (error instanceof Error) console.error('[undoItinerary]', error)
+      toast.error(t('toast.undoFailed'))
     })
 }
 

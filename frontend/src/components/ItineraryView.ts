@@ -478,7 +478,7 @@ export class ItineraryView {
           <div class="t-dot"><div class="dot">${s.id}</div></div>
           <div>
             <div class="t-meta">
-              <div class="stop-date">Day ${s.days} · ${s.dates}</div>
+              <div class="stop-date">${t('itinerary.dayPrefix')} ${s.days} · ${s.dates}</div>
               ${drive}
             </div>
             <div class="t-card" id="stop-${s.id}" data-day="${s.id}">
