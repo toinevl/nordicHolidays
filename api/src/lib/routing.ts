@@ -355,15 +355,25 @@ async function resolveSegment(
 /**
  * Format a drive-time-minutes value as a compact human-readable string for
  * display on itinerary cards. Uses hours+minutes when ≥1h, plain minutes
- * otherwise. Returns empty string for 0 (used on the first stop, where no
- * drive applies).
+ * otherwise.
+ *
+ * #133: previously returned '' for driveTimeMin <= 0, matching (and meant
+ * to stay in sync with) the frontend's `distance.ts::formatDriveTime`,
+ * which had the same gap — an empty string left "245 km · " dangling
+ * wherever a caller concatenates this into a sentence. Returns the same
+ * locale-neutral "—" placeholder the frontend now uses (its own
+ * `overview.noData` i18n string) so the two truly stay in sync rather than
+ * drifting into different wording per language. This function isn't
+ * currently called from any production response path (the API sends raw
+ * driveTimeMin minutes; the frontend formats), but keeping it in sync
+ * avoids the two diverging the next time something does wire it up.
  *
  * Exported separately from the segment computation so the frontend can
  * format consistently without duplicating logic if it ever needs to
  * (currently the API sends a pre-formatted string; see below).
  */
 export function formatDriveTime(driveTimeMin: number, lang: 'en' | 'nl' | 'de' = 'en'): string {
-  if (driveTimeMin <= 0) return ''
+  if (driveTimeMin <= 0) return '—' // em dash — same placeholder as frontend's overview.noData
   const h = Math.floor(driveTimeMin / 60)
   const m = driveTimeMin % 60
   if (h === 0) {
@@ -389,9 +399,10 @@ export function formatDriveTime(driveTimeMin: number, lang: 'en' | 'nl' | 'de' =
 export function driveTimeString(seg: RouteSegment, lang: 'en' | 'nl' | 'de' = 'en'): string {
   if (seg.km <= 0) return ''
   const time = formatDriveTime(seg.driveTimeMin, lang)
-  // Frontend currently displays "~X h drive"; keep the same shape so the
-  // migration is transparent.
-  if (!time) return ''
+  // #133: driveTimeMin <= 0 now yields formatDriveTime's "—" placeholder
+  // rather than ''. A "~" (approximately) prefix in front of "we don't
+  // know" reads as nonsense ("~—"), so only prefix it for a real duration.
+  if (seg.driveTimeMin <= 0) return time
   // English historically used "h" abbreviation; keep compact for display.
   return `~${time.replace(/\s+/g, ' ').trim()}`
 }

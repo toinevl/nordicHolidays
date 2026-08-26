@@ -44,9 +44,10 @@ export function buildOverviewRows(itinerary: Itinerary): OverviewRow[] {
       routeLabel = fromCity ? `${fromCity} \u2192 ${stop.city}` : stop.city
     }
 
-    const driveTime = km > 0 && stop.driveTimeMin
-      ? formatDriveTime(stop.driveTimeMin)
-      : ''
+    // #133: always go through formatDriveTime (not a bare '' bypass) when
+    // there's a distance to show a time for — it now returns an explicit
+    // "no data" placeholder for missing/zero minutes instead of ''.
+    const driveTime = km > 0 ? formatDriveTime(stop.driveTimeMin ?? 0) : ''
 
     return {
       day: stop.day,

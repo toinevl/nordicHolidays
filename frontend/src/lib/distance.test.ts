@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { haversineKm, formatDriveTime } from './distance'
+import { t } from '../i18n/index'
 
 describe('haversineKm', () => {
   it('estimates Stockholm to Gothenburg as ~395 km straight-line (no multiplier, #89)', () => {
@@ -35,9 +36,14 @@ describe('haversineKm', () => {
 })
 
 describe('formatDriveTime (#89)', () => {
-  it('returns empty string for zero or negative', () => {
-    expect(formatDriveTime(0)).toBe('')
-    expect(formatDriveTime(-5)).toBe('')
+  it('returns the translated "no data" placeholder (not an empty string) for zero or negative (#133)', () => {
+    // #133: an empty string here left calling code with a dangling "245 km · "
+    // separator and nothing after it. Every real caller only renders this
+    // value behind a `km > 0` guard, so a non-empty placeholder is always safe.
+    expect(formatDriveTime(0)).toBe(t('overview.noData'))
+    expect(formatDriveTime(-5)).toBe(t('overview.noData'))
+    expect(formatDriveTime(0)).not.toBe('')
+    expect(formatDriveTime(-5)).not.toBe('')
   })
 
   it('formats minutes-only under 1 hour', () => {

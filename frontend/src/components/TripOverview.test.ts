@@ -106,15 +106,27 @@ describe('buildOverviewRows', () => {
     expect(rows[1].region).toBe('Västra Götaland')
   })
 
-  it('falls back to empty driveTime when driveTimeMin is missing', () => {
+  it('falls back to the noData placeholder (not empty string) when driveTimeMin is missing (#133)', () => {
     const it = makeItinerary([
       baseStop({ day: 1, city: 'A', km: 0, driveTimeMin: 0 }),
       baseStop({ day: 2, city: 'B', nights: 1, km: 200, driveTimeMin: undefined as any }),
     ])
     const rows = buildOverviewRows(it)
-    // km > 0 but driveTimeMin undefined → empty string
+    // km > 0 but driveTimeMin undefined → formatDriveTime's explicit
+    // fallback (mocked t() above echoes the key), never a bare ''.
     expect(rows[1].km).toBe(200)
-    expect(rows[1].driveTime).toBe('')
+    expect(rows[1].driveTime).toBe('overview.noData')
+    expect(rows[1].driveTime).not.toBe('')
+  })
+
+  it('also falls back to the placeholder when driveTimeMin is explicitly 0 but km > 0 (#133 stale-data edge case)', () => {
+    const it = makeItinerary([
+      baseStop({ day: 1, city: 'A', km: 0, driveTimeMin: 0 }),
+      baseStop({ day: 2, city: 'B', nights: 1, km: 200, driveTimeMin: 0 }),
+    ])
+    const rows = buildOverviewRows(it)
+    expect(rows[1].km).toBe(200)
+    expect(rows[1].driveTime).toBe('overview.noData')
   })
 })
 

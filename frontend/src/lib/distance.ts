@@ -1,3 +1,5 @@
+import { t } from '../i18n/index'
+
 export function haversineKm(a: [number, number], b: [number, number]): number {
   const R = 6371
   const dLat = (b[1] - a[1]) * (Math.PI / 180)
@@ -14,14 +16,24 @@ export function haversineKm(a: [number, number], b: [number, number]): number {
 /**
  * Format a drive-time-in-minutes value as a compact human string (#89).
  * Replaces the old `~X h drive` shape that was derived from the broken
- * haversine × 1.3 estimate. Empty string for 0 (first stop / no drive).
+ * haversine × 1.3 estimate.
+ *
+ * #133: previously returned '' for driveTimeMin <= 0, which every call site
+ * concatenates into a "245 km · {time}" string — an empty string there left
+ * a dangling separator with nothing after it ("245 km · "), reported live
+ * on mobile. Callers that legitimately never render the time (e.g. the
+ * first stop, gated behind a `km > 0` check before this is ever invoked)
+ * never see this value, so returning an explicit placeholder here is safe
+ * for every real caller. Reuses `overview.noData` (a locale-neutral "—")
+ * rather than a new key — it's already this app's established placeholder
+ * for "we don't have this number", used one column over for missing km.
  *
  * Kept in sync with api/src/lib/routing.ts::formatDriveTime — the API sends
  * a pre-formatted string only when locale-specific formatting is needed;
  * for the common case the frontend formats the raw minutes itself.
  */
 export function formatDriveTime(driveTimeMin: number): string {
-  if (driveTimeMin <= 0) return ''
+  if (driveTimeMin <= 0) return t('overview.noData')
   const h = Math.floor(driveTimeMin / 60)
   const m = driveTimeMin % 60
   if (h === 0) return `${m} min`

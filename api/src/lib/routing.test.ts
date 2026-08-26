@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { getRouteSegments, formatDriveTime, _resetForTest, type RouteSegment } from './routing'
+import { getRouteSegments, formatDriveTime, driveTimeString, _resetForTest, type RouteSegment } from './routing'
 import type { Coordinate } from './geo'
 
 // Non-ASCII Nordic fixtures per project convention (CLAUDE.md) — test data
@@ -98,9 +98,11 @@ describe('getRouteSegments', () => {
 })
 
 describe('formatDriveTime', () => {
-  it('returns empty string for zero/negative', () => {
-    expect(formatDriveTime(0)).toBe('')
-    expect(formatDriveTime(-5)).toBe('')
+  it('returns the "—" no-data placeholder (not an empty string) for zero/negative (#133)', () => {
+    expect(formatDriveTime(0)).toBe('—')
+    expect(formatDriveTime(-5)).toBe('—')
+    expect(formatDriveTime(0)).not.toBe('')
+    expect(formatDriveTime(-5)).not.toBe('')
   })
 
   it('formats minutes-only under 1 hour', () => {
@@ -125,6 +127,25 @@ describe('formatDriveTime', () => {
   it('localizes to German', () => {
     expect(formatDriveTime(90, 'de')).toBe('1 Std. 30 Min.')
     expect(formatDriveTime(60, 'de')).toBe('1 Std.')
+  })
+})
+
+describe('driveTimeString (#133)', () => {
+  it('returns empty string when there is no distance at all (first stop)', () => {
+    expect(driveTimeString({ km: 0, driveTimeMin: 0, source: 'haversine-fallback' })).toBe('')
+  })
+
+  it('returns the bare "—" placeholder, without a "~" prefix, when km is known but time is not', () => {
+    // A "~—" ("approximately unknown") would read as nonsense, so the
+    // approximation prefix is only applied to a real duration.
+    const seg: RouteSegment = { km: 200, driveTimeMin: 0, source: 'haversine-fallback' }
+    expect(driveTimeString(seg)).toBe('—')
+    expect(driveTimeString(seg)).not.toContain('~')
+  })
+
+  it('prefixes a real duration with "~"', () => {
+    const seg: RouteSegment = { km: 200, driveTimeMin: 150, source: 'azure-maps' }
+    expect(driveTimeString(seg)).toBe('~2 h 30 min')
   })
 })
 
