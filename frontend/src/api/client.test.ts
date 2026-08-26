@@ -51,6 +51,35 @@ describe('apiClient.getPreferences', () => {
   })
 })
 
+describe('apiClient.saveStopNote', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('sends the FULL stops array (not a single {day, userNotes} fragment) — #134', async () => {
+    // Regression for #134: the old body `{stops: [{day, userNotes}]}` failed the
+    // backend's strict ItineraryStopSchema with invalid_type on city/region/lat/
+    // lng/nights/highlights/accommodation/culinaryNotes → every note save 400'd
+    // and user notes were silently lost on reload.
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ title: 'T', stops: [] }) })
+    const stops = [
+      { day: 1, city: 'Malmö', region: 'Skåne', lat: 55.6, lng: 13.0, nights: 3, highlights: ['a'], accommodation: 'x', culinaryNotes: 'y', userNotes: '' },
+      { day: 2, city: 'Göteborg', region: 'Västra Götaland', lat: 57.7, lng: 11.97, nights: 4, highlights: ['b'], accommodation: 'x', culinaryNotes: 'y', userNotes: 'Hoi' },
+    ]
+    await apiClient.saveStopNote('trip-1', stops)
+    const callInit = mockFetch.mock.calls[0]?.[1] as RequestInit
+    const body = JSON.parse(String(callInit.body))
+    // The patch must contain complete stop objects the strict schema accepts
+    expect(body.stops).toHaveLength(2)
+    expect(body.stops[1]).toMatchObject({ day: 2, city: 'Göteborg', userNotes: 'Hoi' })
+    // No stop may be a sparse fragment — every required field present
+    for (const s of body.stops) {
+      for (const f of ['city', 'region', 'lat', 'lng', 'nights', 'highlights', 'accommodation', 'culinaryNotes'] as const) {
+        expect(s).toHaveProperty(f)
+      }
+    }
+    expect(mockFetch.mock.calls[0]?.[0]).toContain('/api/itineraries/trip-1')
+  })
+})
+
 describe('warmUpApi', () => {
   beforeEach(() => vi.clearAllMocks())
 

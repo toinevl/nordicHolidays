@@ -260,7 +260,7 @@ function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
   itineraryView.renderFromItinerary(next)
 
   return Promise.resolve(
-    apiClient.saveStopNote(state.activeTripId, stop.day, note)
+    apiClient.saveStopNote(state.activeTripId, updatedStops)
   ).then((updated) => {
     itineraryView.setHasPreviousVersion(Boolean(updated.hasPreviousVersion))
   }).catch((error) => {

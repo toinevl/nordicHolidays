@@ -78,14 +78,14 @@ export const apiClient = {
   saveItinerary: (name: string, itinerary: Itinerary, thumbnail?: string) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) }),
   updateItinerary: (id: string, patch: Partial<Itinerary>) => request<Itinerary>(`/api/itineraries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   undoItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}/undo`, { method: 'POST' }),
-  saveStopNote: (itineraryId: string, stopDay: number, userNotes: string) =>
+  saveStopNote: (itineraryId: string, stops: Itinerary['stops']) =>
     request<Itinerary>(`/api/itineraries/${itineraryId}`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        stops: [
-          { day: stopDay, userNotes },
-        ],
-      }),
+      // #134: send the FULL stops array. The backend's ItineraryStopSchema is
+      // .strict() and requires every stop field (city, region, lat, lng, nights,
+      // highlights, accommodation, culinaryNotes) — a sparse {day, userNotes}
+      // fragment 400's, so notes were never persisted.
+      body: JSON.stringify({ stops }),
     }),
   searchCities: (query: string, limit?: number) => {
     const url = new URL('/api/city-search', import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net')

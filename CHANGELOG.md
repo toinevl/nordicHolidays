@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stop notes now persist (#134)** — `apiClient.saveStopNote` sent a sparse `{stops: [{day, userNotes}]}` fragment that the API's strict stop schema rejected with a 400, so every note save silently failed and notes vanished on reload. It now sends the full merged stops array.
+
 ### Added
 
 - **Multi-region architecture** — the codebase now supports multiple travel regions (Nordic = Fjordvia, US = RouteKit) from a single shared codebase. Region is selected at build time via `VITE_REGION` (frontend) and `REGION` (API) env vars.
