@@ -17,6 +17,8 @@ export type Stop = {
   zoom: number
   pitch: number
   bearing: number
+  /** Per-stop user note (#51/#134) — carried through renderFromItinerary so saved notes re-appear after reload. */
+  userNotes?: string
 }
 
 export type CulinaryRegion = {

@@ -9,7 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- **Stop notes now persist (#134)** — `apiClient.saveStopNote` sent a sparse `{stops: [{day, userNotes}]}` fragment that the API's strict stop schema rejected with a 400, so every note save silently failed and notes vanished on reload. It now sends the full merged stops array.
+- **Stop notes now persist (#134)** — two bugs made per-stop notes disappear: (1) `apiClient.saveStopNote` sent a sparse `{stops: [{day, userNotes}]}` fragment that the API's strict stop schema rejected with a 400, so every note save silently failed; (2) `renderFromItinerary` dropped `userNotes` in its ItineraryStop→Stop mapping, so even persisted notes didn't show after reload. Saves now send the full stops array and the mapping carries `userNotes` through.
 
 ### Added
 

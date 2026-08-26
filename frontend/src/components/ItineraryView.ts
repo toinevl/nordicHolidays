@@ -261,6 +261,9 @@ export class ItineraryView {
         zoom: 12,
         pitch: 45,
         bearing: 0,
+        // #134: carry the persisted per-stop note through the mapping so the
+        // timeline textarea shows it after loading a saved trip.
+        userNotes: typeof s.userNotes === 'string' ? s.userNotes : undefined,
       }
     })
     this.stops = stops
@@ -497,7 +500,7 @@ export class ItineraryView {
                 ? `<a class="card-activity-link" data-affiliate="activity" data-city="${encodeURIComponent(s.dest)}" href="${escapeHtml(activityUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🎟 ${tpl('itinerary.findActivities', { city: s.dest })}</a>`
                 : `<a class="card-lodging-link" data-affiliate="lodging" data-city="${encodeURIComponent(s.dest)}" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: s.dest })}</a>`}
               ${(() => {
-                const note = (s as any).userNotes
+                const note = s.userNotes
                 const noteText = typeof note === 'string' ? escapeHtml(note) : ''
                 return `
                 <div class="stop-notes" data-stop-id="${s.id}">
