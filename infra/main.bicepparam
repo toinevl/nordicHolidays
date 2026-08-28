@@ -8,7 +8,7 @@ param staticWebAppName = 'nordicholidays'
 param location = 'westeurope'
 param nodeVersion = '22'
 param storageAccountSku = 'Standard_LRS'
-param staticWebAppSku = 'Standard'
+param staticWebAppSku = 'Free'
 param customDomainNames = [
   'sweden.van-vliet.eu'
   'fjordvia.com'

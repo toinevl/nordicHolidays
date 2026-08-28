@@ -35,16 +35,18 @@ The templates in this directory are a **reference implementation** of the existi
     over 15 min) — all wired to the existing action group (#154)
 - **Consumption Budget** (`monthly-budget`, EUR 50/month, Actual
   notifications at 50/80/100 % to the alert email + action group) (#150)
-- **Static Web App** (`nordicholidays`, **Standard tier** as of #156 — was
-  Free), including the `sweden.van-vliet.eu` and `fjordvia.com` custom
-  domain bindings (`customDomains` child resources, param
-  `customDomainNames`). Standard raises the custom-domain cap from 2 to 5,
-  so `www.fjordvia.com` can now be added (a separate live step, wishlist
-  #157) and `fjordvia.eu` could graduate from its Porkbun-side 301 redirect
-  to a real binding. See [`RECOVERY.md`](./RECOVERY.md), "fjordvia.com
-  domain binding", for the per-domain binding/DNS runbook, and
-  [`COMMERCIAL-LAUNCH-RUNBOOK.md`](./COMMERCIAL-LAUNCH-RUNBOOK.md) for the
-  `az staticwebapp update --sku Standard` step.
+- **Static Web App** (`nordicholidays`, **Free tier**), including the
+  `sweden.van-vliet.eu` and `fjordvia.com` custom domain bindings
+  (`customDomains` child resources, param `customDomainNames`). The Free
+  tier caps custom domains at **2**, so these two fill the quota —
+  `fjordvia.eu` is a Porkbun-side 301 redirect to `https://fjordvia.com`,
+  not a binding (see [`RECOVERY.md`](./RECOVERY.md), "fjordvia.com domain
+  binding"). Upgrading to **Standard** (~$9/mo — SLA, staging envs,
+  2→5 domain cap, prerequisite for `www.fjordvia.com`) is wishlist **#156**,
+  deliberately deferred as a recurring-cost decision until #157 or a B2B
+  pilot SLA warrants it; the `az staticwebapp update --sku Standard` step
+  is documented (unexecuted) in
+  [`COMMERCIAL-LAUNCH-RUNBOOK.md`](./COMMERCIAL-LAUNCH-RUNBOOK.md) section 1.
 - **Role Assignments**
   - Function App identity → Storage Table Data Contributor (on storage account)
   - Function App identity → Key Vault Secrets User (on key vault)

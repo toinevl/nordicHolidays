@@ -33,10 +33,10 @@ param nodeVersion string = '22'
 @description('Storage account SKU')
 param storageAccountSku string = 'Standard_LRS'
 
-@description('Static Web App SKU. Standard (was Free until #156) — Standard adds a 99.95% SLA, raises the custom-domain cap from 2 to 5, and unlocks password-protected pre-production environments, all needed for the Fjordvia commercial launch. Changing this default does NOT change the live SKU (this template is reference/drift-detection only) — the live upgrade is a manual `az staticwebapp update ... --sku Standard`, see infra/COMMERCIAL-LAUNCH-RUNBOOK.md.')
-param staticWebAppSku string = 'Standard'
+@description('Static Web App SKU. Live value is Free. Upgrading to Standard (~$9/mo, flat) would add a 99.95% SLA, raise the custom-domain cap 2->5, and unlock password-protected pre-production environments — but that is a deferred recurring-cost decision (wishlist #156), only warranted once www.fjordvia.com (#157) or a signed B2B pilot SLA is actually on the table. Not needed for launch. This template is reference/drift-detection only; the live upgrade, if taken, is a manual `az staticwebapp update ... --sku Standard` (see infra/COMMERCIAL-LAUNCH-RUNBOOK.md section 1).')
+param staticWebAppSku string = 'Free'
 
-@description('Custom domains to bind to the Static Web App. Pass an empty array to skip creating bindings (e.g. for an environment that has no custom domain yet). NOTE: on the Standard SWA tier the custom-domain cap rises from 2 to 5 (it was 2 on Free, which sweden.van-vliet.eu + fjordvia.com filled). www.fjordvia.com can now be added as a third binding (and fjordvia.eu could graduate from the Porkbun-side 301 redirect to a real binding). The array is left unchanged here on purpose — binding a new domain is a live-tenant action with its own DNS work and is tracked separately as wishlist #157 (see infra/RECOVERY.md, "fjordvia.com domain binding", for the per-domain procedure).')
+@description('Custom domains to bind to the Static Web App. Pass an empty array to skip creating bindings. NOTE: the Free SWA tier caps custom domains at 2 — sweden.van-vliet.eu + fjordvia.com fills that quota, which is why fjordvia.eu is a registrar-side 301 redirect at Porkbun rather than a third binding. Adding www.fjordvia.com (a third binding) would require upgrading to Standard first (see `staticWebAppSku` above / wishlist #156, #157). Binding any new domain is a live-tenant action with its own DNS work — tracked as wishlist #157 (see infra/RECOVERY.md, "fjordvia.com domain binding").')
 param customDomainNames array = [
   'sweden.van-vliet.eu'
   'fjordvia.com'

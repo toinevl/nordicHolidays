@@ -31,6 +31,12 @@ az account set --subscription 2dbeb3f1-e45d-4207-a7e9-185330aad74b
 
 ## 1. #156 — Upgrade the Static Web App to the Standard SKU
 
+> ⏸️ **DEFERRED — not approved.** This is a **recurring cost** (~$9/mo,
+> flat). Nothing at launch needs it: `www.fjordvia.com` (#157) is itself
+> deferred, and there is no signed B2B pilot yet, so no SLA obligation.
+> Run this **only** once #157 or a B2B pilot SLA is actually on the table.
+> `infra/main.bicep` keeps `staticWebAppSku = 'Free'` to match live.
+
 Standard adds the 99.95% SLA, raises the custom-domain cap from 2 to 5, and
 unlocks password-protected pre-production environments.
 
