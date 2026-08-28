@@ -259,16 +259,8 @@ Saves a new itinerary and returns its assigned ID.
 
 **Response 201**
 ```json
-{ "id": "a1b2c3d4", "editToken": "GqU3...43-char-base64url" }
+{ "id": "a1b2c3d4" }
 ```
-
-`editToken` (#146) is returned **once** here and never again — only its
-sha256 hash is stored server-side. The client must persist it (localStorage
-`fjordvia:edit:<id>`) and send it as the `X-Edit-Token` header on every
-`PATCH /api/itineraries/:id` and `POST /api/itineraries/:id/undo`. Reads
-(`GET`, list) need no token. A mutating call with a missing/wrong token
-gets `403 {code:"edit_token_invalid"}`; an itinerary saved before #146 has
-no token and returns `403 {code:"legacy_no_token"}` on any write.
 
 **Response 400** — missing name or itinerary.
 
