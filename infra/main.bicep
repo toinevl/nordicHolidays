@@ -33,10 +33,10 @@ param nodeVersion string = '22'
 @description('Storage account SKU')
 param storageAccountSku string = 'Standard_LRS'
 
-@description('Static Web App SKU - Free tier')
-param staticWebAppSku string = 'Free'
+@description('Static Web App SKU. Standard (was Free until #156) — Standard adds a 99.95% SLA, raises the custom-domain cap from 2 to 5, and unlocks password-protected pre-production environments, all needed for the Fjordvia commercial launch. Changing this default does NOT change the live SKU (this template is reference/drift-detection only) — the live upgrade is a manual `az staticwebapp update ... --sku Standard`, see infra/COMMERCIAL-LAUNCH-RUNBOOK.md.')
+param staticWebAppSku string = 'Standard'
 
-@description('Custom domains to bind to the Static Web App. Pass an empty array to skip creating bindings (e.g. for an environment that has no custom domain yet). NOTE: the Free SWA tier allows a maximum of 2 custom domains — sweden.van-vliet.eu + fjordvia.com fills that quota, which is why fjordvia.eu is a registrar-side 301 redirect at Porkbun instead of a third binding (see infra/RECOVERY.md, "fjordvia.com domain binding").')
+@description('Custom domains to bind to the Static Web App. Pass an empty array to skip creating bindings (e.g. for an environment that has no custom domain yet). NOTE: on the Standard SWA tier the custom-domain cap rises from 2 to 5 (it was 2 on Free, which sweden.van-vliet.eu + fjordvia.com filled). www.fjordvia.com can now be added as a third binding (and fjordvia.eu could graduate from the Porkbun-side 301 redirect to a real binding). The array is left unchanged here on purpose — binding a new domain is a live-tenant action with its own DNS work and is tracked separately as wishlist #157 (see infra/RECOVERY.md, "fjordvia.com domain binding", for the per-domain procedure).')
 param customDomainNames array = [
   'sweden.van-vliet.eu'
   'fjordvia.com'
@@ -57,6 +57,9 @@ param alertName string = 'generateHandler-errors-alert'
 
 @description('Action group name for alert notifications')
 param actionGroupName string = 'nordic-holidays-alerts'
+
+@description('Monthly Azure cost budget in EUR for this resource group')
+param monthlyBudgetAmount int = 50
 
 @description('Travel region label — controls which region data pack the API and frontend use. Nordic = Fjordvia, US = RouteKit.')
 param region string = 'nordic'
@@ -209,6 +212,191 @@ resource generateHandlerAlertRule 'Microsoft.Insights/scheduledQueryRules@2023-0
         actionGroup.id
       ]
     }
+  }
+}
+
+// Consumption Budget for the resource group (#150)
+// Reference/drift-detection only, like the rest of this template — the live
+// budget is created by hand (see infra/COMMERCIAL-LAUNCH-RUNBOOK.md,
+// "az consumption budget create"). Notifications fire at 50 / 80 / 100 % of
+// ACTUAL spend and go to both the alert email and the existing action group
+// (no second action group — reuses `actionGroup` above).
+resource monthlyBudget 'Microsoft.Consumption/budgets@2023-11-01' = {
+  name: 'fjordvia-rg-monthly'
+  properties: {
+    category: 'Cost'
+    amount: monthlyBudgetAmount
+    timeGrain: 'Monthly'
+    timePeriod: {
+      startDate: '2026-09-01T00:00:00Z'
+    }
+    notifications: {
+      Actual_GreaterThanOrEqualTo_50_Percent: {
+        enabled: true
+        operator: 'GreaterThanOrEqualTo'
+        threshold: 50
+        thresholdType: 'Actual'
+        contactEmails: [
+          alertEmail
+        ]
+        contactGroups: [
+          actionGroup.id
+        ]
+      }
+      Actual_GreaterThanOrEqualTo_80_Percent: {
+        enabled: true
+        operator: 'GreaterThanOrEqualTo'
+        threshold: 80
+        thresholdType: 'Actual'
+        contactEmails: [
+          alertEmail
+        ]
+        contactGroups: [
+          actionGroup.id
+        ]
+      }
+      Actual_GreaterThanOrEqualTo_100_Percent: {
+        enabled: true
+        operator: 'GreaterThanOrEqualTo'
+        threshold: 100
+        thresholdType: 'Actual'
+        contactEmails: [
+          alertEmail
+        ]
+        contactGroups: [
+          actionGroup.id
+        ]
+      }
+    }
+  }
+}
+
+// Availability web test (#154) — Standard ping against the API health endpoint.
+// The `hidden-link:<appInsights.id>` tag is REQUIRED: it associates the web test
+// with the Application Insights component so results appear in the Availability
+// blade and can be alerted on. Reference/drift-detection only — if the `az`
+// path for classic web tests is awkward, create it via the portal
+// (Application Insights → Availability → Add Standard test); see
+// infra/COMMERCIAL-LAUNCH-RUNBOOK.md.
+resource healthWebTest 'Microsoft.Insights/webtests@2022-06-15' = {
+  name: 'nordic-holidays-api-health'
+  location: location
+  kind: 'standard'
+  tags: {
+    'hidden-link:${appInsights.id}': 'Resource'
+  }
+  properties: {
+    SyntheticMonitorId: 'nordic-holidays-api-health'
+    Name: 'nordic-holidays-api health'
+    Description: 'Standard availability ping against https://nordic-holidays-api.azurewebsites.net/api/health (#154)'
+    Enabled: true
+    Frequency: 300
+    Timeout: 30
+    Kind: 'standard'
+    RetryEnabled: true
+    Locations: [
+      {
+        Id: 'emea-nl-ams-azr'
+      }
+      {
+        Id: 'emea-gb-db3-azr'
+      }
+      {
+        Id: 'emea-fr-pra-edge'
+      }
+    ]
+    Request: {
+      RequestUrl: 'https://nordic-holidays-api.azurewebsites.net/api/health'
+      HttpVerb: 'GET'
+      ParseDependentRequests: false
+      FollowRedirects: false
+    }
+    ValidationRules: {
+      ExpectedHttpStatusCode: 200
+      SSLCheck: true
+      SSLCertRemainingLifetimeCheck: 7
+    }
+  }
+}
+
+// Availability alert (#154) — fires when the health web test fails from 2 of its
+// 3 locations. Wired to the EXISTING action group. Uses the classic web-test
+// location-availability criteria; scopes must list BOTH the web test and the
+// App Insights component.
+resource availabilityAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'nordic-holidays-api-availability-alert'
+  location: 'global'
+  tags: {
+    'hidden-link:${appInsights.id}': 'Resource'
+    'hidden-link:${healthWebTest.id}': 'Resource'
+  }
+  properties: {
+    description: 'API /api/health availability web test failing from 2+ of 3 locations (#154)'
+    severity: 1
+    enabled: true
+    scopes: [
+      healthWebTest.id
+      appInsights.id
+    ]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT5M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.WebtestLocationAvailabilityCriteria'
+      webTestId: healthWebTest.id
+      componentId: appInsights.id
+      failedLocationCount: 2
+    }
+    actions: [
+      {
+        actionGroupId: actionGroup.id
+      }
+    ]
+  }
+}
+
+// Latency alert (#154) — server-side request duration on the App Insights
+// component. Static metric alert on `requests/duration` with Average
+// aggregation, threshold 5000 ms, evaluated every 5 min over a rolling 15-min
+// window. Average (not P95) is used because a static metric alert cannot do a
+// percentile threshold on this metric without a scheduledQueryRules KQL rule;
+// if tail latency needs to be caught specifically, convert this to a
+// scheduledQueryRules rule styled like `generateHandlerAlertRule` above with
+// `requests | summarize percentile(duration, 95)`. Wired to the EXISTING
+// action group.
+resource latencyAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'nordic-holidays-api-latency-alert'
+  location: 'global'
+  tags: {
+    'hidden-link:${appInsights.id}': 'Resource'
+  }
+  properties: {
+    description: 'API server-side request duration averaging over 5000 ms across a 15-minute window (#154)'
+    severity: 2
+    enabled: true
+    scopes: [
+      appInsights.id
+    ]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          name: 'RequestDuration'
+          metricNamespace: 'microsoft.insights/components'
+          metricName: 'requests/duration'
+          operator: 'GreaterThan'
+          threshold: 5000
+          timeAggregation: 'Average'
+          criterionType: 'StaticThresholdCriterion'
+        }
+      ]
+    }
+    actions: [
+      {
+        actionGroupId: actionGroup.id
+      }
+    ]
   }
 }
 

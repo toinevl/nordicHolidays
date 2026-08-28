@@ -9,6 +9,8 @@ nordicHolidays application — both the Nordic (Fjordvia) and US (RouteKit) depl
 |------|---------|
 | `main.bicep` + `main.bicepparam` | Nordic deployment (rgNordicHolidays) — the original |
 | `us.bicep` + `us.bicepparam` | US deployment (rgRouteKit) — shares App Insights, Key Vault, Maps from rgNordicHolidays |
+| `RECOVERY.md` | Live-resource facts + manual runbooks (OIDC app registration, custom-domain binding) |
+| `COMMERCIAL-LAUNCH-RUNBOOK.md` | Manual `az` steps for the Fjordvia launch changes (#150 budget, #154 availability/latency alerts, #156 SWA Standard) — none of these are applied by CI or by the Bicep |
 
 ## Purpose
 
@@ -25,13 +27,24 @@ The templates in this directory are a **reference implementation** of the existi
   - System-assigned managed identity
   - Application settings (excluding secrets)
 - **Application Insights** (`nordic-holidays-api`)
-- **Static Web App** (`nordicholidays`, Free tier), including the
-  `sweden.van-vliet.eu` and `fjordvia.com` custom domain bindings
-  (`customDomains` child resources, param `customDomainNames`). The Free
-  tier caps custom domains at **2**, so these two fill the quota —
-  `fjordvia.eu` is a Porkbun-side 301 redirect to `https://fjordvia.com`,
-  not a binding (see [`RECOVERY.md`](./RECOVERY.md), "fjordvia.com domain
-  binding", for the manual binding/DNS runbook)
+  - **Action Group** (`nordic-holidays-alerts`) + `generateHandler` error
+    alert (scheduled query rule)
+  - **Availability web test** (`nordic-holidays-api-health`, Standard ping
+    against `/api/health` from 3 EMEA locations) + **availability alert**
+    (2-of-3 locations) + **latency alert** (`requests/duration` avg > 5 s
+    over 15 min) — all wired to the existing action group (#154)
+- **Consumption Budget** (`fjordvia-rg-monthly`, EUR 50/month, Actual
+  notifications at 50/80/100 % to the alert email + action group) (#150)
+- **Static Web App** (`nordicholidays`, **Standard tier** as of #156 — was
+  Free), including the `sweden.van-vliet.eu` and `fjordvia.com` custom
+  domain bindings (`customDomains` child resources, param
+  `customDomainNames`). Standard raises the custom-domain cap from 2 to 5,
+  so `www.fjordvia.com` can now be added (a separate live step, wishlist
+  #157) and `fjordvia.eu` could graduate from its Porkbun-side 301 redirect
+  to a real binding. See [`RECOVERY.md`](./RECOVERY.md), "fjordvia.com
+  domain binding", for the per-domain binding/DNS runbook, and
+  [`COMMERCIAL-LAUNCH-RUNBOOK.md`](./COMMERCIAL-LAUNCH-RUNBOOK.md) for the
+  `az staticwebapp update --sku Standard` step.
 - **Role Assignments**
   - Function App identity → Storage Table Data Contributor (on storage account)
   - Function App identity → Key Vault Secrets User (on key vault)

@@ -8,7 +8,7 @@ param staticWebAppName = 'nordicholidays'
 param location = 'westeurope'
 param nodeVersion = '22'
 param storageAccountSku = 'Standard_LRS'
-param staticWebAppSku = 'Free'
+param staticWebAppSku = 'Standard'
 param customDomainNames = [
   'sweden.van-vliet.eu'
   'fjordvia.com'
@@ -16,3 +16,4 @@ param customDomainNames = [
 param alertEmail = 'toine@van-vliet.eu'
 param alertName = 'generateHandler-errors-alert'
 param actionGroupName = 'nordic-holidays-alerts'
+param monthlyBudgetAmount = 50
