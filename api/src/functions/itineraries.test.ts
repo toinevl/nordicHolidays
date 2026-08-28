@@ -27,16 +27,6 @@ import {
 } from './itineraries'
 import { getTableClient } from '../lib/tableClient'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
-import { makeEditToken, hashEditToken } from '../lib/editToken'
-
-// A known token/hash pair reused across the edit-token (#146/#147) tests.
-const EDIT_TOKEN = makeEditToken()
-const EDIT_TOKEN_HASH = hashEditToken(EDIT_TOKEN)
-
-/** Build a headers Map that carries a valid edit token (lower-case key, matching the handler's `get('x-edit-token')`). */
-function headersWithEditToken(token: string = EDIT_TOKEN): Map<string, string> {
-  return new Map<string, string>([['x-edit-token', token]])
-}
 
 function makeClient(overrides: Record<string, unknown> = {}) {
   const base = {
@@ -149,25 +139,6 @@ describe('POST /api/itineraries', () => {
     expect(result.status).toBe(201)
     expect(body.id).toBe('test-id-123')
     expect(client.createEntity).toHaveBeenCalledOnce()
-  })
-
-  it('mints an edit-token (#146): returns editToken in the body and persists only its sha256 hash on the entity', async () => {
-    const client = makeClient()
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const itin = { title: 'Roadtrip Malmö', totalDays: 21, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }
-    const req = { json: async () => ({ name: 'Resa till Tromsø', itinerary: itin }), method: 'POST', headers: new Map() } as any
-    const result = await saveItineraryHandler(req, makeContext())
-    const body = JSON.parse(result.body as string)
-    expect(result.status).toBe(201)
-    // Raw token: 32 random bytes, base64url (43 chars, no padding)
-    expect(body.editToken).toMatch(/^[A-Za-z0-9_-]{43}$/)
-    // The persisted entity carries the HASH, never the raw token
-    const call = (client.createEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
-    expect(call.editTokenHash).toMatch(/^[0-9a-f]{64}$/)
-    expect(call.editTokenHash).toBe(hashEditToken(body.editToken))
-    expect(call).not.toHaveProperty('editToken')
-    // The raw token is not echoed in any response header (ASCII-only-header rule / no leakage)
-    expect(result.headers).not.toHaveProperty('X-Edit-Token')
   })
 
   it('saves itinerary with generatedAt field (regression test for frontend-generated itineraries)', async () => {
@@ -369,115 +340,6 @@ describe('PATCH /api/itineraries/:id — rate limiting', () => {
   })
 })
 
-describe('PATCH /api/itineraries/:id — edit-token gate (#146/#147)', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  function tokenGatedEntity(overrides: Record<string, unknown> = {}) {
-    const itin = { title: 'Roadtrip till Malmö', totalDays: 5, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }
-    return {
-      partitionKey: 'shared',
-      rowKey: 'id1',
-      etag: 'etag-1',
-      name: 'Resa till Gärdet',
-      createdAt: '2026-06-01T00:00:00.000Z',
-      startCity: 'Malmö',
-      endCity: 'Västra Götaland',
-      itineraryJson: JSON.stringify(itin),
-      editTokenHash: EDIT_TOKEN_HASH,
-      ...overrides,
-    }
-  }
-
-  it('allows the PATCH when X-Edit-Token matches the entity hash (200)', async () => {
-    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(tokenGatedEntity()), updateEntity: vi.fn().mockResolvedValue({ etag: 'e2' }) })
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'Ändrad till Ålesund' }), headers: headersWithEditToken() } as any
-    const result = await updateItineraryHandler(req, makeContext())
-    expect(result.status).toBe(200)
-    expect(JSON.parse(result.body as string).title).toBe('Ändrad till Ålesund')
-    expect(client.updateEntity).toHaveBeenCalledOnce()
-  })
-
-  it('rejects a wrong X-Edit-Token with 403 edit_token_invalid and does not mutate', async () => {
-    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(tokenGatedEntity()) })
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'x' }), headers: headersWithEditToken(makeEditToken()) } as any
-    const result = await updateItineraryHandler(req, makeContext())
-    expect(result.status).toBe(403)
-    expect(JSON.parse(result.body as string).code).toBe('edit_token_invalid')
-    expect(client.updateEntity).not.toHaveBeenCalled()
-  })
-
-  it('rejects a missing X-Edit-Token header with 403 edit_token_invalid', async () => {
-    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(tokenGatedEntity()) })
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'x' }), headers: new Map() } as any
-    const result = await updateItineraryHandler(req, makeContext())
-    expect(result.status).toBe(403)
-    expect(JSON.parse(result.body as string).code).toBe('edit_token_invalid')
-    expect(client.updateEntity).not.toHaveBeenCalled()
-  })
-
-  it('rejects a PATCH on a legacy entity with no editTokenHash: 403 legacy_no_token (#147)', async () => {
-    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(tokenGatedEntity({ editTokenHash: undefined })) })
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'x' }), headers: headersWithEditToken() } as any
-    const result = await updateItineraryHandler(req, makeContext())
-    expect(result.status).toBe(403)
-    expect(JSON.parse(result.body as string).code).toBe('legacy_no_token')
-    expect(client.updateEntity).not.toHaveBeenCalled()
-  })
-
-  it('response body carries the error text (ASCII-only-header rule: no non-ASCII in headers)', async () => {
-    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(tokenGatedEntity({ editTokenHash: undefined })) })
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'x' }), headers: new Map() } as any
-    const result = await updateItineraryHandler(req, makeContext())
-    for (const value of Object.values(result.headers ?? {})) {
-      expect(String(value)).toMatch(/^[\x00-\x7f]*$/)
-    }
-  })
-})
-
-describe('POST /api/itineraries/:id/undo — edit-token gate (#146/#147)', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('rejects undo without a valid X-Edit-Token (403 edit_token_invalid) before touching the snapshot', async () => {
-    const entity = {
-      partitionKey: 'shared', rowKey: 'id1', etag: 'e1',
-      name: 'Resa', createdAt: '2026-06-01T00:00:00.000Z',
-      startCity: 'Malmö', endCity: 'Tromsø',
-      itineraryJson: JSON.stringify({ title: 'T', totalDays: 5, startCity: 'Malmö', endCity: 'Tromsø', stops: [] }),
-      previousStateJson: JSON.stringify({ name: 'Old', createdAt: '2026-06-01T00:00:00.000Z', startCity: 'Malmö', endCity: 'Tromsø', itineraryJson: '{}' }),
-      editTokenHash: EDIT_TOKEN_HASH,
-    }
-    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { method: 'POST', params: { id: 'id1' }, headers: new Map() } as any
-    const result = await undoItineraryHandler(req, makeContext())
-    expect(result.status).toBe(403)
-    expect(JSON.parse(result.body as string).code).toBe('edit_token_invalid')
-    expect(client.updateEntity).not.toHaveBeenCalled()
-  })
-
-  it('rejects undo on a legacy entity with 403 legacy_no_token (#147)', async () => {
-    const entity = {
-      partitionKey: 'shared', rowKey: 'id1', etag: 'e1',
-      name: 'Resa', createdAt: '2026-06-01T00:00:00.000Z',
-      startCity: 'Malmö', endCity: 'Tromsø',
-      itineraryJson: JSON.stringify({ title: 'T', totalDays: 5, startCity: 'Malmö', endCity: 'Tromsø', stops: [] }),
-      previousStateJson: JSON.stringify({ name: 'Old', createdAt: '2026-06-01T00:00:00.000Z', startCity: 'Malmö', endCity: 'Tromsø', itineraryJson: '{}' }),
-    }
-    const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
-    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
-    const req = { method: 'POST', params: { id: 'id1' }, headers: headersWithEditToken() } as any
-    const result = await undoItineraryHandler(req, makeContext())
-    expect(result.status).toBe(403)
-    expect(JSON.parse(result.body as string).code).toBe('legacy_no_token')
-    expect(client.updateEntity).not.toHaveBeenCalled()
-  })
-})
-
 describe('PATCH /api/itineraries/:id — undo snapshot (#51)', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -493,12 +355,11 @@ describe('PATCH /api/itineraries/:id — undo snapshot (#51)', () => {
       endCity: 'Västra Götaland',
       itineraryJson: JSON.stringify(itin),
       thumbnail: undefined,
-      editTokenHash: EDIT_TOKEN_HASH,
     }
     const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity), updateEntity: vi.fn().mockResolvedValue({ etag: 'etag-2' }) })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
 
-    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'Renamed till Helsingborg' }), headers: headersWithEditToken() } as any
+    const req = { method: 'PATCH', params: { id: 'id1' }, json: async () => ({ title: 'Renamed till Helsingborg' }), headers: new Map() } as any
     const result = await updateItineraryHandler(req, makeContext())
 
     expect(result.status).toBe(200)
@@ -539,12 +400,11 @@ describe('POST /api/itineraries/:id/undo (#51)', () => {
       endCity: 'Helsingborg',
       itineraryJson: JSON.stringify(currentItin),
       previousStateJson: JSON.stringify(previousState),
-      editTokenHash: EDIT_TOKEN_HASH,
     }
     const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity), updateEntity: vi.fn().mockResolvedValue({ etag: 'etag-3' }) })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
 
-    const req = { method: 'POST', params: { id: 'id1' }, headers: headersWithEditToken() } as any
+    const req = { method: 'POST', params: { id: 'id1' }, headers: new Map() } as any
     const result = await undoItineraryHandler(req, makeContext())
 
     expect(result.status).toBe(200)
@@ -569,12 +429,11 @@ describe('POST /api/itineraries/:id/undo (#51)', () => {
       startCity: 'Malmö',
       endCity: 'Västra Götaland',
       itineraryJson: JSON.stringify(itin),
-      editTokenHash: EDIT_TOKEN_HASH,
     }
     const client = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
 
-    const req = { method: 'POST', params: { id: 'id1' }, headers: headersWithEditToken() } as any
+    const req = { method: 'POST', params: { id: 'id1' }, headers: new Map() } as any
     const result = await undoItineraryHandler(req, makeContext())
 
     expect(result.status).toBe(409)
