@@ -176,6 +176,15 @@ export const en: LocaleStrings = {
     foodRegions: 'Food Regions',
     tagline: 'Netherlands → anywhere in the Nordics',
     buildLocal: 'Build local',
+    colofon: 'Colophon',
+    privacy: 'Privacy',
+    cookies: 'Cookies',
+  },
+  consent: {
+    bannerText: 'We only use analytics cookies if you say yes. Everything works fine without them.',
+    accept: 'OK',
+    decline: 'No thanks',
+    readMore: 'More info',
   },
   loading: {
     generating: 'Generating your itinerary...',

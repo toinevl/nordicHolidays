@@ -176,6 +176,15 @@ export const nl: LocaleStrings = {
     foodRegions: "Voedselregio's",
     tagline: 'Nederland → overal in Scandinavië',
     buildLocal: 'Lokale build',
+    colofon: 'Colofon',
+    privacy: 'Privacy',
+    cookies: 'Cookies',
+  },
+  consent: {
+    bannerText: 'We gebruiken analytische cookies alleen als jij dat goedkeurt. Zonder werkt alles gewoon.',
+    accept: 'Prima',
+    decline: 'Nee dankjewel',
+    readMore: 'Meer info',
   },
   loading: {
     generating: 'Reisplan genereren...',

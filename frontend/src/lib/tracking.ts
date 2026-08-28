@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { getOwnerId } from './identity'
+import { getConsent } from './consent'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net'
 
@@ -53,4 +54,17 @@ export function trackAffiliateClick(payload: AffiliateClickEvent): void {
   } catch {
     // tracking must never break the app
   }
+}
+
+/**
+ * Consent-gated variant (#137): the analytics beacon may only fire after the
+ * visitor explicitly accepted (getConsent().analytics === true). Anything
+ * else — declined, or not asked yet — is silently dropped, before any
+ * owner-UUID read or network request happens. The ungated
+ * trackAffiliateClick stays exported for tests and any future
+ * consent-checked-at-a-higher-level caller.
+ */
+export function trackAffiliateClickGated(payload: AffiliateClickEvent): void {
+  if (getConsent().analytics !== true) return
+  trackAffiliateClick(payload)
 }

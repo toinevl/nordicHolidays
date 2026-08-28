@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cookie-Richtlinie — Fjordvia</title>
+  <meta name="description" content="Welche Cookies Fjordvia verwendet, welches einzige Präferenz-Element gespeichert wird, was erst nach Zustimmung gemessen wird und wie Sie sie widerrufen." />
+  <meta name="robots" content="noindex" />
+  <style>
+    :root {
+      --bg: #faf6ef;
+      --ink: #1c1917;
+      --ink-muted: #5c554b;
+      --primary: #2563eb;
+      --border: #e2dcd2;
+      --card: #fffdf8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Georgia, 'Times New Roman', serif;
+      line-height: 1.7;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .wordmark {
+      font-size: 1.75rem; font-weight: 700; letter-spacing: 0.01em;
+      color: var(--ink); text-decoration: none; display: inline-block; margin-bottom: 0.25rem;
+    }
+    .wordmark:hover { color: var(--primary); }
+    .backlink { font-size: 0.85rem; color: var(--ink-muted); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    .backlink:hover { color: var(--primary); }
+    .draft-banner {
+      background: #fef3c7; border: 1px solid #f59e0b; border-left: 6px solid #d97706;
+      color: #78350f; border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 2.25rem; font-size: 0.95rem;
+    }
+    .draft-banner strong { letter-spacing: 0.04em; }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .updated { color: var(--ink-muted); font-size: 0.9rem; margin-bottom: 2.25rem; }
+    h2 { font-size: 1.2rem; font-weight: 700; margin: 2.25rem 0 0.75rem; }
+    p { margin-bottom: 0.9rem; }
+    ul, ol { margin: 0 0 1rem 1.4rem; }
+    li { margin-bottom: 0.4rem; }
+    a { color: var(--primary); }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88em; background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; padding: 0.1em 0.35em;
+    }
+    .ph { border: 1px solid #dc2626; color: #dc2626; padding: 0 4px; }
+    .legal-nav { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--border); font-size: 0.92rem; }
+    .legal-nav p { margin-bottom: 0.35rem; color: var(--ink-muted); }
+    .cookie-settings-btn {
+      display: inline-block; margin: 0.25rem 0 1rem; padding: 0.55rem 1.2rem;
+      background: var(--primary); color: #fff; border: none; border-radius: 6px;
+      font-family: system-ui, sans-serif; font-size: 0.92rem; cursor: pointer;
+    }
+    .cookie-settings-btn:hover { background: #1d4fd8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="wordmark" href="/">Fjord<span style="font-style:italic;">via</span></a><br />
+    <a class="backlink" href="/">&larr; Zurück zu Fjordvia</a>
+
+    <div class="draft-banner">
+      <strong>ENTWURF — ausstehende rechtliche Prüfung.</strong>
+      Diese Cookie-Richtlinie wurde noch nicht juristisch geprüft. Elemente in
+      <span class="ph">roten Platzhaltern</span> müssen vor der Veröffentlichung noch ausgefüllt werden.
+    </div>
+
+    <h1>Cookie-Richtlinie</h1>
+    <p class="updated">Zuletzt aktualisiert: 28. August 2026</p>
+
+    <h2>1. Eine Präferenz, lokal gespeichert</h2>
+    <p>
+      Fjordvia verwendet keine Tracking- oder Werbe-Cookies von Drittanbietern. Ihre Entscheidung über
+      anonyme Analytik speichern wir in genau einem Präferenz-Element im localStorage Ihres Browsers,
+      unter dem Schlüssel <code>fjordvia:consent</code>. Diese Präferenz läuft nicht ab und wird niemals
+      weitergegeben.
+    </p>
+    <p>
+      Neben diesem Präferenz-Element nutzt die Seite nur funktionalen Speicher, den sie zum Arbeiten
+      braucht: Ihre gewählte Sprache (<code>nordicholidays_locale</code>) und eine anonyme Owner-UUID
+      (<code>ownerId</code>), damit Sie Reisepläne speichern und wieder aufrufen können. Dafür fragen
+      wir keine Zustimmung ab — das ist für den Dienst unbedingt erforderlich.
+    </p>
+
+    <h2>2. Was speichert dieses Präferenz-Element?</h2>
+    <ul>
+      <li>
+        <strong>Ein Feld: Ihre Zustimmungsentscheidung</strong> — <em>akzeptiert</em>,
+        <em>abgelehnt</em> oder <em>noch nicht gefragt</em>. Nichts weiter.
+      </li>
+      <li>
+        <strong>Ihre anonyme Owner-UUID</strong> — ein zufälliger Bezeichner, der Reisepläne Ihrem
+        Browser zuordnet. Er liegt in einem separaten Element (<code>ownerId</code>) und identifiziert
+        für sich genommen keine Person.
+      </li>
+    </ul>
+
+    <h2>3. Was messen wir erst nach Zustimmung?</h2>
+    <p>
+      Nur wenn Sie zustimmen, zeichnen wir anonyme Klicks auf ausgehende Partnerlinks (Mietwagen,
+      Unterkünfte, Aktivitäten) über unseren <code>/api/track</code>-Endpunkt auf. Pro Klick speichern
+      wir:
+    </p>
+    <ul>
+      <li>den Linktyp (z.&nbsp;B. <em>Unterkunft</em>, <em>Mietwagen</em>, <em>Aktivität</em>);</li>
+      <li>Stadt und Sprache, in denen der Link erschien;</li>
+      <li>Ihre anonyme Owner-UUID, damit derselbe Klick nicht doppelt zählt;</li>
+      <li>in den Serverprotokollen unserer API auch Ihre IP-Adresse, für Sicherheit und
+      Missbrauchsprävention.</li>
+    </ul>
+    <p>
+      Lehnen Sie ab, wird <strong>nichts</strong> aufgezeichnet: Kein Klick-Ereignis verlässt Ihren
+      Browser. Die Seite funktioniert vollständig ohne diese Analysedaten.
+    </p>
+
+    <h2>4. Zustimmung widerrufen oder ändern</h2>
+    <p>
+      Ihre Entscheidung ist nie endgültig. Mit der Schaltfläche unten löschen Sie das gespeicherte
+      Präferenz-Element; beim nächsten Öffnen der Seite fragen wir Ihre Präferenz erneut ab. Eine
+      Ablehnung stoppt sämtliche Analytik sofort.
+    </p>
+    <button class="cookie-settings-btn" type="button" id="cookie-settings">Cookie-Einstellungen zurücksetzen</button>
+    <p id="cookie-settings-done" style="display:none; color: #2F6E44;" role="status">
+      Ihre Auswahl wurde gelöscht. Wir fragen beim nächsten Besuch noch einmal.
+    </p>
+
+    <h2>5. Fragen</h2>
+    <p>
+      Fragen zu dieser Cookie-Richtlinie richten Sie an <span class="ph">[EMAIL]</span>. Siehe auch
+      unsere <a href="privacy.de.html">Datenschutzerklärung</a>.
+    </p>
+
+    <div class="legal-nav">
+      <p>Verwandt:</p>
+      <p>
+        <a href="privacy.de.html">Datenschutzerklärung</a> &middot;
+        <a href="terms.de.html">Nutzungsbedingungen</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Withdraw consent (#137): clear the stored choice so the consent banner
+    // re-appears on the next visit to the app. Removing an existing key also
+    // fires a `storage` event, which re-shows the banner in other open tabs.
+    document.getElementById('cookie-settings')?.addEventListener('click', function () {
+      try {
+        localStorage.removeItem('fjordvia:consent')
+      } catch (e) {
+        /* localStorage nicht verfügbar — nichts zu löschen */
+      }
+      var done = document.getElementById('cookie-settings-done')
+      if (done) done.style.display = 'block'
+    })
+  </script>
+</body>
+</html>
