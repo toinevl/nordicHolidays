@@ -19,7 +19,11 @@ import { logError } from '../lib/schemas'
  * tune them (and preview a run) without a redeploy:
  *   RETENTION_ITINERARY_DAYS  (default 365)
  *   RETENTION_LEADS_DAYS      (default 730)
- *   RETENTION_DRY_RUN=1       -> scan and count only, delete nothing
+ *   RETENTION_DRY_RUN         -> DRY-RUN BY DEFAULT (scan + count, delete
+ *                               nothing). Set to exactly "0" to enable real
+ *                               deletion, and only after observing a few
+ *                               dry-run cycles in the logs. Destructive
+ *                               automation is opt-in, not opt-out.
  *
  * The timer handler must NEVER throw — a thrown timer invocation is retried and
  * alert-noisy, and a storage hiccup on one table should not block the other.
@@ -94,7 +98,8 @@ export async function retentionCleanupHandler(_myTimer: Timer, ctx: InvocationCo
   try {
     const itineraryDays = Number(process.env.RETENTION_ITINERARY_DAYS) || DEFAULT_ITINERARY_DAYS
     const leadsDays = Number(process.env.RETENTION_LEADS_DAYS) || DEFAULT_LEADS_DAYS
-    const dryRun = process.env.RETENTION_DRY_RUN === '1'
+    // Dry-run by default: real deletion requires RETENTION_DRY_RUN === '0'.
+    const dryRun = process.env.RETENTION_DRY_RUN !== '0'
 
     const now = Date.now()
     const itineraryCutoff = now - itineraryDays * DAY_MS

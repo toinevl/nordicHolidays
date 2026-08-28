@@ -423,10 +423,10 @@ describe('checkGlobalDailyGenerateCap (#149)', () => {
     expect(client.updateEntity.mock.calls[0][0].count).toBe(121)
   })
 
-  it('rejects with retryAfterSeconds when the running count exceeds the cap', async () => {
+  it('rejects at exactly the cap (count === cap), not cap+1 (#149 F2 off-by-one)', async () => {
     process.env.GENERATE_DAILY_CAP = '500'
     const client = makeClient({
-      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-global', rowKey: today, count: 501 }),
+      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-global', rowKey: today, count: 500 }),
     })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
 
@@ -510,9 +510,9 @@ describe('checkPartnerDailyGenerateCap (#151)', () => {
     expect(client.updateEntity.mock.calls[0][0].count).toBe(10)
   })
 
-  it('rejects when the partner running count exceeds its cap', async () => {
+  it('rejects at exactly the partner cap (count === cap), not cap+1 (#151 F2)', async () => {
     const client = makeClient({
-      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-partner:tromsø-tours', rowKey: today, count: 51 }),
+      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-partner:tromsø-tours', rowKey: today, count: 50 }),
     })
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
 

@@ -510,7 +510,10 @@ export async function checkGlobalDailyGenerateCap(logger?: any): Promise<RateLim
     try {
       const entity = await client.getEntity(partitionKey, dayWindow)
       const count = (entity.count as number) ?? 0
-      if (count > cap) {
+      // Reject at exactly the cap (count = generations already done this window),
+      // matching the >= semantics of every other limiter in this file. `> cap`
+      // would allow cap+1.
+      if (count >= cap) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
       await client.updateEntity(
@@ -568,7 +571,10 @@ export async function checkPartnerDailyGenerateCap(
     try {
       const entity = await client.getEntity(partitionKey, dayWindow)
       const count = (entity.count as number) ?? 0
-      if (count > cap) {
+      // Reject at exactly the cap (count = generations already done this window),
+      // matching the >= semantics of every other limiter in this file. `> cap`
+      // would allow cap+1.
+      if (count >= cap) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
       await client.updateEntity(

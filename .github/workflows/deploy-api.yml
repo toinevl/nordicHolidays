@@ -46,7 +46,7 @@ jobs:
               GENERATE_DAILY_CAP="${GENERATE_DAILY_CAP:-500}" \
               RETENTION_ITINERARY_DAYS="${RETENTION_ITINERARY_DAYS:-365}" \
               RETENTION_LEADS_DAYS="${RETENTION_LEADS_DAYS:-730}" \
-              RETENTION_DRY_RUN="${RETENTION_DRY_RUN:-0}"
+              RETENTION_DRY_RUN="${RETENTION_DRY_RUN:-1}"
         env:
           ENTRA_ISSUER_HOST: ${{ secrets.ENTRA_ISSUER_HOST || 'login.microsoftonline.com' }}
           ENTRA_API_AUDIENCE: ${{ secrets.ENTRA_API_AUDIENCE }}
@@ -65,7 +65,7 @@ jobs:
           # deleting.
           RETENTION_ITINERARY_DAYS: ${{ vars.NORDIC_HOLIDAYS_RETENTION_ITINERARY_DAYS || '365' }}
           RETENTION_LEADS_DAYS: ${{ vars.NORDIC_HOLIDAYS_RETENTION_LEADS_DAYS || '730' }}
-          RETENTION_DRY_RUN: ${{ vars.NORDIC_HOLIDAYS_RETENTION_DRY_RUN || '0' }}
+          RETENTION_DRY_RUN: ${{ vars.NORDIC_HOLIDAYS_RETENTION_DRY_RUN || '1' }}
 
       - name: Install dependencies
         working-directory: api

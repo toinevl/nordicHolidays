@@ -107,27 +107,11 @@ export async function generateHandler(
     )
   }
 
-  // #149: global daily cap on generations, bounding total Azure AI Foundry
-  // spend regardless of which owner/IP drives the traffic.
-  const globalCap = await checkGlobalDailyGenerateCap(ctx)
-  if (!globalCap.allowed) {
-    return withCors({
-      status: 429,
-      headers: {
-        'Content-Type': 'application/json',
-        'Retry-After': String(globalCap.retryAfterSeconds ?? 3600),
-      },
-      body: JSON.stringify({
-        error: 'Daily generation capacity reached',
-        code: 'daily_capacity_reached',
-        retryAfterSeconds: globalCap.retryAfterSeconds,
-      }),
-    }, origin)
-  }
-
   // #151: per-partner daily cap. Only applies when the request carries a
   // partner slug (?partner= or X-Partner-Id) AND that partner has an
   // llmDailyCap configured; otherwise generation proceeds unchanged.
+  // Checked BEFORE the global cap so a partner-capped request never consumes
+  // a unit of the global daily budget.
   const partnerSlug = req.query?.get('partner') || req.headers?.get('x-partner-id') || undefined
   if (partnerSlug) {
     const partner = await getPartner(partnerSlug)
@@ -148,6 +132,28 @@ export async function generateHandler(
         }, origin)
       }
     }
+  }
+
+  // #149: global daily cap on generations, bounding total Azure AI Foundry
+  // spend regardless of which owner/IP drives the traffic. Check-and-increment
+  // runs last, right before the LLM call, so requests rejected by an hourly
+  // limit or the per-partner cap don't burn a unit of the global budget. (A
+  // request that passes here but then fails inside the LLM call still counts —
+  // the attempt was made and may still bill; that edge is accepted.)
+  const globalCap = await checkGlobalDailyGenerateCap(ctx)
+  if (!globalCap.allowed) {
+    return withCors({
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': String(globalCap.retryAfterSeconds ?? 3600),
+      },
+      body: JSON.stringify({
+        error: 'Daily generation capacity reached',
+        code: 'daily_capacity_reached',
+        retryAfterSeconds: globalCap.retryAfterSeconds,
+      }),
+    }, origin)
   }
 
   try {
