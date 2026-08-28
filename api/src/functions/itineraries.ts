@@ -5,8 +5,54 @@ import type { Itinerary, SavedItinerarySummary } from '../types'
 import { withCors, corsPreflightResponse } from '../lib/cors'
 import { SaveItineraryBodySchema, ItineraryPatchBodySchema, logError } from '../lib/schemas'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
+import { makeEditToken, hashEditToken, verifyEditToken } from '../lib/editToken'
 
 const SHARED_PARTITION_KEY = 'shared'
+
+/**
+ * #146/#147 — edit-token gate for a mutating itinerary request.
+ *
+ * Itineraries have no accounts and no owner binding (#47); reads/shares stay
+ * fully public. To stop an anonymous visitor from overwriting or deleting
+ * another visitor's trip, mutating endpoints require the raw edit-token
+ * (minted at create time, returned once) in the `X-Edit-Token` header.
+ *
+ * Returns an `HttpResponseInit` (403) to short-circuit with, or `null` to
+ * proceed. Call this only from PATCH / undo (and any future PUT / DELETE) —
+ * never from GET / list.
+ */
+function checkEditToken(
+  req: HttpRequest,
+  entity: Record<string, unknown>,
+  origin: string | undefined,
+): HttpResponseInit | null {
+  const provided = req.headers.get('x-edit-token') ?? ''
+  if (!entity.editTokenHash) {
+    // #147: itineraries saved before edit-protection shipped carry no hash to
+    // verify against, so they are treated as read-only. OPEN PRODUCT QUESTION
+    // (wishlist #147): hard 403 vs. a one-time "claim" flow vs. leaving legacy
+    // entities editable — the owner may want a different choice here.
+    return withCors(
+      {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'This itinerary predates edit protection', code: 'legacy_no_token' }),
+      },
+      origin,
+    )
+  }
+  if (!verifyEditToken(provided, entity.editTokenHash as string)) {
+    return withCors(
+      {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Invalid or missing edit token', code: 'edit_token_invalid' }),
+      },
+      origin,
+    )
+  }
+  return null
+}
 
 /**
  * Snapshot of an itinerary entity's pre-patch state, stored as a JSON blob in
@@ -188,6 +234,10 @@ export async function saveItineraryHandler(
     const client = await ensureTable('Itineraries')
     // Validate thumbnail: if provided, must be a valid data: URL with correct size. Invalid thumbnails are stripped.
     const thumb = validateThumbnail(body.thumbnail)
+    // #146: mint an edit-token, persist ONLY its sha256 hash, and hand the raw
+    // token back to the creator exactly once below (write-once — it is never
+    // stored in plaintext and cannot be recovered later).
+    const editToken = makeEditToken()
     await client.createEntity({
       partitionKey: SHARED_PARTITION_KEY,
       rowKey: id,
@@ -198,8 +248,11 @@ export async function saveItineraryHandler(
       startDate: body.itinerary.startDate ?? null,
       itineraryJson: JSON.stringify(body.itinerary),
       thumbnail: thumb,
+      editTokenHash: hashEditToken(editToken),
     })
-    return successResponse(origin, { id }, 201)
+    // `editToken` is returned once here and never again — the client must
+    // persist it (localStorage) to make future edits.
+    return successResponse(origin, { id, editToken }, 201)
   } catch (err) {
     logError(ctx, 'saveItineraryHandler: internal error', err)
     return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
@@ -232,6 +285,15 @@ export async function updateItineraryHandler(
     const id = req.params.id
     if (!id) return withCors({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
 
+    const client = getTableClient('Itineraries')
+    const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
+
+    // #146/#147: edit-token gate — after the rate-limit check above, and
+    // before parsing/validating the body or mutating anything. Reads stay
+    // public; writes require the token minted at create time.
+    const tokenError = checkEditToken(req, entity, origin)
+    if (tokenError) return tokenError
+
     let rawBody: unknown
     try {
       rawBody = await req.json()
@@ -252,8 +314,6 @@ export async function updateItineraryHandler(
     }
 
     const patch = parseResult.data
-    const client = getTableClient('Itineraries')
-    const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
 
     // Snapshot the entity's pre-patch state (single-level undo, #51) before any
     // fields are overwritten below, so a later POST .../undo can restore it.
@@ -336,6 +396,11 @@ export async function undoItineraryHandler(
 
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
+
+    // #146/#147: undo mutates the entity, so it is gated by the edit-token
+    // just like PATCH. After the rate-limit check above, before any write.
+    const tokenError = checkEditToken(req, entity, origin)
+    if (tokenError) return tokenError
 
     const previousStateJson = entity.previousStateJson as string | undefined
     if (!previousStateJson) {

@@ -80,6 +80,67 @@ describe('apiClient.saveStopNote', () => {
   })
 })
 
+describe('edit-token handling (#146)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    try { localStorage.clear() } catch { /* ignore */ }
+  })
+
+  it('saveItinerary persists the returned editToken and echoes it in the result', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ id: 'trip-xyz', editToken: 'TOKEN-abc123' }) })
+    const itin = { title: 'Resa till Tromsø', totalDays: 3, startCity: 'Tromsø', endCity: 'Kirkenes', stops: [], generatedAt: '2026-06-25T00:00:00.000Z' } as any
+    const res = await apiClient.saveItinerary('Resa till Tromsø', itin)
+    expect(res).toEqual({ id: 'trip-xyz', editToken: 'TOKEN-abc123' })
+    expect(localStorage.getItem('fjordvia:edit:trip-xyz')).toBe('TOKEN-abc123')
+  })
+
+  it('saveItinerary does not throw when the response has no editToken (legacy/back-compat)', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ id: 'trip-legacy' }) })
+    const itin = { title: 'T', totalDays: 3, startCity: 'Malmö', endCity: 'Malmö', stops: [], generatedAt: '2026-06-25T00:00:00.000Z' } as any
+    const res = await apiClient.saveItinerary('T', itin)
+    expect(res.id).toBe('trip-legacy')
+    expect(localStorage.getItem('fjordvia:edit:trip-legacy')).toBeNull()
+  })
+
+  it('updateItinerary sends the stored X-Edit-Token for that id', async () => {
+    localStorage.setItem('fjordvia:edit:trip-1', 'stored-token-1')
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ title: 'T', stops: [] }) })
+    await apiClient.updateItinerary('trip-1', { title: 'Ändrad' })
+    const headers = (mockFetch.mock.calls[0]?.[1] as RequestInit).headers as Record<string, string>
+    expect(headers['X-Edit-Token']).toBe('stored-token-1')
+  })
+
+  it('updateItinerary sends an empty X-Edit-Token when none is stored', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ title: 'T', stops: [] }) })
+    await apiClient.updateItinerary('trip-none', { title: 'x' })
+    const headers = (mockFetch.mock.calls[0]?.[1] as RequestInit).headers as Record<string, string>
+    expect(headers['X-Edit-Token']).toBe('')
+  })
+
+  it('saveStopNote and undoItinerary also send the stored X-Edit-Token', async () => {
+    localStorage.setItem('fjordvia:edit:trip-2', 'stored-token-2')
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ title: 'T', stops: [] }) })
+    await apiClient.saveStopNote('trip-2', [])
+    let headers = (mockFetch.mock.calls[0]?.[1] as RequestInit).headers as Record<string, string>
+    expect(headers['X-Edit-Token']).toBe('stored-token-2')
+
+    await apiClient.undoItinerary('trip-2')
+    headers = (mockFetch.mock.calls[1]?.[1] as RequestInit).headers as Record<string, string>
+    expect(headers['X-Edit-Token']).toBe('stored-token-2')
+  })
+
+  it('save → then update round-trip: the minted token from save is sent on the next update', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'trip-rt', editToken: 'minted-token' }) })
+    const itin = { title: 'Roundtrip Ålesund', totalDays: 3, startCity: 'Ålesund', endCity: 'Ålesund', stops: [], generatedAt: '2026-06-25T00:00:00.000Z' } as any
+    const saved = await apiClient.saveItinerary('Roundtrip Ålesund', itin)
+
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ title: 'T', stops: [] }) })
+    await apiClient.updateItinerary(saved.id, { title: 'Renamed' })
+    const headers = (mockFetch.mock.calls[1]?.[1] as RequestInit).headers as Record<string, string>
+    expect(headers['X-Edit-Token']).toBe('minted-token')
+  })
+})
+
 describe('warmUpApi', () => {
   beforeEach(() => vi.clearAllMocks())
 

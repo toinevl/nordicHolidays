@@ -236,17 +236,20 @@ describe('anonymous (guest) save/load flow — integration', () => {
   })
 
   describe('shared access between different callers', () => {
-    it('a save by one caller is visible, gettable, and editable by a completely different caller', async () => {
+    it('a save by one caller is visible and gettable by anyone, and editable by a different caller who holds the edit token', async () => {
       const ctx = makeContext()
 
       // Caller A saves a trip. The frontend still always sends an X-Owner-Id
-      // header, but the API no longer uses it for access control.
+      // header, but the API no longer uses it for access control. #146: the
+      // create response now also carries a one-time edit token.
       const saved = await saveItineraryHandler(
         makeRequest({ method: 'POST', headers: { 'X-Owner-Id': GUEST_A }, json: { name: 'A Trip', itinerary: aValidItinerary() } }),
         ctx,
       )
       expect(saved.status).toBe(201)
       const id = parseBody(saved).id as string
+      const editToken = parseBody(saved).editToken as string
+      expect(editToken).toMatch(/^[A-Za-z0-9_-]{43}$/)
 
       // Caller B, with a totally different owner id, sees it in the list.
       const bList = await listItinerariesHandler(makeRequest({ headers: { 'X-Owner-Id': GUEST_B } }), ctx)
@@ -262,13 +265,23 @@ describe('anonymous (guest) save/load flow — integration', () => {
       expect(bGet.status).toBe(200)
       expect(parseBody(bGet).title).toBe('Stockholm Weekend')
 
-      // Caller B can patch it.
+      // Caller B — a different owner id — can patch it because the edit token
+      // travels with the shared link, not with identity. #146: the API binds
+      // writes to the token, never to X-Owner-Id.
       const bPatch = await updateItineraryHandler(
-        makeRequest({ method: 'PATCH', headers: { 'X-Owner-Id': GUEST_B }, params: { id }, json: { title: 'Edited by B' } }),
+        makeRequest({ method: 'PATCH', headers: { 'X-Owner-Id': GUEST_B, 'x-edit-token': editToken }, params: { id }, json: { title: 'Edited by B' } }),
         ctx,
       )
       expect(bPatch.status).toBe(200)
       expect(parseBody(bPatch).title).toBe('Edited by B')
+
+      // Without the token, caller B's write is refused (403 edit_token_invalid).
+      const bPatchNoToken = await updateItineraryHandler(
+        makeRequest({ method: 'PATCH', headers: { 'X-Owner-Id': GUEST_B }, params: { id }, json: { title: 'Should not stick' } }),
+        ctx,
+      )
+      expect(bPatchNoToken.status).toBe(403)
+      expect(parseBody(bPatchNoToken).code).toBe('edit_token_invalid')
 
       // Caller A sees B's edit too.
       const aGet = await getItineraryHandler(
@@ -284,13 +297,14 @@ describe('anonymous (guest) save/load flow — integration', () => {
       const ctx = makeContext()
       const headers = { 'X-Owner-Id': GUEST_A }
 
-      await saveItineraryHandler(
+      const saved = await saveItineraryHandler(
         makeRequest({ method: 'POST', headers, json: { name: 'Trip', itinerary: aValidItinerary() } }),
         ctx,
       )
+      const editToken = parseBody(saved).editToken as string
 
       const patched = await updateItineraryHandler(
-        makeRequest({ method: 'PATCH', headers, params: { id: 'id-1' }, json: { title: 'Renamed Trip' } }),
+        makeRequest({ method: 'PATCH', headers: { ...headers, 'x-edit-token': editToken }, params: { id: 'id-1' }, json: { title: 'Renamed Trip' } }),
         ctx,
       )
       expect(patched.status).toBe(200)
@@ -307,7 +321,7 @@ describe('anonymous (guest) save/load flow — integration', () => {
       const ctx = makeContext()
       const headers = { 'X-Owner-Id': GUEST_A }
 
-      await saveItineraryHandler(
+      const saved = await saveItineraryHandler(
         makeRequest({
           method: 'POST',
           headers,
@@ -318,15 +332,16 @@ describe('anonymous (guest) save/load flow — integration', () => {
         }),
         ctx,
       )
+      const editToken = parseBody(saved).editToken as string
 
       // Before any edit, there is nothing to undo.
       const got = await getItineraryHandler(makeRequest({ headers, params: { id: 'id-1' } }), ctx)
       expect(parseBody(got).hasPreviousVersion).toBe(false)
 
-      // A different (anonymous) visitor overwrites the title — itineraries are
-      // fully public/shared (#47), so this is the exact scenario #51 protects.
+      // A visitor who holds the edit token (e.g. from the shared link)
+      // overwrites the title. #51's single-level undo still backs this up.
       const patched = await updateItineraryHandler(
-        makeRequest({ method: 'PATCH', headers: { 'X-Owner-Id': GUEST_B }, params: { id: 'id-1' }, json: { title: 'Overwritten by a stranger' } }),
+        makeRequest({ method: 'PATCH', headers: { 'X-Owner-Id': GUEST_B, 'x-edit-token': editToken }, params: { id: 'id-1' }, json: { title: 'Overwritten by a stranger' } }),
         ctx,
       )
       expect(patched.status).toBe(200)
@@ -337,8 +352,8 @@ describe('anonymous (guest) save/load flow — integration', () => {
       const gotAfterPatch = await getItineraryHandler(makeRequest({ headers, params: { id: 'id-1' } }), ctx)
       expect(parseBody(gotAfterPatch).hasPreviousVersion).toBe(true)
 
-      // Undo restores the pre-patch title.
-      const undone = await undoItineraryHandler(makeRequest({ method: 'POST', headers, params: { id: 'id-1' } }), ctx)
+      // Undo (also token-gated, #146) restores the pre-patch title.
+      const undone = await undoItineraryHandler(makeRequest({ method: 'POST', headers: { ...headers, 'x-edit-token': editToken }, params: { id: 'id-1' } }), ctx)
       expect(undone.status).toBe(200)
       expect(parseBody(undone).title).toBe('Roadtrip till Malmö')
       expect(parseBody(undone).startCity).toBe('Malmö')
@@ -350,13 +365,13 @@ describe('anonymous (guest) save/load flow — integration', () => {
       expect(parseBody(gotAfterUndo).hasPreviousVersion).toBe(false)
 
       // Single-level only: a second undo has nothing left to restore.
-      const secondUndo = await undoItineraryHandler(makeRequest({ method: 'POST', headers, params: { id: 'id-1' } }), ctx)
+      const secondUndo = await undoItineraryHandler(makeRequest({ method: 'POST', headers: { ...headers, 'x-edit-token': editToken }, params: { id: 'id-1' } }), ctx)
       expect(secondUndo.status).toBe(409)
     })
   })
 
   describe('itineraries endpoints require no identity', () => {
-    it('accepts save/list/get/patch with no identity headers at all', async () => {
+    it('accepts save/list/get with no identity headers, and patch with just the edit token (no X-Owner-Id)', async () => {
       const ctx = makeContext()
 
       const saved = await saveItineraryHandler(
@@ -365,6 +380,7 @@ describe('anonymous (guest) save/load flow — integration', () => {
       )
       expect(saved.status).toBe(201)
       const id = parseBody(saved).id as string
+      const editToken = parseBody(saved).editToken as string
 
       const list = await listItinerariesHandler(makeRequest({ headers: {} }), ctx)
       expect(parseBody(list)).toHaveLength(1)
@@ -372,12 +388,80 @@ describe('anonymous (guest) save/load flow — integration', () => {
       const got = await getItineraryHandler(makeRequest({ headers: {}, params: { id } }), ctx)
       expect(got.status).toBe(200)
 
+      // No X-Owner-Id — the edit token alone authorizes the write (#146).
       const patched = await updateItineraryHandler(
-        makeRequest({ method: 'PATCH', headers: {}, params: { id }, json: { title: 'Renamed' } }),
+        makeRequest({ method: 'PATCH', headers: { 'x-edit-token': editToken }, params: { id }, json: { title: 'Renamed' } }),
         ctx,
       )
       expect(patched.status).toBe(200)
       expect(parseBody(patched).title).toBe('Renamed')
+    })
+  })
+
+  describe('edit-token gate (#146/#147) — integration', () => {
+    it('mints editTokenHash on save, rejects PATCH with a wrong token (403 edit_token_invalid), accepts the right one', async () => {
+      const ctx = makeContext()
+      const headers = { 'X-Owner-Id': GUEST_A }
+
+      const saved = await saveItineraryHandler(
+        makeRequest({ method: 'POST', headers, json: { name: 'Resa till Tromsø', itinerary: aValidItinerary({ title: 'Nordkapp', startCity: 'Tromsø', endCity: 'Kirkenes' }) } }),
+        ctx,
+      )
+      const id = parseBody(saved).id as string
+      const editToken = parseBody(saved).editToken as string
+      expect(editToken).toMatch(/^[A-Za-z0-9_-]{43}$/)
+
+      // Wrong token → 403, nothing persisted.
+      const wrong = await updateItineraryHandler(
+        makeRequest({ method: 'PATCH', headers: { ...headers, 'x-edit-token': 'not-the-right-token' }, params: { id }, json: { title: 'Hacked' } }),
+        ctx,
+      )
+      expect(wrong.status).toBe(403)
+      expect(parseBody(wrong).code).toBe('edit_token_invalid')
+      const afterWrong = await getItineraryHandler(makeRequest({ headers, params: { id } }), ctx)
+      expect(parseBody(afterWrong).title).toBe('Nordkapp')
+
+      // Missing header → 403 too.
+      const missing = await updateItineraryHandler(
+        makeRequest({ method: 'PATCH', headers, params: { id }, json: { title: 'Hacked' } }),
+        ctx,
+      )
+      expect(missing.status).toBe(403)
+      expect(parseBody(missing).code).toBe('edit_token_invalid')
+
+      // Right token → 200.
+      const ok = await updateItineraryHandler(
+        makeRequest({ method: 'PATCH', headers: { ...headers, 'x-edit-token': editToken }, params: { id }, json: { title: 'Nordkapp i vinter' } }),
+        ctx,
+      )
+      expect(ok.status).toBe(200)
+      expect(parseBody(ok).title).toBe('Nordkapp i vinter')
+    })
+
+    it('treats a legacy entity with no editTokenHash as read-only (403 legacy_no_token) — #147', async () => {
+      const ctx = makeContext()
+      // Insert a pre-#146 entity directly into the store (no editTokenHash column).
+      await store.createEntity({
+        partitionKey: 'shared',
+        rowKey: 'legacy-1',
+        name: 'Gammal resa till Åre',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        startCity: 'Åre',
+        endCity: 'Östersund',
+        itineraryJson: JSON.stringify(aValidItinerary({ title: 'Åre', startCity: 'Åre', endCity: 'Östersund' })),
+      })
+
+      const patched = await updateItineraryHandler(
+        makeRequest({ method: 'PATCH', headers: { 'x-edit-token': 'anything' }, params: { id: 'legacy-1' }, json: { title: 'New title' } }),
+        ctx,
+      )
+      expect(patched.status).toBe(403)
+      expect(parseBody(patched).code).toBe('legacy_no_token')
+
+      // Still readable — reads stay public.
+      const got = await getItineraryHandler(makeRequest({ headers: {}, params: { id: 'legacy-1' } }), ctx)
+      expect(got.status).toBe(200)
+      expect(parseBody(got).title).toBe('Åre')
     })
   })
 

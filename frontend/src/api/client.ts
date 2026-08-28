@@ -68,6 +68,30 @@ export function warmUpApi(): void {
   fetch(`${API_BASE}/api/health`).catch(() => {})
 }
 
+// #146: per-itinerary edit token. The create response returns it exactly once;
+// we stash it under `fjordvia:edit:<id>` and replay it as the `X-Edit-Token`
+// header on every mutating call (PATCH / undo). Reads/shares need nothing.
+// All localStorage access is wrapped — private mode / disabled storage must
+// not break saving or editing.
+const EDIT_TOKEN_KEY_PREFIX = 'fjordvia:edit:'
+
+export function getEditToken(id: string): string | null {
+  try {
+    return localStorage.getItem(EDIT_TOKEN_KEY_PREFIX + id)
+  } catch {
+    return null
+  }
+}
+
+export function setEditToken(id: string, token: string): void {
+  try {
+    localStorage.setItem(EDIT_TOKEN_KEY_PREFIX + id, token)
+  } catch {
+    // storage unavailable (private mode, quota, disabled) — the user can still
+    // save; they just won't be able to edit this itinerary from this browser.
+  }
+}
+
 export const apiClient = {
   getPreferences: () => request<Preferences>('/api/preferences'),
   savePreferences: (prefs: Preferences) => request<Preferences>('/api/preferences', { method: 'PUT', body: JSON.stringify(prefs) }),
@@ -75,12 +99,19 @@ export const apiClient = {
     request<Itinerary>('/api/generate', { method: 'POST', body: JSON.stringify({ ...prefs, lang, existingStops }) }),
   listItineraries: () => request<SavedItinerarySummary[]>('/api/itineraries'),
   getItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}`),
-  saveItinerary: (name: string, itinerary: Itinerary, thumbnail?: string) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) }),
-  updateItinerary: (id: string, patch: Partial<Itinerary>) => request<Itinerary>(`/api/itineraries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
-  undoItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}/undo`, { method: 'POST' }),
+  saveItinerary: async (name: string, itinerary: Itinerary, thumbnail?: string): Promise<{ id: string; editToken?: string }> => {
+    const res = await request<{ id: string; editToken?: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) })
+    // #146: persist the write-once edit token so later PATCH/undo calls can prove
+    // this browser is allowed to edit the itinerary it just created.
+    if (res.editToken) setEditToken(res.id, res.editToken)
+    return res
+  },
+  updateItinerary: (id: string, patch: Partial<Itinerary>) => request<Itinerary>(`/api/itineraries/${id}`, { method: 'PATCH', body: JSON.stringify(patch), headers: { 'X-Edit-Token': getEditToken(id) ?? '' } }),
+  undoItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}/undo`, { method: 'POST', headers: { 'X-Edit-Token': getEditToken(id) ?? '' } }),
   saveStopNote: (itineraryId: string, stops: Itinerary['stops']) =>
     request<Itinerary>(`/api/itineraries/${itineraryId}`, {
       method: 'PATCH',
+      headers: { 'X-Edit-Token': getEditToken(itineraryId) ?? '' },
       // #134: send the FULL stops array. The backend's ItineraryStopSchema is
       // .strict() and requires every stop field (city, region, lat, lng, nights,
       // highlights, accommodation, culinaryNotes) — a sparse {day, userNotes}
