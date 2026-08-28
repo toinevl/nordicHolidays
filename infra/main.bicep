@@ -216,24 +216,27 @@ resource generateHandlerAlertRule 'Microsoft.Insights/scheduledQueryRules@2023-0
 }
 
 // Consumption Budget for the resource group (#150)
-// Reference/drift-detection only, like the rest of this template — the live
-// budget is created by hand (see infra/COMMERCIAL-LAUNCH-RUNBOOK.md,
-// "az consumption budget create"). Notifications fire at 50 / 80 / 100 % of
-// ACTUAL spend and go to both the alert email and the existing action group
-// (no second action group — reuses `actionGroup` above).
+// Reference/drift-detection only. The live budget `monthly-budget` PREDATES
+// this template; on 2026-08-28 it was reconciled to this shape via `az rest`
+// (added the 50% threshold + wired all three notifications to the action
+// group). This block mirrors the live resource exactly — name, EUR-50 amount,
+// the 2026-08-01→2027-08-01 window, `GreaterThan` operator, and 50/80/100%
+// Actual notifications to the alert email + existing `actionGroup` (no second
+// action group). See infra/COMMERCIAL-LAUNCH-RUNBOOK.md for the applied command.
 resource monthlyBudget 'Microsoft.Consumption/budgets@2023-11-01' = {
-  name: 'fjordvia-rg-monthly'
+  name: 'monthly-budget'
   properties: {
     category: 'Cost'
     amount: monthlyBudgetAmount
     timeGrain: 'Monthly'
     timePeriod: {
-      startDate: '2026-09-01T00:00:00Z'
+      startDate: '2026-08-01T00:00:00Z'
+      endDate: '2027-08-01T00:00:00Z'
     }
     notifications: {
-      Actual_GreaterThanOrEqualTo_50_Percent: {
+      Actual_GreaterThan_50_Percent: {
         enabled: true
-        operator: 'GreaterThanOrEqualTo'
+        operator: 'GreaterThan'
         threshold: 50
         thresholdType: 'Actual'
         contactEmails: [
@@ -243,9 +246,9 @@ resource monthlyBudget 'Microsoft.Consumption/budgets@2023-11-01' = {
           actionGroup.id
         ]
       }
-      Actual_GreaterThanOrEqualTo_80_Percent: {
+      Actual_GreaterThan_80_Percent: {
         enabled: true
-        operator: 'GreaterThanOrEqualTo'
+        operator: 'GreaterThan'
         threshold: 80
         thresholdType: 'Actual'
         contactEmails: [
@@ -255,9 +258,9 @@ resource monthlyBudget 'Microsoft.Consumption/budgets@2023-11-01' = {
           actionGroup.id
         ]
       }
-      Actual_GreaterThanOrEqualTo_100_Percent: {
+      Actual_GreaterThan_100_Percent: {
         enabled: true
-        operator: 'GreaterThanOrEqualTo'
+        operator: 'GreaterThan'
         threshold: 100
         thresholdType: 'Actual'
         contactEmails: [

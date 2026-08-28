@@ -33,7 +33,7 @@ The templates in this directory are a **reference implementation** of the existi
     against `/api/health` from 3 EMEA locations) + **availability alert**
     (2-of-3 locations) + **latency alert** (`requests/duration` avg > 5 s
     over 15 min) — all wired to the existing action group (#154)
-- **Consumption Budget** (`fjordvia-rg-monthly`, EUR 50/month, Actual
+- **Consumption Budget** (`monthly-budget`, EUR 50/month, Actual
   notifications at 50/80/100 % to the alert email + action group) (#150)
 - **Static Web App** (`nordicholidays`, **Standard tier** as of #156 — was
   Free), including the `sweden.van-vliet.eu` and `fjordvia.com` custom

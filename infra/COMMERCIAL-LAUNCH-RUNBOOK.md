@@ -76,11 +76,22 @@ Notes:
 
 ## 2. #150 — Monthly cost budget for the resource group
 
-Target: a **Monthly**, **Cost** budget named `fjordvia-rg-monthly`, amount
-**EUR 50** (`monthlyBudgetAmount` param), starting **2026-09-01**, with **Actual**
-notifications at **50 / 80 / 100 %** going to both `toine@van-vliet.eu` and the
-existing `nordic-holidays-alerts` action group. This mirrors the `monthlyBudget`
-resource in `infra/main.bicep`.
+> ✅ **APPLIED 2026-08-28.** A `Monthly` / `Cost` budget for EUR 50 already
+> existed on `rgNordicHolidays` as **`monthly-budget`** (start 2026-08-01,
+> notifications at 80 % + 100 % → `toine@van-vliet.eu` only). It was
+> reconciled in place via the `az rest` PUT below: added the **50 %**
+> threshold and wired **all three** notifications to the
+> `nordic-holidays-alerts` action group. No new `fjordvia-rg-monthly`
+> resource was created — `infra/main.bicep`'s `monthlyBudget` block now
+> mirrors `monthly-budget` (name, 2026-08-01→2027-08-01 window,
+> `GreaterThan` operator). The commands below are kept as reference; replace
+> `fjordvia-rg-monthly` with `monthly-budget` if re-running.
+
+Target shape: a **Monthly**, **Cost** budget named `monthly-budget`, amount
+**EUR 50** (`monthlyBudgetAmount` param), window **2026-08-01 → 2027-08-01**,
+with **Actual** notifications at **50 / 80 / 100 %** (`GreaterThan`) going to
+both `toine@van-vliet.eu` and the existing `nordic-holidays-alerts` action
+group. This mirrors the `monthlyBudget` resource in `infra/main.bicep`.
 
 ### 2a. Scriptable path — `az rest` PUT (the `az consumption budget create` CLI cannot attach notifications)
 
