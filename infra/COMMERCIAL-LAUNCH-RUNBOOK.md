@@ -186,6 +186,15 @@ Azure portal → **Cost Management + Billing** → pick the subscription →
 
 ## 3. #154 — Availability web test + availability/latency alerts
 
+> ⏸️ **NOT APPLIED — declined for now (2026-08-28).** Monitoring stays at
+> the existing `generateHandler` error alert (`generateHandlerAlertRule`)
+> plus the new cost budget (#150). The Standard availability web test is
+> **metered** (3 locations × every 5 min), and there is no uptime SLA
+> obligation yet. The `healthWebTest` / `availabilityAlert` / `latencyAlert`
+> blocks stay in `infra/main.bicep` as drift-only reference for when an SLA
+> commitment or a paying B2B pilot makes them worthwhile. Steps below are
+> kept unexecuted.
+
 Mirrors `healthWebTest`, `availabilityAlert`, `latencyAlert` in
 `infra/main.bicep`. All three alerts wire to the **existing**
 `nordic-holidays-alerts` action group — do not create another.
