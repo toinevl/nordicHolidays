@@ -7,12 +7,10 @@ import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
 /**
  * #140 — data-subject deletion endpoint.
  *
- * DELETE /api/owner/{ownerId}[?email=<addr>]
+ * DELETE /api/owner/{ownerId}
  *
  * Removes every `Preferences` and `Profiles` entity stored under that owner id
- * partition. If `?email=` is supplied, also removes every `Leads` row whose
- * `email` matches (case-insensitively) — Leads are partitioned by partnerId, so
- * that requires a full scan across partner partitions.
+ * partition.
  *
  * INTENTIONALLY UNAUTHENTICATED — this matches the established anonymous trust
  * model (#38 / #47). The owner id is an unguessable, client-generated UUID that
@@ -20,9 +18,18 @@ import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
  * overwrite of that owner's Preferences/Profiles through the other anonymous
  * endpoints. So the worst an abuser who somehow already knows a victim's UUID
  * can do here is delete data they could already read or clobber — no new
- * capability is exposed. The rate-limit below (shared with itinerary writes,
- * per-owner + per-IP hourly caps) bounds mass-scraping / mass-deletion abuse by
- * a caller iterating guessed UUIDs.
+ * capability is exposed.
+ *
+ * `Leads` are deliberately OUT OF SCOPE for this endpoint: they are B2B
+ * sales-prospect records that no anonymous endpoint can read, keyed by email
+ * rather than owner id, so an anonymous "delete leads by email" would be a new
+ * destructive capability with no ownership linkage. Data-subject deletion of a
+ * lead is a manual operation — see docs/runbooks/data-subject-requests.md.
+ *
+ * The rate limit below reuses the itinerary-write limiter under a distinct
+ * `owner-delete:` owner-key namespace so it does not share the per-owner bucket
+ * with real itinerary writes; the per-IP itinerary-write bucket is shared
+ * (accepted — deletion is a once-per-user action).
  */
 
 async function deletePartition(tableName: string, partitionKey: string, logger?: any): Promise<number> {
@@ -53,39 +60,6 @@ async function deletePartition(tableName: string, partitionKey: string, logger?:
   return deleted
 }
 
-async function deleteLeadsByEmail(email: string, logger?: any): Promise<number> {
-  let deleted = 0
-  const wanted = email.trim().toLowerCase()
-  if (!wanted) return 0
-  try {
-    const client = getTableClient('Leads')
-    // Leads are partitioned by partnerId, not by email, so this is a full scan.
-    for await (const entity of client.listEntities()) {
-      const raw = (entity as Record<string, unknown>).email
-      const entEmail = typeof raw === 'string' ? raw.trim().toLowerCase() : ''
-      if (!entEmail || entEmail !== wanted) continue
-
-      const pk = (entity as Record<string, unknown>).partitionKey as string
-      const rk = (entity as Record<string, unknown>).rowKey as string
-      try {
-        await client.deleteEntity(pk, rk)
-        deleted++
-      } catch (err: any) {
-        if (err?.statusCode === 404) {
-          deleted++
-          continue
-        }
-        logError(logger, `deleteLeadsByEmail: failed to delete ${pk}/${rk}`, err)
-      }
-    }
-  } catch (err: any) {
-    if (err?.statusCode !== 404 && err?.errorCode !== 'TableNotFound') {
-      logError(logger, 'deleteLeadsByEmail: scan aborted early', err)
-    }
-  }
-  return deleted
-}
-
 export async function deleteOwnerHandler(
   req: HttpRequest,
   ctx: InvocationContext,
@@ -94,8 +68,14 @@ export async function deleteOwnerHandler(
   if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
 
   const ownerId = req.params.ownerId ?? ''
+  if (!ownerId) {
+    return withCors(
+      { status: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing owner id' }) },
+      origin,
+    )
+  }
 
-  const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, req.params.ownerId ?? 'unknown', ctx)
+  const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, `owner-delete:${ownerId}`, ctx)
   if (!rateLimitResult.allowed) {
     const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
     return withCors(
@@ -109,27 +89,14 @@ export async function deleteOwnerHandler(
   }
 
   try {
-    if (!ownerId) {
-      return withCors(
-        { status: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing owner id' }) },
-        origin,
-      )
-    }
-
     const preferences = await deletePartition('Preferences', ownerId, ctx)
     const profiles = await deletePartition('Profiles', ownerId, ctx)
-
-    let leads = 0
-    const email = req.query.get('email') ?? ''
-    if (email) {
-      leads = await deleteLeadsByEmail(email, ctx)
-    }
 
     return withCors(
       {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deleted: { preferences, profiles, leads } }),
+        body: JSON.stringify({ deleted: { preferences, profiles } }),
       },
       origin,
     )

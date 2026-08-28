@@ -92,21 +92,19 @@ Goal: return everything stored for the requester.
 ### Option A — the API endpoint (preferred)
 
 `DELETE /api/owner/{ownerId}` deletes **all `Preferences` and all `Profiles`**
-rows in that owner's partition. Add `?email=<addr>` to also delete matching
-`Leads` rows across every partner partition.
+rows in that owner's partition. It deliberately does **not** touch `Leads` —
+those are B2B sales-prospect records keyed by email with no ownership
+linkage, so an anonymous "delete leads by email" would be a new destructive
+capability. Delete leads manually instead (Option B, step 5 below).
 
 ```bash
-# Preferences + Profiles only
 curl -i -X DELETE "https://<api-host>/api/owner/owner-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-# ...plus Leads for an email address
-curl -i -X DELETE "https://<api-host>/api/owner/owner-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx?email=person%40example.com"
 ```
 
 Response (HTTP 200):
 
 ```json
-{ "deleted": { "preferences": 1, "profiles": 1, "leads": 2 } }
+{ "deleted": { "preferences": 1, "profiles": 1 } }
 ```
 
 An unknown owner id is **not** an error — it returns `200` with all counts `0`

@@ -44,13 +44,11 @@ function makeContext() {
   return { log: vi.fn(), error: vi.fn(), info: vi.fn() } as any
 }
 
-function makeRequest(opts: { ownerId?: string; email?: string; method?: string }): any {
-  const query = new URLSearchParams()
-  if (opts.email) query.set('email', opts.email)
+function makeRequest(opts: { ownerId?: string; method?: string }): any {
   return {
     method: opts.method ?? 'DELETE',
     params: { ownerId: opts.ownerId },
-    query,
+    query: new URLSearchParams(),
     headers: new Map([['origin', 'http://localhost:5173']]),
   }
 }
@@ -68,10 +66,10 @@ function seed(): Record<string, Row[]> {
       { partitionKey: OWNER, rowKey: 'profile', displayName: 'Résident of Västra Götaland', email: 'resident@example.com' },
       { partitionKey: OTHER_OWNER, rowKey: 'profile', displayName: 'Someone else' },
     ],
+    // Leads must NOT be touched by this endpoint (#140 F1) — kept here to assert that.
     Leads: [
       { partitionKey: 'camping-nord', rowKey: 'lead-1', email: 'resident@example.com' },
-      { partitionKey: 'tromso-tours', rowKey: 'lead-2', email: 'resident@example.com' },
-      { partitionKey: 'fjord-tours', rowKey: 'lead-3', email: 'other@example.com' },
+      { partitionKey: 'fjord-tours', rowKey: 'lead-2', email: 'other@example.com' },
     ],
   }
 }
@@ -89,42 +87,24 @@ describe('DELETE /api/owner/{ownerId}', () => {
     const res = await deleteOwnerHandler(makeRequest({ ownerId: OWNER }), makeContext())
 
     expect(res.status).toBe(200)
-    const body = JSON.parse(res.body as string)
-    expect(body).toEqual({ deleted: { preferences: 1, profiles: 1, leads: 0 } })
-    // Other owner's rows are untouched.
+    expect(JSON.parse(res.body as string)).toEqual({ deleted: { preferences: 1, profiles: 1 } })
+    // Other owner's rows untouched.
     expect(data.Preferences).toHaveLength(1)
     expect(data.Preferences[0].partitionKey).toBe(OTHER_OWNER)
     expect(data.Profiles).toHaveLength(1)
     expect(data.Profiles[0].partitionKey).toBe(OTHER_OWNER)
   })
 
-  it('also deletes Leads rows matching ?email= (across all partner partitions)', async () => {
+  it('never touches the Leads table (leads are out of scope, #140 F1)', async () => {
     const data = seed()
     installTables(data)
 
-    const res = await deleteOwnerHandler(
-      makeRequest({ ownerId: OWNER, email: 'resident@example.com' }),
-      makeContext(),
-    )
+    await deleteOwnerHandler(makeRequest({ ownerId: OWNER }), makeContext())
 
-    expect(res.status).toBe(200)
-    const body = JSON.parse(res.body as string)
-    expect(body.deleted.leads).toBe(2)
-    expect(data.Leads).toHaveLength(1)
-    expect(data.Leads[0].email).toBe('other@example.com')
-  })
-
-  it('matches the email case-insensitively', async () => {
-    const data = seed()
-    installTables(data)
-
-    const res = await deleteOwnerHandler(
-      makeRequest({ ownerId: OWNER, email: 'RESIDENT@Example.com' }),
-      makeContext(),
-    )
-
-    const body = JSON.parse(res.body as string)
-    expect(body.deleted.leads).toBe(2)
+    expect(data.Leads).toHaveLength(2)
+    // getTableClient was never asked for 'Leads'
+    const calls = (getTableClient as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
+    expect(calls).not.toContain('Leads')
   })
 
   it('returns zero counts (not an error) for an unknown owner', async () => {
@@ -136,8 +116,16 @@ describe('DELETE /api/owner/{ownerId}', () => {
     )
 
     expect(res.status).toBe(200)
-    const body = JSON.parse(res.body as string)
-    expect(body).toEqual({ deleted: { preferences: 0, profiles: 0, leads: 0 } })
+    expect(JSON.parse(res.body as string)).toEqual({ deleted: { preferences: 0, profiles: 0 } })
+  })
+
+  it('rejects a missing owner id with 400 BEFORE calling the rate limiter (#140 F7)', async () => {
+    installTables(seed())
+
+    const res = await deleteOwnerHandler(makeRequest({ ownerId: undefined }), makeContext())
+
+    expect(res.status).toBe(400)
+    expect(checkAndIncrementItineraryWriteRateLimit).not.toHaveBeenCalled()
   })
 
   it('returns 429 when rate limited', async () => {
@@ -153,14 +141,14 @@ describe('DELETE /api/owner/{ownerId}', () => {
     expect((res.headers as Record<string, string>)['Retry-After']).toBe('1800')
   })
 
-  it('passes the ownerId to the rate limiter', async () => {
+  it('rate-limits under a distinct owner-delete: key, not the raw owner id (#140 F7)', async () => {
     installTables(seed())
 
     await deleteOwnerHandler(makeRequest({ ownerId: OWNER }), makeContext())
 
     expect(checkAndIncrementItineraryWriteRateLimit).toHaveBeenCalledWith(
       expect.anything(),
-      OWNER,
+      `owner-delete:${OWNER}`,
       expect.anything(),
     )
   })
@@ -188,9 +176,9 @@ describe('DELETE /api/owner/{ownerId}', () => {
       }
     })
 
-    const res = await deleteOwnerHandler(makeRequest({ ownerId: OWNER, email: 'resident@example.com' }), makeContext())
+    const res = await deleteOwnerHandler(makeRequest({ ownerId: OWNER }), makeContext())
 
     expect(res.status).toBe(200)
-    expect(JSON.parse(res.body as string)).toEqual({ deleted: { preferences: 0, profiles: 0, leads: 0 } })
+    expect(JSON.parse(res.body as string)).toEqual({ deleted: { preferences: 0, profiles: 0 } })
   })
 })
