@@ -21,6 +21,8 @@ export interface PartnerConfig {
   affiliateIds: AffiliateIds
   generateQuotaPerMonth: number
   rateLimitPerHour: number
+  /** Per-partner daily cap on AI itinerary generations (#151). Undefined = no partner-specific cap. */
+  llmDailyCap?: number
   leadCaptureEmail?: string
   createdAt: string
 }
@@ -70,6 +72,7 @@ function entityToConfig(e: Record<string, unknown>): PartnerConfig {
     affiliateIds,
     generateQuotaPerMonth: (e.generateQuotaPerMonth as number) ?? 0,
     rateLimitPerHour: (e.rateLimitPerHour as number) ?? 0,
+    llmDailyCap: e.llmDailyCap as number | undefined,
     leadCaptureEmail: e.leadCaptureEmail as string | undefined,
     createdAt: e.createdAt as string,
   }

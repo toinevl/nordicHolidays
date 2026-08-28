@@ -17,12 +17,23 @@ vi.mock('../lib/identity', () => ({
 
 vi.mock('../lib/rateLimit', () => ({
   checkAndIncrementRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
+  checkGlobalDailyGenerateCap: vi.fn().mockResolvedValue({ allowed: true }),
+  checkPartnerDailyGenerateCap: vi.fn().mockResolvedValue({ allowed: true }),
+}))
+
+vi.mock('../lib/partners', () => ({
+  getPartner: vi.fn().mockResolvedValue(null),
 }))
 
 import { generateHandler } from './generate'
 import { getLlmClient } from '../lib/llmClient'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
-import { checkAndIncrementRateLimit } from '../lib/rateLimit'
+import {
+  checkAndIncrementRateLimit,
+  checkGlobalDailyGenerateCap,
+  checkPartnerDailyGenerateCap,
+} from '../lib/rateLimit'
+import { getPartner } from '../lib/partners'
 import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 
 function makeItinerary(): Itinerary {
@@ -254,6 +265,122 @@ describe('POST /api/generate', () => {
     expect(body.error).toContain('Rate limit')
     expect(body.retryAfterSeconds).toBe(1234)
     expect((result.headers as any)?.['Retry-After']).toBe('1234')
+  })
+
+  it('returns 429 with code daily_capacity_reached when the global daily cap is hit (#149)', async () => {
+    ;(checkAndIncrementRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: true })
+    ;(checkGlobalDailyGenerateCap as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 4242,
+    })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Tromsø', tripDays: 7 }) } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(429)
+    const body = JSON.parse(result.body as string)
+    expect(body.code).toBe('daily_capacity_reached')
+    expect(body.error).toBe('Daily generation capacity reached')
+    expect(body.retryAfterSeconds).toBe(4242)
+    expect((result.headers as any)?.['Retry-After']).toBe('4242')
+  })
+
+  it('does not call the LLM when the global daily cap is hit (#149)', async () => {
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(makeItinerary()))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+    ;(checkGlobalDailyGenerateCap as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: false, retryAfterSeconds: 60 })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Tromsø', tripDays: 7 }) } as any
+    await generateHandler(req)
+
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('passes the global daily cap on the happy path (200)', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+    ;(checkGlobalDailyGenerateCap as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: true })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Malmö', tripDays: 14 }) } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(200)
+    expect(checkGlobalDailyGenerateCap).toHaveBeenCalled()
+  })
+
+  it('returns 429 with code partner_capacity_reached when a partner LLM cap is hit (#151)', async () => {
+    ;(getPartner as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ partnerId: 'camping-nord', llmDailyCap: 25 })
+    ;(checkPartnerDailyGenerateCap as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 777,
+    })
+
+    const req = {
+      method: 'POST',
+      headers: { get: (h: string) => (h === 'x-partner-id' ? 'camping-nord' : null) },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Tromsø', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(429)
+    const body = JSON.parse(result.body as string)
+    expect(body.code).toBe('partner_capacity_reached')
+    expect(body.error).toBe('Partner capacity reached')
+    expect(body.retryAfterSeconds).toBe(777)
+    expect((result.headers as any)?.['Retry-After']).toBe('777')
+    expect(checkPartnerDailyGenerateCap).toHaveBeenCalledWith('camping-nord', 25, undefined)
+  })
+
+  it('reads the partner slug from the ?partner query param when present (#151)', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+    ;(getPartner as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ partnerId: 'tromso-tours', llmDailyCap: 100 })
+    ;(checkPartnerDailyGenerateCap as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: true })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      query: new Map([['partner', 'tromso-tours']]),
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Malmö', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(200)
+    expect(getPartner).toHaveBeenCalledWith('tromso-tours')
+    expect(checkPartnerDailyGenerateCap).toHaveBeenCalledWith('tromso-tours', 100, undefined)
+  })
+
+  it('does not apply a partner cap when no partner param is present (#151)', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Malmö', tripDays: 7 }) } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(200)
+    expect(getPartner).not.toHaveBeenCalled()
+    expect(checkPartnerDailyGenerateCap).not.toHaveBeenCalled()
+  })
+
+  it('does not apply a partner cap when the partner has no llmDailyCap configured (#151)', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+    ;(getPartner as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ partnerId: 'camping-nord', generateQuotaPerMonth: 100 })
+
+    const req = {
+      method: 'POST',
+      headers: { get: (h: string) => (h === 'x-partner-id' ? 'camping-nord' : null) },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Malmö', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+
+    expect(result.status).toBe(200)
+    expect(getPartner).toHaveBeenCalledWith('camping-nord')
+    expect(checkPartnerDailyGenerateCap).not.toHaveBeenCalled()
   })
 
   it('clamps tripDays 99 to 30', async () => {

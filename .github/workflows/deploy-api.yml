@@ -42,7 +42,11 @@ jobs:
               ENTRA_ISSUER_HOST="${ENTRA_ISSUER_HOST:-login.microsoftonline.com}" \
               ENTRA_API_AUDIENCE="${ENTRA_API_AUDIENCE}" \
               ENTRA_REQUIRED_SCOPE="${ENTRA_REQUIRED_SCOPE:-user_impersonation}" \
-              ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://sweden.van-vliet.eu,https://fjordvia.com,http://localhost:5173}"
+              ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://sweden.van-vliet.eu,https://fjordvia.com,http://localhost:5173}" \
+              GENERATE_DAILY_CAP="${GENERATE_DAILY_CAP:-500}" \
+              RETENTION_ITINERARY_DAYS="${RETENTION_ITINERARY_DAYS:-365}" \
+              RETENTION_LEADS_DAYS="${RETENTION_LEADS_DAYS:-730}" \
+              RETENTION_DRY_RUN="${RETENTION_DRY_RUN:-0}"
         env:
           ENTRA_ISSUER_HOST: ${{ secrets.ENTRA_ISSUER_HOST || 'login.microsoftonline.com' }}
           ENTRA_API_AUDIENCE: ${{ secrets.ENTRA_API_AUDIENCE }}
@@ -52,6 +56,16 @@ jobs:
           # (and silences its "falling back to localhost" warning). Local dev still works
           # via the localhost fallback when this is unset.
           ALLOWED_ORIGINS: ${{ vars.NORDIC_HOLIDAYS_ALLOWED_ORIGINS || 'https://sweden.van-vliet.eu,https://fjordvia.com,http://localhost:5173' }}
+          # #149 global daily cap on POST /api/generate — total AI Foundry generations
+          # allowed per UTC day before the endpoint returns 429 {code:"daily_capacity_reached"}.
+          GENERATE_DAILY_CAP: ${{ vars.NORDIC_HOLIDAYS_GENERATE_DAILY_CAP || '500' }}
+          # #152 retention cleanup (api/src/functions/cleanup.ts): delete Itineraries
+          # untouched longer than RETENTION_ITINERARY_DAYS and Leads older than
+          # RETENTION_LEADS_DAYS. RETENTION_DRY_RUN=1 logs what would be deleted without
+          # deleting.
+          RETENTION_ITINERARY_DAYS: ${{ vars.NORDIC_HOLIDAYS_RETENTION_ITINERARY_DAYS || '365' }}
+          RETENTION_LEADS_DAYS: ${{ vars.NORDIC_HOLIDAYS_RETENTION_LEADS_DAYS || '730' }}
+          RETENTION_DRY_RUN: ${{ vars.NORDIC_HOLIDAYS_RETENTION_DRY_RUN || '0' }}
 
       - name: Install dependencies
         working-directory: api

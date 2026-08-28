@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('./tableClient', () => ({
   getTableClient: vi.fn(),
@@ -14,6 +14,8 @@ import {
   checkAndIncrementTrackRateLimit,
   RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR,
   RATE_LIMIT_TRACK_PER_IP_PER_HOUR,
+  checkGlobalDailyGenerateCap,
+  checkPartnerDailyGenerateCap,
 } from './rateLimit'
 import { getTableClient } from './tableClient'
 
@@ -377,5 +379,162 @@ describe('checkAndIncrementTrackRateLimit (#74)', () => {
 
     const result = await checkAndIncrementTrackRateLimit(makeRequest('10.0.0.9'), 'owner-123')
     expect(result.allowed).toBe(true)
+  })
+})
+
+describe('checkGlobalDailyGenerateCap (#149)', () => {
+  const today = new Date().toISOString().slice(0, 10)
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    delete process.env.GENERATE_DAILY_CAP
+  })
+
+  afterEach(() => {
+    delete process.env.GENERATE_DAILY_CAP
+  })
+
+  it('allows and creates the day counter on the first generation of the day', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkGlobalDailyGenerateCap()
+
+    expect(result.allowed).toBe(true)
+    expect(client.createEntity).toHaveBeenCalledTimes(1)
+    const created = client.createEntity.mock.calls[0][0]
+    expect(created.partitionKey).toBe('gen-global')
+    expect(created.rowKey).toBe(today)
+    expect(created.count).toBe(1)
+  })
+
+  it('allows and increments when the running count is under the default cap (500)', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-global', rowKey: today, count: 120 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkGlobalDailyGenerateCap()
+
+    expect(result.allowed).toBe(true)
+    expect(client.updateEntity).toHaveBeenCalledTimes(1)
+    expect(client.updateEntity.mock.calls[0][0].count).toBe(121)
+  })
+
+  it('rejects with retryAfterSeconds when the running count exceeds the cap', async () => {
+    process.env.GENERATE_DAILY_CAP = '500'
+    const client = makeClient({
+      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-global', rowKey: today, count: 501 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkGlobalDailyGenerateCap()
+
+    expect(result.allowed).toBe(false)
+    expect(result.retryAfterSeconds).toBeGreaterThan(0)
+    expect(result.retryAfterSeconds).toBeLessThanOrEqual(86400)
+    expect(client.updateEntity).not.toHaveBeenCalled()
+  })
+
+  it('honours a custom GENERATE_DAILY_CAP env value', async () => {
+    process.env.GENERATE_DAILY_CAP = '10'
+    const client = makeClient({
+      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-global', rowKey: today, count: 11 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkGlobalDailyGenerateCap()
+    expect(result.allowed).toBe(false)
+  })
+
+  it('fails open on table client errors', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
+      createEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const mockLogger = { log: { error: vi.fn() } }
+    const result = await checkGlobalDailyGenerateCap(mockLogger as any)
+
+    expect(result.allowed).toBe(true)
+    expect(mockLogger.log.error).toHaveBeenCalled()
+  })
+
+  it('uses a partition key that cannot collide with the hourly limiters', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    await checkGlobalDailyGenerateCap()
+
+    const pk = client.createEntity.mock.calls[0][0].partitionKey as string
+    expect(pk).toBe('gen-global')
+    expect(pk.startsWith('owner:')).toBe(false)
+    expect(pk.startsWith('ip:')).toBe(false)
+  })
+})
+
+describe('checkPartnerDailyGenerateCap (#151)', () => {
+  const today = new Date().toISOString().slice(0, 10)
+
+  beforeEach(() => vi.clearAllMocks())
+
+  it('allows and creates a partner-scoped day counter on first use', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkPartnerDailyGenerateCap('visitvästerbotten', 50)
+
+    expect(result.allowed).toBe(true)
+    const created = client.createEntity.mock.calls[0][0]
+    expect(created.partitionKey).toBe('gen-partner:visitvästerbotten')
+    expect(created.rowKey).toBe(today)
+    expect(created.count).toBe(1)
+  })
+
+  it('allows and increments when under the partner cap', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-partner:tromsø-tours', rowKey: today, count: 9 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkPartnerDailyGenerateCap('tromsø-tours', 50)
+
+    expect(result.allowed).toBe(true)
+    expect(client.updateEntity.mock.calls[0][0].count).toBe(10)
+  })
+
+  it('rejects when the partner running count exceeds its cap', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockResolvedValue({ partitionKey: 'gen-partner:tromsø-tours', rowKey: today, count: 51 }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await checkPartnerDailyGenerateCap('tromsø-tours', 50)
+
+    expect(result.allowed).toBe(false)
+    expect(result.retryAfterSeconds).toBeGreaterThan(0)
+    expect(result.retryAfterSeconds).toBeLessThanOrEqual(86400)
+    expect(client.updateEntity).not.toHaveBeenCalled()
+  })
+
+  it('fails open on table client errors', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
+      createEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const mockLogger = { log: { error: vi.fn() } }
+    const result = await checkPartnerDailyGenerateCap('camping-nord', 50, mockLogger as any)
+
+    expect(result.allowed).toBe(true)
+    expect(mockLogger.log.error).toHaveBeenCalled()
   })
 })

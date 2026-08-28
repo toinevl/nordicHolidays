@@ -29,6 +29,7 @@ const partnerEntity = {
   affiliateGyg: 'gyg-456',
   generateQuotaPerMonth: 100,
   rateLimitPerHour: 20,
+  llmDailyCap: 40,
   leadCaptureEmail: 'leads@camping-nord.se',
   createdAt: '2026-07-01T00:00:00.000Z',
 }
@@ -56,8 +57,21 @@ describe('getPartner', () => {
     expect(config!.affiliateIds.gyg).toBe('gyg-456')
     expect(config!.generateQuotaPerMonth).toBe(100)
     expect(config!.rateLimitPerHour).toBe(20)
+    expect(config!.llmDailyCap).toBe(40)
     expect(config!.leadCaptureEmail).toBe('leads@camping-nord.se')
     expect(config!.createdAt).toBe('2026-07-01T00:00:00.000Z')
+  })
+
+  it('leaves llmDailyCap undefined when the entity has no such column', async () => {
+    const { llmDailyCap, ...entityWithoutCap } = partnerEntity
+    const client = makeClient({
+      getEntity: vi.fn().mockResolvedValue(entityWithoutCap),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const config = await getPartner('camping-nord')
+    expect(config).not.toBeNull()
+    expect(config!.llmDailyCap).toBeUndefined()
   })
 
   it('returns null for an unknown partner', async () => {

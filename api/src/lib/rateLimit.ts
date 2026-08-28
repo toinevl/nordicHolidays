@@ -54,6 +54,32 @@ function getCurrentHourWindow(): string {
 }
 
 /**
+ * Get the current UTC day as an ISO date string (e.g., '2026-08-28').
+ * Used as the rowKey for the daily generation-cap counters (#149, #151).
+ */
+function getCurrentDayWindow(): string {
+  return new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+}
+
+/**
+ * Get the seconds remaining until the next UTC midnight, when the daily
+ * generation-cap counters roll over to a fresh day partition.
+ */
+function getSecondsUntilUtcMidnight(): number {
+  const now = new Date()
+  const nextMidnight = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0,
+    0,
+    0,
+    0
+  )
+  return Math.ceil((nextMidnight - now.getTime()) / 1000)
+}
+
+/**
  * Get the seconds remaining until the end of the current hour.
  */
 function getSecondsUntilHourEnd(): number {
@@ -454,6 +480,123 @@ export async function checkAndIncrementLeadRateLimit(
     return { allowed: true }
   } catch (err) {
     logError(logger, `Leads rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    return { allowed: true }
+  }
+}
+
+/**
+ * Global daily cap on AI itinerary generations (#149).
+ *
+ * Bounds total Azure AI Foundry spend behind POST /api/generate regardless of
+ * which owner/IP/partner drives the traffic. Every accepted generation
+ * increments a single `gen-global` / <YYYY-MM-DD> counter in the RateLimits
+ * table (same get-then-update-with-Merge / create-on-404 pattern as the hourly
+ * limiters). Once the running count exceeds `GENERATE_DAILY_CAP` (default 500)
+ * the request is refused with the seconds remaining until the counter rolls
+ * over at the next UTC midnight. Fails OPEN on any Table Storage error, matching
+ * every other limiter in this module.
+ */
+export async function checkGlobalDailyGenerateCap(logger?: any): Promise<RateLimitResult> {
+  const cap = Number(process.env.GENERATE_DAILY_CAP) || 500
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const dayWindow = getCurrentDayWindow()
+    const retryAfter = getSecondsUntilUtcMidnight()
+    const partitionKey = 'gen-global'
+
+    try {
+      const entity = await client.getEntity(partitionKey, dayWindow)
+      const count = (entity.count as number) ?? 0
+      if (count > cap) {
+        return { allowed: false, retryAfterSeconds: retryAfter }
+      }
+      await client.updateEntity(
+        {
+          partitionKey: entity.partitionKey as string,
+          rowKey: entity.rowKey as string,
+          ...entity,
+          count: count + 1,
+        },
+        'Merge'
+      )
+    } catch (err: any) {
+      if (err?.statusCode === 404) {
+        await client.createEntity({
+          partitionKey,
+          rowKey: dayWindow,
+          count: 1,
+          timestamp: now.toISOString(),
+        })
+      } else {
+        logError(logger, `Global daily generate cap check failed: ${err instanceof Error ? err.message : String(err)}`)
+        return { allowed: true }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    logError(logger, `Global daily generate cap check failed: ${err instanceof Error ? err.message : String(err)}`)
+    return { allowed: true }
+  }
+}
+
+/**
+ * Per-partner daily cap on AI itinerary generations (#151).
+ *
+ * Same mechanism as checkGlobalDailyGenerateCap, but scoped to a single partner
+ * slug (`gen-partner:<slug>` / <YYYY-MM-DD>) and driven by that partner's own
+ * `llmDailyCap` config value rather than an env var. Fails OPEN on any Table
+ * Storage error.
+ */
+export async function checkPartnerDailyGenerateCap(
+  partnerSlug: string,
+  cap: number,
+  logger?: any
+): Promise<RateLimitResult> {
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const dayWindow = getCurrentDayWindow()
+    const retryAfter = getSecondsUntilUtcMidnight()
+    const partitionKey = `gen-partner:${partnerSlug}`
+
+    try {
+      const entity = await client.getEntity(partitionKey, dayWindow)
+      const count = (entity.count as number) ?? 0
+      if (count > cap) {
+        return { allowed: false, retryAfterSeconds: retryAfter }
+      }
+      await client.updateEntity(
+        {
+          partitionKey: entity.partitionKey as string,
+          rowKey: entity.rowKey as string,
+          ...entity,
+          count: count + 1,
+        },
+        'Merge'
+      )
+    } catch (err: any) {
+      if (err?.statusCode === 404) {
+        await client.createEntity({
+          partitionKey,
+          rowKey: dayWindow,
+          count: 1,
+          timestamp: now.toISOString(),
+        })
+      } else {
+        logError(logger, `Partner daily generate cap check failed for ${partnerSlug}: ${err instanceof Error ? err.message : String(err)}`)
+        return { allowed: true }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    logError(logger, `Partner daily generate cap check failed for ${partnerSlug}: ${err instanceof Error ? err.message : String(err)}`)
     return { allowed: true }
   }
 }

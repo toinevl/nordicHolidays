@@ -12,13 +12,27 @@ All endpoints are prefixed with `/api`. Requests and responses use `application/
 
 ## LLM Provider
 
-The generate endpoint uses **Azure AI Foundry** (via OpenAI SDK) to access GPT models, configured via three Azure App Settings:
+The generate endpoint uses **Azure AI Foundry** (via OpenAI SDK) to access GPT models, configured via Azure App Settings:
 
 | Setting | Required | Default | Description |
 |---------|----------|---------|-------------|
 | `AZURE_FOUNDRY_API_KEY` | yes | — | API key from Azure AI Foundry (stored in Key Vault secret `AZURE-FOUNDRY-API-KEY`) |
 | `AZURE_FOUNDRY_ENDPOINT` | yes | — | Azure AI Foundry endpoint URL |
 | `LLM_MODEL` | no | `gpt-4o` | Model name deployed in Azure AI Foundry |
+| `LLM_MAX_TOKENS` | no | `4096` | Upper bound on `max_completion_tokens` per generation request |
+
+### Spend & retention controls
+
+Bound the cost and data footprint behind the API. All are wired by `.github/workflows/deploy-api.yml` from `NORDIC_HOLIDAYS_*` repo variables and default safely when unset.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `GENERATE_DAILY_CAP` | `500` | Global cap on accepted `POST /api/generate` calls per UTC day (#149). Counted in the `RateLimits` table under partition `gen-global`, rowKey `YYYY-MM-DD`. Over the cap → `429 {code:"daily_capacity_reached"}` with `Retry-After` set to the seconds until the next UTC midnight. Fails open on Table Storage errors. |
+| `RETENTION_ITINERARY_DAYS` | `365` | Age (days, since last change) after which the retention cleanup deletes an `Itineraries` row (#152). |
+| `RETENTION_LEADS_DAYS` | `730` | Age (days) after which the retention cleanup deletes a `Leads` row (#152). |
+| `RETENTION_DRY_RUN` | `0` | When `1`, the retention cleanup logs what it would delete without deleting. |
+
+Per-partner daily generation caps (#151) are **not** env-driven: set an `llmDailyCap` number column on the partner's row in the `Partners` table. When a `POST /api/generate` request carries a partner slug (`?partner=<slug>` query param or `X-Partner-Id` header) and that partner has `llmDailyCap` set, exceeding it returns `429 {code:"partner_capacity_reached"}`. Counted under partition `gen-partner:<slug>`, rowKey `YYYY-MM-DD`.
 
 ### Switching models
 
@@ -160,7 +174,12 @@ Generates an AI-powered itinerary using Azure AI Foundry (forced tool use for st
 ```
 
 **Response 400** — invalid request body.
-**Response 429** — rate limit exceeded (5/hour per owner, 20/hour per IP).
+**Response 429** — capacity limit hit. One of:
+- per-owner / per-IP hourly rate limit (5/hour per owner, 20/hour per IP) — `{ "error": "Rate limit exceeded", "retryAfterSeconds": N }`
+- global daily cap (`GENERATE_DAILY_CAP`, #149) — `{ "error": "Daily generation capacity reached", "code": "daily_capacity_reached", "retryAfterSeconds": N }`
+- per-partner daily cap (`llmDailyCap`, #151) — `{ "error": "Partner capacity reached", "code": "partner_capacity_reached", "retryAfterSeconds": N }`
+
+All 429 responses carry a `Retry-After` header (seconds).
 **Response 502** — Azure AI Foundry API error.
 
 ---
@@ -240,8 +259,16 @@ Saves a new itinerary and returns its assigned ID.
 
 **Response 201**
 ```json
-{ "id": "a1b2c3d4" }
+{ "id": "a1b2c3d4", "editToken": "GqU3...43-char-base64url" }
 ```
+
+`editToken` (#146) is returned **once** here and never again — only its
+sha256 hash is stored server-side. The client must persist it (localStorage
+`fjordvia:edit:<id>`) and send it as the `X-Edit-Token` header on every
+`PATCH /api/itineraries/:id` and `POST /api/itineraries/:id/undo`. Reads
+(`GET`, list) need no token. A mutating call with a missing/wrong token
+gets `403 {code:"edit_token_invalid"}`; an itinerary saved before #146 has
+no token and returns `403 {code:"legacy_no_token"}` on any write.
 
 **Response 400** — missing name or itinerary.
 
