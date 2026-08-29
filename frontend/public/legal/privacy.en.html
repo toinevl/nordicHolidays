@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Fjordvia</title>
+  <meta name="description" content="How Fjordvia collects, uses and protects your personal data, and the rights you have under the GDPR." />
+  <meta name="robots" content="noindex" />
+  <style>
+    :root {
+      --bg: #faf6ef;
+      --ink: #1c1917;
+      --ink-muted: #5c554b;
+      --primary: #2563eb;
+      --border: #e2dcd2;
+      --card: #fffdf8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Georgia, 'Times New Roman', serif;
+      line-height: 1.7;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .wordmark {
+      font-size: 1.75rem; font-weight: 700; letter-spacing: 0.01em;
+      color: var(--ink); text-decoration: none; display: inline-block; margin-bottom: 0.25rem;
+    }
+    .wordmark:hover { color: var(--primary); }
+    .backlink { font-size: 0.85rem; color: var(--ink-muted); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    .backlink:hover { color: var(--primary); }
+    .draft-banner {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-left: 6px solid #d97706;
+      color: #78350f;
+      border-radius: 6px;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 2.25rem;
+      font-size: 0.95rem;
+    }
+    .draft-banner strong { letter-spacing: 0.04em; }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .updated { color: var(--ink-muted); font-size: 0.9rem; margin-bottom: 2.25rem; }
+    h2 { font-size: 1.2rem; font-weight: 700; margin: 2.25rem 0 0.75rem; }
+    h3 { font-size: 1rem; font-weight: 700; margin: 1.5rem 0 0.4rem; }
+    p { margin-bottom: 0.9rem; }
+    ul, ol { margin: 0 0 1rem 1.4rem; }
+    li { margin-bottom: 0.4rem; }
+    a { color: var(--primary); }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.92rem; }
+    th, td { border: 1px solid var(--border); padding: 0.55rem 0.7rem; text-align: left; vertical-align: top; }
+    th { background: var(--card); font-family: system-ui, sans-serif; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; }
+    td:first-child { white-space: normal; }
+    .ph { border: 1px solid #dc2626; color: #dc2626; padding: 0 4px; }
+    .legal-nav { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--border); font-size: 0.92rem; }
+    .legal-nav p { margin-bottom: 0.35rem; color: var(--ink-muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="wordmark" href="/">Fjord<span style="font-style:italic;">via</span></a><br />
+    <a class="backlink" href="/">&larr; Back to Fjordvia</a>
+
+    <div class="draft-banner">
+      <strong>DRAFT — pending legal review.</strong>
+      This privacy policy has not yet been reviewed by a lawyer. Items shown in
+      <span class="ph">red placeholders</span> (company name, address, contact details) must be
+      completed before publication. Retention periods mentioned below are target values from a
+      pending internal decision (wishlist item #152) and may change.
+    </div>
+
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: 28 August 2026</p>
+
+    <h2>1. Who is responsible for your data (controller)</h2>
+    <p>
+      The controller within the meaning of the EU General Data Protection Regulation (GDPR) for the
+      personal data processed via this website is:
+    </p>
+    <ul>
+      <li>Company name: <span class="ph">[LEGAL_NAME]</span></li>
+      <li>Address: <span class="ph">[ADDRESS]</span></li>
+      <li>Chamber of Commerce (KvK) number: <span class="ph">[KVK]</span></li>
+      <li>VAT identification number: <span class="ph">[VAT_ID]</span></li>
+    </ul>
+    <p>
+      Contact for privacy questions and requests: <span class="ph">[EMAIL]</span>
+      (telephone: <span class="ph">[PHONE]</span>). We aim to respond to any privacy request within
+      30 days.
+    </p>
+
+    <h2>2. Which data we collect</h2>
+    <ul>
+      <li>
+        <strong>Itineraries and travel preferences</strong> — the trip parameters you enter (start
+        and end point, country, travel dates, must-visit and avoid lists) and the generated
+        itinerary, saved so you can share and edit it.
+      </li>
+      <li>
+        <strong>Anonymous owner UUID and edit tokens</strong> — a random identifier and the share /
+        edit tokens belonging to an itinerary. By themselves these do not identify a person.
+      </li>
+      <li>
+        <strong>Lead e-mail address and consent flag</strong> — if you leave your e-mail address
+        (for example to be notified about new features), we store that address together with a flag
+        recording that you consented.
+      </li>
+      <li>
+        <strong>Click events</strong> — anonymous clicks on outbound affiliate links (car rental,
+        hotels, activities), recorded via our <code>/api/track</code> endpoint.
+      </li>
+      <li>
+        <strong>IP address and diagnostic logs</strong> — your IP address is used for rate limiting,
+        and technical logs are collected in Azure Application Insights for security and
+        troubleshooting.
+      </li>
+    </ul>
+
+    <h2>3. Why we use your data and on what legal basis</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Data category</th>
+          <th>Purpose</th>
+          <th>Legal basis (GDPR)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Itineraries and travel preferences</td>
+          <td>Generating, saving, sharing and editing your trip plan</td>
+          <td>Performance of a contract / steps prior to entering into it (Art. 6(1)(b)); legitimate interest for improving the service (Art. 6(1)(f))</td>
+        </tr>
+        <tr>
+          <td>Anonymous owner UUID and edit tokens</td>
+          <td>Linking you to your saved itinerary and protecting edits</td>
+          <td>Performance of a contract (Art. 6(1)(b))</td>
+        </tr>
+        <tr>
+          <td>Lead e-mail address and consent flag</td>
+          <td>Sending updates you asked for; proving consent</td>
+          <td>Consent (Art. 6(1)(a)), withdrawable at any time</td>
+        </tr>
+        <tr>
+          <td>Click events (<code>/api/track</code>)</td>
+          <td>Anonymous statistics on outbound partner links</td>
+          <td>Legitimate interest (Art. 6(1)(f)); no personally identifying profiles are built</td>
+        </tr>
+        <tr>
+          <td>IP address and diagnostic logs</td>
+          <td>Security, abuse and rate limiting, fault diagnosis</td>
+          <td>Legitimate interest (Art. 6(1)(f)); legal obligation where logs are required (Art. 6(1)(c))</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. How long we keep your data (retention)</h2>
+    <ul>
+      <li>
+        <strong>Itineraries:</strong> deleted <strong>365 days</strong> after the last update.
+      </li>
+      <li>
+        <strong>Lead e-mail addresses:</strong> deleted <strong>730 days</strong> after the last
+        interaction, or earlier if consent is withdrawn.
+      </li>
+      <li>
+        <strong>Click events:</strong> kept in aggregated form; raw events are removed once
+        statistics have been processed.
+      </li>
+      <li>
+        <strong>Diagnostic logs:</strong> kept for the retention period configured in Azure
+        Application Insights (currently up to 90 days).
+      </li>
+    </ul>
+    <p>
+      <em>Note:</em> the itinerary and lead retention periods above are target values from a pending
+      internal decision (wishlist item #152). Until that decision is implemented and legally
+      reviewed, these figures are indicative.
+    </p>
+
+    <h2>5. Sub-processors</h2>
+    <p>
+      We use the following processors to operate this website. Each processes data only on our
+      instructions and under a data-processing agreement:
+    </p>
+    <ul>
+      <li><strong>Microsoft Azure</strong> — hosting of the website, API and database (EU region).</li>
+      <li><strong>Azure Maps</strong> — map display and route calculation.</li>
+      <li><strong>Azure OpenAI / Azure AI Foundry</strong> — AI generation of itinerary content.</li>
+      <li><strong>Azure Application Insights</strong> — technical logs and error monitoring.</li>
+      <li><strong>Travelpayouts</strong> — affiliate programme for flights and travel partners (outbound links).</li>
+      <li><strong>DiscoverCars</strong> — affiliate programme for car rental (outbound links).</li>
+      <li><strong>GetYourGuide</strong> — affiliate programme for activities and tours (outbound links).</li>
+    </ul>
+    <p>
+      Clicking an outbound partner link takes you to that partner's own website, where their privacy
+      policy applies to any data you provide there.
+    </p>
+
+    <h2>6. Your rights</h2>
+    <p>You have the following rights under the GDPR:</p>
+    <ul>
+      <li><strong>Access</strong> — a copy of the personal data we process about you;</li>
+      <li><strong>Rectification</strong> — correction of incorrect data;</li>
+      <li><strong>Erasure</strong> — deletion of your data ("right to be forgotten");</li>
+      <li><strong>Restriction</strong> — temporary restriction of processing;</li>
+      <li><strong>Data portability</strong> — receipt of your data in a structured, commonly used format;</li>
+      <li><strong>Objection</strong> — objection to processing based on legitimate interest.</li>
+    </ul>
+    <p>
+      Send your request to <span class="ph">[EMAIL]</span>. We handle requests according to our
+      documented internal privacy-request procedure and respond within 30 days. You also have the
+      right to lodge a complaint with the Dutch supervisory authority, the
+      Autoriteit Persoonsgegevens.
+    </p>
+
+    <h2>7. International data transfers</h2>
+    <p>
+      Our Azure resources process data in EU data regions. The Azure AI Foundry resource used for
+      itinerary generation is intended to run in an EU region as well; its exact region still needs
+      to be verified (<span class="ph">[FOUNDRY_REGION]</span>). If a transfer to a country outside
+      the EEA ever becomes necessary, we will ensure an adequate level of protection, for example
+      via the European Commission's standard contractual clauses, and update this policy.
+    </p>
+
+    <h2>8. Changes to this policy</h2>
+    <p>
+      We may update this privacy policy from time to time. The date under the title always shows
+      when it was last changed.
+    </p>
+
+    <div class="legal-nav">
+      <p>Related:</p>
+      <p>
+        <a href="cookies.en.html">Cookie policy</a> &middot;
+        <a href="terms.en.html">Terms of use</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

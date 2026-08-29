@@ -218,6 +218,15 @@ export interface LocaleStrings {
     foodRegions: string
     tagline: string
     buildLocal: string
+    colofon: string
+    privacy: string
+    cookies: string
+  }
+  consent: {
+    bannerText: string
+    accept: string
+    decline: string
+    readMore: string
   }
   loading: {
     generating: string
@@ -281,6 +290,7 @@ export type LocaleKey =
   | `map3d.${keyof LocaleStrings['map3d']}`
   | `b2b.${keyof LocaleStrings['b2b']}`
   | `footer.${keyof LocaleStrings['footer']}`
+  | `consent.${keyof LocaleStrings['consent']}`
   | `loading.${keyof LocaleStrings['loading']}`
   | `widget.${keyof LocaleStrings['widget']}`
   | `overview.${keyof LocaleStrings['overview']}`

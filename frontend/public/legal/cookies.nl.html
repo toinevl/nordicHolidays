@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cookiebeleid — Fjordvia</title>
+  <meta name="description" content="Welke cookies Fjordvia gebruikt, welke voorkeur je opslaan kunt, wat we pas ná toestemming meten en hoe je je toestemming intrekt." />
+  <meta name="robots" content="noindex" />
+  <style>
+    :root {
+      --bg: #faf6ef;
+      --ink: #1c1917;
+      --ink-muted: #5c554b;
+      --primary: #2563eb;
+      --border: #e2dcd2;
+      --card: #fffdf8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Georgia, 'Times New Roman', serif;
+      line-height: 1.7;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .wordmark {
+      font-size: 1.75rem; font-weight: 700; letter-spacing: 0.01em;
+      color: var(--ink); text-decoration: none; display: inline-block; margin-bottom: 0.25rem;
+    }
+    .wordmark:hover { color: var(--primary); }
+    .backlink { font-size: 0.85rem; color: var(--ink-muted); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+    .backlink:hover { color: var(--primary); }
+    .draft-banner {
+      background: #fef3c7; border: 1px solid #f59e0b; border-left: 6px solid #d97706;
+      color: #78350f; border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 2.25rem; font-size: 0.95rem;
+    }
+    .draft-banner strong { letter-spacing: 0.04em; }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .updated { color: var(--ink-muted); font-size: 0.9rem; margin-bottom: 2.25rem; }
+    h2 { font-size: 1.2rem; font-weight: 700; margin: 2.25rem 0 0.75rem; }
+    p { margin-bottom: 0.9rem; }
+    ul, ol { margin: 0 0 1rem 1.4rem; }
+    li { margin-bottom: 0.4rem; }
+    a { color: var(--primary); }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88em; background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; padding: 0.1em 0.35em;
+    }
+    .ph { border: 1px solid #dc2626; color: #dc2626; padding: 0 4px; }
+    .legal-nav { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--border); font-size: 0.92rem; }
+    .legal-nav p { margin-bottom: 0.35rem; color: var(--ink-muted); }
+    .cookie-settings-btn {
+      display: inline-block; margin: 0.25rem 0 1rem; padding: 0.55rem 1.2rem;
+      background: var(--primary); color: #fff; border: none; border-radius: 6px;
+      font-family: system-ui, sans-serif; font-size: 0.92rem; cursor: pointer;
+    }
+    .cookie-settings-btn:hover { background: #1d4fd8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="wordmark" href="/">Fjord<span style="font-style:italic;">via</span></a><br />
+    <a class="backlink" href="/">&larr; Terug naar Fjordvia</a>
+
+    <div class="draft-banner">
+      <strong>CONCEPT — in afwachting van juridische toetsing.</strong>
+      Dit cookiebeleid is nog niet door een jurist beoordeeld. Items in
+      <span class="ph">rode placeholders</span> moeten vóór publicatie nog worden ingevuld.
+    </div>
+
+    <h1>Cookiebeleid</h1>
+    <p class="updated">Laatst bijgewerkt: 28 augustus 2026</p>
+
+    <h2>1. Eén voorkeur, lokaal bewaard</h2>
+    <p>
+      Fjordvia gebruikt geen tracking- of advertentiecookies van derden. We bewaren jouw keuze over
+      anonieme meetgegevens in één voorkeursitem in de localStorage van je browser, onder de sleutel
+      <code>fjordvia:consent</code>. Deze voorkeur verloopt niet en wordt niet met anderen gedeeld.
+    </p>
+    <p>
+      Naast dit voorkeursitem gebruikt de site alleen functionele opslag die nodig is om te werken:
+      je gekozen taal (<code>nordicholidays_locale</code>) en een anonieme owner-UUID
+      (<code>ownerId</code>) zodat je reisplannen kunt opslaan en terugvinden. Hiervoor vraag je geen
+      toestemming — dit is strikt noodzakelijk voor de dienst.
+    </p>
+
+    <h2>2. Welke gegevens bewaart dit voorkeursitem?</h2>
+    <ul>
+      <li>
+        <strong>Eén veld: je toestemmingskeuze</strong> — <em>akkoord</em>, <em>geweigerd</em> of
+        <em>nog niet gevraagd</em>. Meer niet.
+      </li>
+      <li>
+        <strong>Je anonieme owner-UUID</strong> — een willekeurige identificatie die je reisplannen aan
+        je browser koppelt. Deze wordt in een apart item (<code>ownerId</code>) bewaard en op zichzelf
+        identificeert het geen persoon.
+      </li>
+    </ul>
+
+    <h2>3. Wat meten we pas ná toestemming?</h2>
+    <p>
+      Alleen als je akkoord gaat, registreren we anonieme klikken op uitgaande partnerlinks
+      (autoverhuur, accommodaties, activiteiten) via ons <code>/api/track</code>-endpoint. Per klik
+      bewaren we:
+    </p>
+    <ul>
+      <li>het type link (bijv. <em>accommodatie</em>, <em>autoverhuur</em>, <em>activiteit</em>);</li>
+      <li>de stad en de taal waar de link verscheen;</li>
+      <li>je anonieme owner-UUID, zodat we niet dezelfde klik dubbel tellen;</li>
+      <li>in de serverlogs van onze API ook je IP-adres, voor beveiliging en misbruikpreventie.</li>
+    </ul>
+    <p>
+      Ga je niet akkoord, dan wordt er <strong>niets</strong> geregistreerd: er verlaat geen enkele
+      klikgebeurtenis je browser. De site werkt gewoon volledig zonder deze meetgegevens.
+    </p>
+
+    <h2>4. Toestemming intrekken of wijzigen</h2>
+    <p>
+      Je keuze is nooit definitief. Met de knop hieronder verwijder je het opgeslagen voorkeursitem;
+      daarna vragen we je de volgende keer dat je de site opent opnieuw naar je voorkeur. Weigeren
+      stopt alle meetgegevens direct.
+    </p>
+    <button class="cookie-settings-btn" type="button" id="cookie-settings">Cookievoorkeuren opnieuw instellen</button>
+    <p id="cookie-settings-done" style="display:none; color: #2F6E44;" role="status">
+      Je keuze is gewist. Bij je volgende bezoek vragen we het opnieuw.
+    </p>
+
+    <h2>5. Vragen</h2>
+    <p>
+      Vragen over dit cookiebeleid kun je sturen naar <span class="ph">[EMAIL]</span>. Zie ook onze
+      <a href="privacy.nl.html">privacyverklaring</a>.
+    </p>
+
+    <div class="legal-nav">
+      <p>Verwant:</p>
+      <p>
+        <a href="privacy.nl.html">Privacyverklaring</a> &middot;
+        <a href="terms.nl.html">Gebruiksvoorwaarden</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Withdraw consent (#137): clear the stored choice so the consent banner
+    // re-appears on the next visit to the app. Removing an existing key also
+    // fires a `storage` event, which re-shows the banner in other open tabs.
+    document.getElementById('cookie-settings')?.addEventListener('click', function () {
+      try {
+        localStorage.removeItem('fjordvia:consent')
+      } catch (e) {
+        /* localStorage onbeschikbaar — niets te wissen */
+      }
+      var done = document.getElementById('cookie-settings-done')
+      if (done) done.style.display = 'block'
+    })
+  </script>
+</body>
+</html>

@@ -11,7 +11,9 @@ import type { Itinerary, ItineraryStop, Locale } from './types'
 import { apiClient, warmUpApi } from './api/client'
 import { setLocale, getLocale, t, tpl } from './i18n/index'
 import { initialize, handleRedirect } from './lib/auth'
-import { affiliateClickPayload, trackAffiliateClick } from './lib/tracking'
+import { affiliateClickPayload, trackAffiliateClickGated } from './lib/tracking'
+import { resetConsent, onConsentChange } from './lib/consent'
+import { ConsentBanner } from './components/ConsentBanner'
 import { B2BSection } from './components/B2BSection'
 import { isWidgetMode, getPartnerSlug, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
 import { WidgetFooter } from './components/WidgetFooter'
@@ -35,9 +37,11 @@ warmUpApi()
 // Affiliate click-through beacon (#74): one delegated listener for all
 // data-affiliate links (#70–#72). Never preventDefault — the links keep
 // opening in their new tab exactly as before; the beacon uses keepalive.
+// #137: the beacon is consent-gated — with no stored choice or a declined
+// choice, trackAffiliateClickGated drops the event before any request.
 document.addEventListener('click', (e) => {
   const payload = affiliateClickPayload(e.target)
-  if (payload) trackAffiliateClick({ ...payload, locale: getLocale() })
+  if (payload) trackAffiliateClickGated({ ...payload, locale: getLocale() })
 })
 const toast = new Toast()
 ;(async () => {
@@ -118,6 +122,14 @@ function applyStaticI18n(): void {
   // Footer tagline + build indicator
   setText('#footer-tagline', t('footer.tagline'))
   setText('.footer-business-link', t('nav.business'))
+  setText('.footer-legal-link', t('footer.privacy'))
+  setAttr('.footer-legal-link', 'href', `/legal/privacy.${getLocale()}.html`)
+  setText('.footer-colofon-link', t('footer.colofon'))
+  // Colofon/imprint page: static HTML per locale (/legal/colofon.{en,nl,de}.html)
+  setAttr('.footer-colofon-link', 'href', `/legal/colofon.${getLocale()}.html`)
+  setText('.footer-cookie-link', t('footer.cookies'))
+  // Cookie-info page: static HTML per locale (/legal/cookies.{en,nl,de}.html)
+  setAttr('.footer-cookie-link', 'href', `/legal/cookies.${getLocale()}.html`)
   setText('#build-label', t('footer.buildLocal'))
   // Loading spinner label
   setText('.spinner-label', t('loading.generating'))
@@ -539,6 +551,29 @@ if (urlId) {
 }
 
 applyStaticI18n()
+
+// ---------------------------------------------------------------------------
+// Cookie consent (#137): render the banner (only shows while the visitor
+// hasn't answered), and wire the footer "Cookies" link as the cookie-settings
+// entry point — it clears the stored choice so the banner re-appears
+// (withdrawal). Wired once at boot, not inside applyStaticI18n(), so a locale
+// switch can't stack duplicate listeners.
+// ---------------------------------------------------------------------------
+const consentBanner = new ConsentBanner()
+consentBanner.render()
+document.querySelector('.footer-cookie-link')?.addEventListener('click', (e) => {
+  e.preventDefault()
+  resetConsent() // notify() re-shows the banner via the onConsentChange below
+})
+// A choice made in another tab (or a withdrawal there) must sync this tab:
+// hide the banner once a choice exists, re-show it after a reset.
+onConsentChange((state) => {
+  if (state.analytics !== null) {
+    consentBanner.hide()
+  } else {
+    consentBanner.render()
+  }
+})
 
 // SEO landing page entry (#73): pre-fill the generator when arriving via
 // ?country=XX&days=N (e.g. from /trips/se-7-days.html CTA)

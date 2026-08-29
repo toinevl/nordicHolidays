@@ -176,6 +176,15 @@ export const de: LocaleStrings = {
     foodRegions: 'Essensregionen',
     tagline: 'Niederlande → überall in Skandinavien',
     buildLocal: 'Lokaler Build',
+    colofon: 'Impressum',
+    privacy: 'Datenschutz',
+    cookies: 'Cookies',
+  },
+  consent: {
+    bannerText: 'Analyse-Cookies setzen wir nur mit deinem Okay ein. Auch ohne funktioniert alles.',
+    accept: 'In Ordnung',
+    decline: 'Nein danke',
+    readMore: 'Mehr Infos',
   },
   loading: {
     generating: 'Reiseplan wird erstellt...',
