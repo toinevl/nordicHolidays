@@ -85,6 +85,7 @@ export const nl: LocaleStrings = {
     undoLastEdit: 'Laatste wijziging ongedaan maken',
     findHotels: 'Hotels zoeken in {city}',
     findActivities: 'Activiteiten in {city}',
+    affiliateDisclosure: 'Sommige links zijn partnerlinks — wij ontvangen een kleine commissie wanneer je boekt. Het kost jou niets extra.',
     rentCar: 'Huur een auto voor deze reis',
     tripStarting: '{totalDays}-daagse reis vanaf {date}',
     addStop: 'Stop toevoegen',

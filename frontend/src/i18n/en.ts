@@ -84,6 +84,7 @@ export const en: LocaleStrings = {
     tripIndex: 'Quick jump',
     undoLastEdit: 'Undo last edit',
     findHotels: 'Find hotels in {city}',
+    affiliateDisclosure: 'Some links are partner links — we earn a small commission when you book. It costs you nothing extra.',
     findActivities: 'Things to do in {city}',
     rentCar: 'Rent a car for this trip',
     tripStarting: '{totalDays}-day trip from {date}',
