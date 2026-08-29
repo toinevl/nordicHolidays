@@ -1,5 +1,4 @@
 import { nordicConfig } from './nordic'
-import { us as usConfig } from './us'
 import type { ApiRegionConfig } from './types'
 
 export type { ApiRegionConfig } from './types'
@@ -10,11 +9,9 @@ function resolveRegion(key: string): ApiRegionConfig {
   switch (key) {
     case 'nordic':
       return nordicConfig
-    case 'us':
-      return usConfig
     default:
       throw new Error(
-        `Unknown REGION "${key}". Supported values: nordic, us. Set the REGION env var to a supported region.`,
+        `Unknown REGION "${key}". Supported value: nordic. Set the REGION env var to a supported region.`,
       )
   }
 }

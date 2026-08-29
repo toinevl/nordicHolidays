@@ -14,12 +14,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **Production cutover table wipe (#169)** — `scripts/wipe-itineraries.sh` removes all `PartitionKey='shared'` entities from the `Itineraries` table using the Function App's system-assigned managed identity (no account key). Dry-run by default, optional blob backup export, typed confirmation prompt. Full procedure in `infra/COMMERCIAL-LAUNCH-RUNBOOK.md` §6.
-- **Multi-region architecture** — the codebase now supports multiple travel regions (Nordic = Fjordvia, US = RouteKit) from a single shared codebase. Region is selected at build time via `VITE_REGION` (frontend) and `REGION` (API) env vars.
-  - `frontend/src/region/` — RegionConfig interface, Nordic data pack (extracted from existing hardcoded values), US data pack (73 cities, Pacific Coast Highway default itinerary, 6 US culinary regions)
-  - `api/src/region/` — ApiRegionConfig with PromptTemplate, Nordic config (extracted COUNTRY_NAMES/SEASONAL_CONTEXT/buildUserMessage), US config (US seasonal context, US prompt, border constraint)
-  - Existing data files (cities.ts, seasonData.ts, defaultItinerary.ts) refactored to thin re-exports from region config
-  - GeneratorPanel ALLOWED_COUNTRIES, generate.ts prompt, schemas.ts country default all pulled from regionConfig
+- **Production cutover table wipe (#169)** — `scripts/wipe-itineraries.sh` removes all `PartitionKey='shared'` entities from the `Itineraries` table using the Function App's system-assigned managed identity (no account key). Dry-run by default, optional blob backup export, typed confirmation prompt. Full procedure in `infra/COMMERCIAL-LAUNCH-RUNBOOK.md` §6. **Executed 2026-08-29**: 16 pilot itineraries removed, table empty.
+- **Multi-region architecture (now Nordic-only)** — RouteKit (US) code removed 2026-08-29. Codebase now Nordic-only.
+- **i18n audit test** (`i18nAudit.test.ts`) — automated scan that fails if any component .ts file contains hardcoded English UI strings bypassing the `t()`/`tpl()` system
+- **Complete localization** — 15+ previously hardcoded English strings across GeneratorPanel, ItineraryView, B2BSection, and index.html now route through the i18n system (validation messages, accommodation badges, "Must try" label, section descriptions, hero content, footer tagline)
+
+### Removed
+
+- **RouteKit (US) decommissioned** — removed `.github/workflows/deploy-routekit-api.yml`, `.github/workflows/deploy-routekit-frontend.yml`, `api/src/region/us.ts`, `frontend/src/region/us.ts`; cleaned `api/src/region/index.ts` and `frontend/src/region/index.ts`; deleted GitHub vars (`ROUTEKIT_*`) and secret (`ROUTEKIT_SWA_API_TOKEN`). No live Azure resources existed.
 - **i18n audit test** (`i18nAudit.test.ts`) — automated scan that fails if any component .ts file contains hardcoded English UI strings bypassing the `t()`/`tpl()` system
 - **Complete localization** — 15+ previously hardcoded English strings across GeneratorPanel, ItineraryView, B2BSection, and index.html now route through the i18n system (validation messages, accommodation badges, "Must try" label, section descriptions, hero content, footer tagline)
 

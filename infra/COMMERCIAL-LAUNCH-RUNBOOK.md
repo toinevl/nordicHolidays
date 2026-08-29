@@ -429,8 +429,8 @@ context and falls back to `az login --identity` if no active session exists.
 # Confirm the table still exists and is empty
 az storage entity query \
   --account-name nordicholidays --table-name Itineraries \
-  --auth-mode login --top 5 -o json
-# expect: { "value": [] }
+  --account-key "$STORAGE_ACCOUNT_KEY" --output json
+# expect: { "items": [] }
 
 # Confirm other tables are untouched
 az storage entity query \
