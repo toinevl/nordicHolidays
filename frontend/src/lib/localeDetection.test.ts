@@ -52,12 +52,15 @@ describe('normaliseLanguageTag', () => {
   })
 
   it('returns null for an unsupported language', () => {
-    // Swedish appears in Nordic trip data (Malmö, Västra Götaland) but is
-    // NOT an app UI locale — must not be coerced to a supported Locale.
-    expect(normaliseLanguageTag('sv')).toBeNull()
-    expect(normaliseLanguageTag('sv-SE')).toBeNull()
-    expect(normaliseLanguageTag('da')).toBeNull()
+    // #172: sv/da/no are now supported UI locales. Finnish (fi) is NOT
+    // (yet) — must not be coerced to a supported Locale.
+    expect(normaliseLanguageTag('sv')).toBe('sv')
+    expect(normaliseLanguageTag('sv-SE')).toBe('sv')
+    expect(normaliseLanguageTag('da-DK')).toBe('da')
+    expect(normaliseLanguageTag('nb-NO')).toBe('no')
+    expect(normaliseLanguageTag('nn-NO')).toBe('no')
     expect(normaliseLanguageTag('fi')).toBeNull()
+    expect(normaliseLanguageTag('xx')).toBeNull()
   })
 
   it('returns null for empty / whitespace / undefined', () => {
@@ -93,8 +96,11 @@ describe('langFromNavigator', () => {
     expect(langFromNavigator('nl')).toBe('nl')
   })
 
-  it('returns null for an unsupported navigator.language', () => {
-    expect(langFromNavigator('sv-SE')).toBeNull()
+  it('#172: maps Nordic navigator languages to their UI locale', () => {
+    expect(langFromNavigator('sv-SE')).toBe('sv')
+    expect(langFromNavigator('da-DK')).toBe('da')
+    expect(langFromNavigator('nb-NO')).toBe('no')
+    expect(langFromNavigator('fi-FI')).toBeNull()
   })
 
   it('returns null when navigator.language is undefined', () => {
@@ -193,13 +199,13 @@ describe('detectInitialLocale priority chain', () => {
   })
 
   it('falls back to "en" when all sources yield unsupported values', () => {
-    // Swedish shows up in the trip data (Malmö, Västra Götaland) but is
-    // not an app locale — every signal below must be rejected.
+    // #172: sv is now supported — Finnish (fi) is the unsupported example:
+    // every signal below must be rejected.
     expect(detectInitialLocale({
-      urlSearch: '?lang=sv',
+      urlSearch: '?lang=fi',
       referrer: '',
-      navigatorLanguage: 'sv-SE',
-      storage: makeStorage({ nordicholidays_locale: 'sv' }),
+      navigatorLanguage: 'fi-FI',
+      storage: makeStorage({ nordicholidays_locale: 'fi' }),
     })).toBe('en')
   })
 
@@ -216,18 +222,18 @@ describe('detectInitialLocale priority chain', () => {
 
   it('#85 regression: SEO CTA respects localStorage when navigator is unsupported', () => {
     // Visitor previously chose 'nl', arrives via SEO CTA. The browser is
-    // set to a language we don't ship (e.g. Swedish-speaking system), so
-    // navigator.language yields null and localStorage is the only NL signal.
+    // set to a language we don't ship (Finnish), so navigator.language
+    // yields null and localStorage is the only NL signal.
     expect(detectInitialLocale({
       urlSearch: '?country=NO&days=10',
       referrer: '',
-      navigatorLanguage: 'sv-SE',
+      navigatorLanguage: 'fi-FI',
       storage: makeStorage({ nordicholidays_locale: 'nl' }),
     })).toBe('nl')
   })
 
   it('every supported Locale round-trips through the full chain', () => {
-    const supported: Locale[] = ['en', 'nl', 'de']
+    const supported: Locale[] = ['en', 'nl', 'de', 'sv', 'da', 'no']
     for (const loc of supported) {
       expect(detectInitialLocale({
         urlSearch: `?lang=${loc}`,

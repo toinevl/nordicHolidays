@@ -27,7 +27,14 @@ import { LOCALE_STORAGE_KEY } from '../i18n/index'
  * language they're currently reading than a months-old persisted preference.
  */
 
-const SUPPORTED: readonly Locale[] = ['en', 'nl', 'de']
+const SUPPORTED: readonly Locale[] = ['en', 'nl', 'de', 'sv', 'da', 'no']
+
+/**
+ * #172: Norwegian browser tags come as nb-NO / nn-NO (Bokmål / Nynorsk) —
+ * the base language is 'nb'/'nn', not 'no'. Map both onto our 'no' locale
+ * (Bokmål first release) before the supported-set check.
+ */
+const LOCALE_ALIASES: Readonly<Record<string, Locale>> = { nb: 'no', nn: 'no' }
 
 function isSupported(value: unknown): value is Locale {
   return typeof value === 'string' && SUPPORTED.indexOf(value as Locale) !== -1
@@ -47,7 +54,8 @@ function isSupported(value: unknown): value is Locale {
 export function normaliseLanguageTag(tag: string | null | undefined): Locale | null {
   if (!tag) return null
   const base = tag.trim().toLowerCase().split(/[-_]/)[0]
-  return isSupported(base) ? base : null
+  const aliased = LOCALE_ALIASES[base] ?? base
+  return isSupported(aliased) ? aliased : null
 }
 
 /**

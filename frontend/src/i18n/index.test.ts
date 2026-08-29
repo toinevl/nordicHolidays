@@ -3,6 +3,9 @@ import { t, tpl, setLocale, getLocale } from './index'
 import { en } from './en'
 import { nl } from './nl'
 import { de } from './de'
+import { sv } from './sv'
+import { da } from './da'
+import { no } from './no'
 
 describe('i18n module', () => {
   beforeEach(() => {
@@ -73,5 +76,25 @@ describe('i18n module', () => {
 
   it('de has every key that en has', () => {
     expect(collectKeys(de as unknown as Record<string, unknown>)).toEqual(expect.arrayContaining(enKeys))
+  })
+
+  // #172: Nordic locales must stay as complete as the founding three.
+  it('sv has every key that en has', () => {
+    expect(collectKeys(sv as unknown as Record<string, unknown>)).toEqual(expect.arrayContaining(enKeys))
+  })
+  it('sv has no extra keys that en lacks', () => {
+    expect(collectKeys(sv as unknown as Record<string, unknown>)).toHaveLength(enKeys.length)
+  })
+  it('da has every key that en has', () => {
+    expect(collectKeys(da as unknown as Record<string, unknown>)).toEqual(expect.arrayContaining(enKeys))
+  })
+  it('da has no extra keys that en lacks', () => {
+    expect(collectKeys(da as unknown as Record<string, unknown>)).toHaveLength(enKeys.length)
+  })
+  it('no has every key that en has', () => {
+    expect(collectKeys(no as unknown as Record<string, unknown>)).toEqual(expect.arrayContaining(enKeys))
+  })
+  it('no has no extra keys that en lacks', () => {
+    expect(collectKeys(no as unknown as Record<string, unknown>)).toHaveLength(enKeys.length)
   })
 })

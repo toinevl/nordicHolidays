@@ -2,18 +2,21 @@ import type { Locale, LocaleKey, LocaleStrings } from './types'
 import { en } from './en'
 import { nl } from './nl'
 import { de } from './de'
+import { sv } from './sv'
+import { da } from './da'
+import { no } from './no'
 import { escapeHtml } from '../lib/escape'
 
 // Key deliberately unchanged after the Fjordvia rebrand so existing visitors keep their stored locale.
 export const LOCALE_STORAGE_KEY = 'nordicholidays_locale'
 
-const locales: Record<Locale, LocaleStrings> = { en, nl, de }
+const locales: Record<Locale, LocaleStrings> = { en, nl, de, sv, da, no }
 
 let currentLocale: Locale = 'en'
 
 try {
   const stored = localStorage.getItem(LOCALE_STORAGE_KEY)
-  if (stored === 'nl' || stored === 'en' || stored === 'de') currentLocale = stored
+  if (stored === 'nl' || stored === 'en' || stored === 'de' || stored === 'sv' || stored === 'da' || stored === 'no') currentLocale = stored
 } catch {
   // localStorage unavailable
 }
