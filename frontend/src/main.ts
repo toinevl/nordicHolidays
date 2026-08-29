@@ -20,6 +20,7 @@ import { WidgetFooter } from './components/WidgetFooter'
 import { isNavScrolled } from './lib/scrollNav'
 import { pickActiveSection } from './lib/activeSection'
 import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
+import { legalPageLocale } from './lib/legalPages'
 import { regionConfig } from './region'
 const store = createStore()
 
@@ -123,13 +124,13 @@ function applyStaticI18n(): void {
   setText('#footer-tagline', t('footer.tagline'))
   setText('.footer-business-link', t('nav.business'))
   setText('.footer-legal-link', t('footer.privacy'))
-  setAttr('.footer-legal-link', 'href', `/legal/privacy.${getLocale()}.html`)
+  setAttr('.footer-legal-link', 'href', `/legal/privacy.${legalPageLocale()}.html`)
   setText('.footer-colofon-link', t('footer.colofon'))
   // Colofon/imprint page: static HTML per locale (/legal/colofon.{en,nl,de}.html)
-  setAttr('.footer-colofon-link', 'href', `/legal/colofon.${getLocale()}.html`)
+  setAttr('.footer-colofon-link', 'href', `/legal/colofon.${legalPageLocale()}.html`)
   setText('.footer-cookie-link', t('footer.cookies'))
   // Cookie-info page: static HTML per locale (/legal/cookies.{en,nl,de}.html)
-  setAttr('.footer-cookie-link', 'href', `/legal/cookies.${getLocale()}.html`)
+  setAttr('.footer-cookie-link', 'href', `/legal/cookies.${legalPageLocale()}.html`)
   setText('#build-label', t('footer.buildLocal'))
   // Loading spinner label
   setText('.spinner-label', t('loading.generating'))

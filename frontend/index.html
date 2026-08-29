@@ -12,7 +12,7 @@
   <script>
     try {
       var l = localStorage.getItem('nordicholidays_locale');
-      if (l === 'nl' || l === 'de') document.documentElement.lang = l;
+      if (l === 'nl' || l === 'de' || l === 'sv' || l === 'da' || l === 'no') document.documentElement.lang = l;
     } catch (e) {}
   </script>
 
@@ -76,6 +76,9 @@
           <button data-locale="en" class="locale-option locale-option--active">EN</button>
           <button data-locale="nl" class="locale-option">NL</button>
           <button data-locale="de" class="locale-option">DE</button>
+          <button data-locale="sv" class="locale-option">SV</button>
+          <button data-locale="da" class="locale-option">DA</button>
+          <button data-locale="no" class="locale-option">NO</button>
         </div>
       </div>
       <button class="header-btn header-trips" id="btn-open-saved">🔖</button>

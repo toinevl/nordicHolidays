@@ -1,4 +1,5 @@
-import { t, getLocale } from '../i18n/index'
+import { t } from '../i18n/index'
+import { legalPageLocale } from '../lib/legalPages'
 import { getConsent, setConsent, resetConsent, onConsentChange } from '../lib/consent'
 
 /**
@@ -39,7 +40,7 @@ export class ConsentBanner {
     banner.innerHTML = `
       <p class="consent-banner-text">${t('consent.bannerText')}</p>
       <div class="consent-banner-actions">
-        <a class="consent-banner-more" href="/legal/cookies.${getLocale()}.html">${t('consent.readMore')}</a>
+        <a class="consent-banner-more" href="/legal/cookies.${legalPageLocale()}.html">${t('consent.readMore')}</a>
         <button type="button" class="consent-banner-btn consent-banner-decline">${t('consent.decline')}</button>
         <button type="button" class="consent-banner-btn consent-banner-accept">${t('consent.accept')}</button>
       </div>
