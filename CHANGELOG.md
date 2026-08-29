@@ -14,6 +14,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Production cutover table wipe (#169)** — `scripts/wipe-itineraries.sh` removes all `PartitionKey='shared'` entities from the `Itineraries` table using the Function App's system-assigned managed identity (no account key). Dry-run by default, optional blob backup export, typed confirmation prompt. Full procedure in `infra/COMMERCIAL-LAUNCH-RUNBOOK.md` §6.
 - **Multi-region architecture** — the codebase now supports multiple travel regions (Nordic = Fjordvia, US = RouteKit) from a single shared codebase. Region is selected at build time via `VITE_REGION` (frontend) and `REGION` (API) env vars.
   - `frontend/src/region/` — RegionConfig interface, Nordic data pack (extracted from existing hardcoded values), US data pack (73 cities, Pacific Coast Highway default itinerary, 6 US culinary regions)
   - `api/src/region/` — ApiRegionConfig with PromptTemplate, Nordic config (extracted COUNTRY_NAMES/SEASONAL_CONTEXT/buildUserMessage), US config (US seasonal context, US prompt, border constraint)

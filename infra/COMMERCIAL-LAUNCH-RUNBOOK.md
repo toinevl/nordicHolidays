@@ -1,4 +1,4 @@
-# Commercial launch runbook (Fjordvia) — wishlist #150, #154, #156
+# Commercial launch runbook (Fjordvia) — wishlist #150, #154, #156, #169
 
 ## Manual steps — NOT run by CI or by this Bicep change
 
@@ -343,3 +343,104 @@ az deployment group what-if \
   --template-file infra/main.bicep \
   --parameters infra/main.bicepparam
 ```
+
+---
+
+## 6. #169 — Wipe the `Itineraries` table at production cutover
+
+> ⏸️ **NOT YET EXECUTED** — preparation complete (2026-08-29). Run manually
+> at cutover; this is a **data mutation** and must be confirmed explicitly.
+
+### Why
+
+After the production cutover, the live `Itineraries` table holds pilot data
+generated before #146 (public, edit-token-less). From #147 onward, every new
+itinerary gets an `editToken` on creation; the table must be empty at cutover
+so `legacy_no_token` is a non-event and the schema is clean.
+
+### What this does
+
+Removes **all entities** with `PartitionKey == 'shared'` from `Itineraries`.
+It does **NOT** drop the table (recreate-lockout would take minutes). It does
+**NOT** touch `Preferences`, `Profiles`, `RateLimits`, `Leads`, or `Partners`.
+
+### Identity: managed identity, no account key
+
+| Fact | Value |
+|------|-------|
+| Who has the role | Function App **system-assigned managed identity** (`nordic-holidays-api`) |
+| Role | `Storage Table Data Contributor` on `nordicholidays` storage account |
+| Principal ID | `f773285f-0ea3-4d85-a310-05d8d9bdbcd2` |
+| Scope | `/subscriptions/2dbeb3f1-e45d-4207-a7e9-185330aad74b/resourceGroups/rgNordicHolidays/providers/Microsoft.Storage/storageAccounts/nordicholidays` |
+
+The role was already assigned before this runbook was written — it was
+discovered via `az role assignment list --scope <storage-id>` (2026-08-29).
+The Bicep drift-only template in `infra/main.bicep` does **not** declare this
+role assignment (it predates Bicep reference-only status). If the role is ever
+removed, re-add it:
+
+```bash
+FA_MSI=$(az functionapp show --name nordic-holidays-api \
+  --resource-group rgNordicHolidays \
+  --query identity.principalId -o tsv)
+
+STORAGE_ID=$(az storage account show --name nordicholidays \
+  --resource-group rgNordicHolidays --query id -o tsv)
+
+az role assignment create \
+  --assignee "$FA_MSI" \
+  --role "Storage Table Data Contributor" \
+  --scope "$STORAGE_ID"
+```
+
+### The script
+
+`scripts/wipe-itineraries.sh` — a self-contained bash CLI with a dry-run
+mode, blob backup export, and a typed confirmation prompt. All storage
+operations use `--auth-mode login` (Azure AD); **no account key is ever
+used**.
+
+```bash
+# Dry-run (default) — safe, no mutations
+./scripts/wipe-itineraries.sh
+
+# Export to blob backup, then wipe (requires typing 'WIPE')
+./scripts/wipe-itineraries.sh --export --apply
+
+# Skip the interactive prompt (CI / scripted use)
+./scripts/wipe-itineraries.sh --export --apply --force
+
+# Export only, no deletion
+./scripts/wipe-itineraries.sh --backup-only
+```
+
+Environment overrides: `WIPE_DRY_RUN=1`, `WIPE_FORCE=1`, `WIPE_EXPORT=1`.
+
+### Running under the Function App MSI
+
+Run this from an environment where the Function App's managed identity can
+authenticate — e.g. a container in the Function App itself, or a shell that
+has been logged in via `az login --identity`. The script auto-detects the
+context and falls back to `az login --identity` if no active session exists.
+
+### Verify after
+
+```bash
+# Confirm the table still exists and is empty
+az storage entity query \
+  --account-name nordicholidays --table-name Itineraries \
+  --auth-mode login --top 5 -o json
+# expect: { "value": [] }
+
+# Confirm other tables are untouched
+az storage entity query \
+  --account-name nordicholidays --table-name Preferences \
+  --auth-mode login --top 5 -o json
+# expect: { "value": [...] } (pilot preferences still there)
+```
+
+### Rollback
+
+If the wipe was premature or wrong, restore from the blob backup written by
+`--export` (container `backups`, file `itineraries-wipe-<timestamp>.jsonl`).
+See `infra/RECOVERY.md` for the restore procedure.
