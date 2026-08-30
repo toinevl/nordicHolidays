@@ -4,6 +4,8 @@ import { withCors, corsPreflightResponse } from '../lib/cors'
 import { logError } from '../lib/schemas'
 import { resolveOwnerId, authErrorResponse } from '../lib/identity'
 
+const FETCH_TIMEOUT_MS = 5000
+
 type ProviderRecord = Record<string, unknown>
 
 function jsonResponse(suggestions: CitySuggestion[], origin?: string): HttpResponseInit {
@@ -139,9 +141,12 @@ export async function citySearchHandler(
 
   const endpoint = process.env.CITY_SEARCH_ENDPOINT?.trim() ?? 'https://nominatim.openstreetmap.org/search'
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
   try {
     const separator = endpoint.includes('?') ? '&' : '?'
-    const response = await fetch(`${endpoint}${separator}q=${encodeURIComponent(q)}`)
+    const response = await fetch(`${endpoint}${separator}q=${encodeURIComponent(q)}`, { signal: controller.signal })
     if (!response.ok) {
       logError(ctx, `citySearchHandler: provider returned ${response.status}`)
       return jsonResponse([], origin)
@@ -150,8 +155,14 @@ export async function citySearchHandler(
     const payload = await response.json()
     return jsonResponse(normalizeProviderResponse(payload), origin)
   } catch (err) {
-    logError(ctx, 'citySearchHandler: request failed', err)
+    if (err instanceof Error && err.name === 'AbortError') {
+      logError(ctx, 'citySearchHandler: request timed out', err)
+    } else {
+      logError(ctx, 'citySearchHandler: request failed', err)
+    }
     return jsonResponse([], origin)
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 

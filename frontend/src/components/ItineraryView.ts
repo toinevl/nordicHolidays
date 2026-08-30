@@ -155,7 +155,7 @@ export class ItineraryView {
     if (document.getElementById('btn-print')) return
     const container = document.createElement('div')
     container.id = 'itinerary-actions'
-    container.style.cssText = 'position:absolute;top:0;right:0;z-index:1;display:flex;gap:8px;'
+    container.style.cssText = 'position:absolute;top:0;right:0;z-index:101;display:flex;gap:8px;'
 
     const printBtn = document.createElement('button')
     printBtn.id = 'btn-print'

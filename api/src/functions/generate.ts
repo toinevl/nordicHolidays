@@ -281,11 +281,10 @@ export async function generateHandler(
       body: JSON.stringify(itinerary),
     }, origin)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error'
     const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT ?? '(not set)'
     const model = process.env.LLM_MODEL ?? 'gpt-4o'
     logError(ctx, `generateHandler: generation error - endpoint: ${endpoint}, model: ${model}`, err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Generation failed. Please try again.' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withCors({ status: 500, body: JSON.stringify({ error: 'Generation failed. Please try again later.' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
