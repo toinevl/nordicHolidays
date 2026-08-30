@@ -270,5 +270,12 @@ export const de: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Reise filtern',
+    removeTag: 'Entfernen {city}',
+    stopMarker: '{city}, Stopp {n}',
+    dayTripMarker: 'Tagesausflug bei {base}',
+    mapLegend: 'Kartenlegende',
+    mapLabel: 'Nordische Roadtrip-Karte',
+    map3dLabel: '3D-Karte des nordischen Roadtrips',
+    localeDropdown: 'Sprache wählen',
   },
 }

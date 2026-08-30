@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
 import {
   CONSENT_STORAGE_KEY,
   getConsent,
-  setConsent,
-  resetConsent,
   onConsentChange,
+  resetConsent,
+  setConsent,
 } from './consent'
 
 beforeEach(() => {

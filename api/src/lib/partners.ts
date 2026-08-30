@@ -1,5 +1,5 @@
-import { getTableClient } from './tableClient'
 import { logError } from './schemas'
+import { getTableClient } from './tableClient'
 
 const PARTNERS_TABLE_NAME = 'Partners'
 const PARTNERS_PARTITION_KEY = 'partners'

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/rateLimit', () => ({
   checkAndIncrementLeadRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
@@ -14,9 +14,9 @@ vi.mock('nanoid', () => ({
   nanoid: vi.fn().mockReturnValue('test-id-123'),
 }))
 
-import { createLeadHandler } from './leads'
 import { checkAndIncrementLeadRateLimit } from '../lib/rateLimit'
 import { ensureTable } from '../lib/tableClient'
+import { createLeadHandler } from './leads'
 
 function makeContext() {
   return {

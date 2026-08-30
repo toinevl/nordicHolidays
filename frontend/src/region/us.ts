@@ -1,6 +1,6 @@
-import type { RegionConfig } from './types'
-import type { Stop, CulinaryRegion, Accommodation } from '../types'
 import type { CitySuggestion } from '../data/cities'
+import type { Accommodation, CulinaryRegion, Stop } from '../types'
+import type { RegionConfig } from './types'
 
 const cities: CitySuggestion[] = [
   { id: 'new-york-us', name: 'New York', countryCode: 'US', countryName: 'United States', region: 'New York', lat: 40.7128, lng: -74.0060, aliases: ['NYC', 'New York City', 'Manhattan'] },

@@ -1,11 +1,11 @@
-import type { Preferences, Itinerary } from '../types'
-import type { Store } from '../store'
 import { apiClient } from '../api/client'
-import { searchLocalCities, searchNominatim, type CitySuggestion } from '../lib/citySearch'
-import { t } from '../i18n/index'
+import { t, tpl } from '../i18n/index'
 import type { LocaleKey } from '../i18n/types'
+import { type CitySuggestion, searchLocalCities, searchNominatim } from '../lib/citySearch'
 import { escapeHtml } from '../lib/escape'
 import { regionConfig } from '../region'
+import type { Store } from '../store'
+import type { Itinerary, Preferences } from '../types'
 
 export type GenerateCallback = (itinerary: Itinerary) => void
 export type GenerateErrorCallback = (message: string) => void
@@ -78,18 +78,18 @@ export class GeneratorPanel {
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">${t('generator.startCity')}</label>
+          <label class="form-label" for="gen-start">${t('generator.startCity')}</label>
           <div class="city-combobox">
-            <input id="gen-start" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-start-results" />
-            <div id="gen-start-results" class="city-results hidden" role="listbox"></div>
+            <input id="gen-start" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-start-results" aria-activedescendant="" />
+            <div id="gen-start-results" class="city-results hidden" role="listbox" aria-hidden="true"></div>
           </div>
           <p id="gen-start-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
         </div>
         <div class="form-group">
-          <label class="form-label">${t('generator.finishCity')}</label>
+          <label class="form-label" for="gen-end">${t('generator.finishCity')}</label>
           <div class="city-combobox">
-            <input id="gen-end" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-end-results" />
-            <div id="gen-end-results" class="city-results hidden" role="listbox"></div>
+            <input id="gen-end" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-end-results" aria-activedescendant="" />
+            <div id="gen-end-results" class="city-results hidden" role="listbox" aria-hidden="true"></div>
           </div>
           <p id="gen-end-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
         </div>
@@ -102,22 +102,22 @@ export class GeneratorPanel {
           <input id="gen-start-date" class="form-input" type="date" />
         </div>
         <div class="form-group">
-          <label class="form-label">${t('generator.mustVisit')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
+          <label class="form-label" for="must-visit-input">${t('generator.mustVisit')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
           <div class="tag-input-wrapper">
             <div id="must-visit-tags" class="tag-list"></div>
             <div class="city-combobox">
-              <input id="must-visit-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="must-visit-results" />
-              <div id="must-visit-results" class="city-results hidden" role="listbox"></div>
+              <input id="must-visit-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="must-visit-results" aria-activedescendant="" />
+              <div id="must-visit-results" class="city-results hidden" role="listbox" aria-hidden="true"></div>
             </div>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">${t('generator.avoid')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
+          <label class="form-label" for="avoid-input">${t('generator.avoid')} <span class="form-hint">${t('generator.pressEnter')}</span></label>
           <div class="tag-input-wrapper">
             <div id="avoid-tags" class="tag-list"></div>
             <div class="city-combobox">
-              <input id="avoid-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="avoid-results" />
-              <div id="avoid-results" class="city-results hidden" role="listbox"></div>
+              <input id="avoid-input" class="form-input" type="text" placeholder="${t('generator.addPlace')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="avoid-results" aria-activedescendant="" />
+              <div id="avoid-results" class="city-results hidden" role="listbox" aria-hidden="true"></div>
             </div>
           </div>
         </div>
@@ -196,20 +196,26 @@ export class GeneratorPanel {
 
     const close = () => {
       resultsEl.classList.add('hidden')
+      resultsEl.setAttribute('aria-hidden', 'true')
       input.setAttribute('aria-expanded', 'false')
+      input.setAttribute('aria-activedescendant', '')
       activeIndex = -1
     }
 
     const render = (items: CitySuggestion[]) => {
       suggestions = items
       activeIndex = items.length ? 0 : -1
-      input.setAttribute('aria-expanded', String(items.length > 0))
-      resultsEl.classList.toggle('hidden', items.length === 0)
+      const hasItems = items.length > 0
+      input.setAttribute('aria-expanded', String(hasItems))
+      resultsEl.classList.toggle('hidden', !hasItems)
+      resultsEl.setAttribute('aria-hidden', String(!hasItems))
+      if (hasItems) input.setAttribute('aria-activedescendant', `${resultsId}-option-${activeIndex}`)
+      else input.setAttribute('aria-activedescendant', '')
       resultsEl.innerHTML = items.map((city, index) => {
         const region = city.region ? `${city.region}, ` : ''
         const meta = `${region}${city.countryName}`
         return `
-          <button class="city-option ${index === activeIndex ? 'active' : ''}" type="button" role="option" data-index="${index}" aria-selected="${index === activeIndex}">
+          <button id="${resultsId}-option-${index}" class="city-option ${index === activeIndex ? 'active' : ''}" type="button" role="option" data-index="${index}" aria-selected="${index === activeIndex}">
             <span class="city-option__name">${escapeHtml(city.name)}</span>
             <span class="city-option__meta">${escapeHtml(meta)}</span>
           </button>
@@ -231,6 +237,7 @@ export class GeneratorPanel {
     const setActive = (nextIndex: number) => {
       if (!suggestions.length) return
       activeIndex = (nextIndex + suggestions.length) % suggestions.length
+      input.setAttribute('aria-activedescendant', `${resultsId}-option-${activeIndex}`)
       resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach((btn, index) => {
         btn.classList.toggle('active', index === activeIndex)
         btn.setAttribute('aria-selected', String(index === activeIndex))
@@ -261,8 +268,9 @@ export class GeneratorPanel {
             ...localResults,
             ...remoteResults.filter((city: CitySuggestion) => !seen.has(city.id) && !seen.has(cityKey(city))),
           ].slice(0, 8))
-        } catch {
+        } catch (err: any) {
           // Local suggestions are the primary path; remote lookup is optional.
+          if (err instanceof Error) console.error('[cityLookup:searchNominatim]', err)
         }
       }, 250)
     }
@@ -303,20 +311,26 @@ export class GeneratorPanel {
 
     const close = () => {
       resultsEl.classList.add('hidden')
+      resultsEl.setAttribute('aria-hidden', 'true')
       input.setAttribute('aria-expanded', 'false')
+      input.setAttribute('aria-activedescendant', '')
       activeIndex = -1
     }
 
     const render = (items: CitySuggestion[]) => {
       suggestions = items
       activeIndex = items.length ? 0 : -1
-      input.setAttribute('aria-expanded', String(items.length > 0))
-      resultsEl.classList.toggle('hidden', items.length === 0)
+      const hasItems = items.length > 0
+      input.setAttribute('aria-expanded', String(hasItems))
+      resultsEl.classList.toggle('hidden', !hasItems)
+      resultsEl.setAttribute('aria-hidden', String(!hasItems))
+      if (hasItems) input.setAttribute('aria-activedescendant', `${resultsId}-option-${activeIndex}`)
+      else input.setAttribute('aria-activedescendant', '')
       resultsEl.innerHTML = items.map((city, index) => {
         const region = city.region ? `${city.region}, ` : ''
         const meta = `${region}${city.countryName}`
         return `
-          <button class="city-option ${index === activeIndex ? 'active' : ''}" type="button" role="option" data-index="${index}" aria-selected="${index === activeIndex}">
+          <button id="${resultsId}-option-${index}" class="city-option ${index === activeIndex ? 'active' : ''}" type="button" role="option" data-index="${index}" aria-selected="${index === activeIndex}">
             <span class="city-option__name">${escapeHtml(city.name)}</span>
             <span class="city-option__meta">${escapeHtml(meta)}</span>
           </button>
@@ -340,6 +354,7 @@ export class GeneratorPanel {
     const setActive = (nextIndex: number) => {
       if (!suggestions.length) return
       activeIndex = (nextIndex + suggestions.length) % suggestions.length
+      input.setAttribute('aria-activedescendant', `${resultsId}-option-${activeIndex}`)
       resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach((btn, index) => {
         btn.classList.toggle('active', index === activeIndex)
         btn.setAttribute('aria-selected', String(index === activeIndex))
@@ -373,8 +388,9 @@ export class GeneratorPanel {
             ...localResults,
             ...remoteResults.filter((city: CitySuggestion) => !seen.has(city.id) && !seen.has(cityKey(city))),
           ].slice(0, 8))
-        } catch {
+        } catch (err: any) {
           // Local suggestions are the primary path; remote lookup is optional.
+          if (err instanceof Error) console.error('[cityLookup:searchNominatim]', err)
         }
       }, 250)
     }
@@ -410,7 +426,7 @@ export class GeneratorPanel {
     const container = this.panel.querySelector(`#${tagsId}`) as HTMLElement
     const tags = this.store.getState().preferences[field]
     container.innerHTML = tags.map(tag => `
-      <span class="tag">${escapeHtml(tag)}<button class="tag-remove" data-val="${escapeHtml(tag)}" data-field="${field}">&times;</button></span>
+      <span class="tag">${escapeHtml(tag)}<button class="tag-remove" data-val="${escapeHtml(tag)}" data-field="${field}" aria-label="${tpl('aria.removeTag', { city: tag })}">&times;</button></span>
     `).join('')
     const spans = container.querySelectorAll<HTMLElement>('.tag')
     spans[spans.length - 1]?.classList.add('tag--new')
@@ -438,7 +454,10 @@ export class GeneratorPanel {
       if (dateInput) dateInput.value = prefs.startDate ?? ''
       this.renderTags('must-visit-tags', 'mustVisit')
       this.renderTags('avoid-tags', 'avoid')
-    } catch { /* use defaults */ }
+    } catch (err: any) {
+      if (err instanceof Error) console.error('[loadPreferences]', err)
+      /* use defaults */
+    }
   }
 
   private syncRegenerateVisibility(): void {
@@ -475,7 +494,10 @@ export class GeneratorPanel {
     const existingStops = currentItinerary?.stops?.map(s => ({ city: s.city, nights: s.nights }))
 
     this.store.setState({ preferences: prefs })
-    try { await apiClient.savePreferences(prefs) } catch { /* non-critical */ }
+    try { await apiClient.savePreferences(prefs) } catch (err: any) {
+      if (err instanceof Error) console.error('[savePreferences]', err)
+      /* non-critical */
+    }
 
     btn.textContent = t('generator.generating')
     btn.disabled = true
@@ -486,7 +508,7 @@ export class GeneratorPanel {
       this.store.setState({ currentItinerary: itinerary, isGenerating: false, unsaved: true, activeTripName: null })
       this.onGenerate(itinerary)
       this.close()
-    } catch (err) {
+    } catch (err: any) {
       this.store.setState({ isGenerating: false })
       // #129: never surface the raw API error text (always English/technical) to
       // the user — always show the translated fallback; log the detail instead.

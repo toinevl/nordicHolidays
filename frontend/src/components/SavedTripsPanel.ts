@@ -1,8 +1,8 @@
-import type { Itinerary } from '../types'
-import type { Store } from '../store'
 import { apiClient } from '../api/client'
 import { t, tpl } from '../i18n/index'
 import { escapeHtml, validateThumbnailUrl } from '../lib/escape'
+import type { Store } from '../store'
+import type { Itinerary } from '../types'
 import type { Toast } from './Toast'
 
 export type LoadItineraryCallback = (itinerary: Itinerary, name: string, id: string) => void

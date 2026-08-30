@@ -1,6 +1,6 @@
 import { nordicConfig } from './nordic'
-import { us as usConfig } from './us'
 import type { ApiRegionConfig } from './types'
+import { us as usConfig } from './us'
 
 export type { ApiRegionConfig } from './types'
 

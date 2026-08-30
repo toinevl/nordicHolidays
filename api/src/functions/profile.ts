@@ -1,14 +1,30 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getTableClient, ensureTable } from '../lib/tableClient'
-import type { Profile } from '../types'
-import { withCors, corsPreflightResponse } from '../lib/cors'
-import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
+
+import { corsPreflightResponse, withCors } from '../lib/cors'
+import { authErrorResponse, resolveOwnerId } from '../lib/identity'
 import { ProfilePutBodySchema, logError } from '../lib/schemas'
+import { ensureTable, getTableClient } from '../lib/tableClient'
+import type { Profile } from '../types'
+// WR-07 / H7: ensure every response carries Cache-Control and Content-Type
+// in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
+// injects. withCors is aliased so the wrapper can call it without recursion.
+const _withCors = withCors
+
+function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseInit {
+  return _withCors({
+    ...response,
+    headers: {
+      ...(response.status !== 204 ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-store',
+      ...((response.headers as Record<string, string>) ?? {}),
+    },
+  }, origin)
+}
 
 const ROW_KEY = 'profile'
 
 function safeJsonParse(s: string): Record<string, unknown> {
-  try { return JSON.parse(s) } catch { return {} }
+  try { return JSON.parse(s) } catch (err: any) { return {} }
 }
 
 function entityToProfile(entity: Record<string, unknown>): Profile {
@@ -16,7 +32,7 @@ function entityToProfile(entity: Record<string, unknown>): Profile {
   let extensions: Record<string, unknown> = {}
   const rawExt = raw.extensions
   if (typeof rawExt === 'string') {
-    try { extensions = JSON.parse(rawExt) } catch { extensions = {} }
+    try { extensions = JSON.parse(rawExt) } catch (err: any) { extensions = {} }
   } else if (rawExt && typeof rawExt === 'object') {
     extensions = rawExt as Record<string, unknown>
   }
@@ -37,26 +53,26 @@ export async function getProfileHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   try {
     const owner = await resolveOwnerId(req, ctx)
     const client = getTableClient('Profiles')
     const entity = await client.getEntity(owner.ownerId, ROW_KEY)
-    return withCors({
+    return withHeaders({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entityToProfile(entity as Record<string, unknown>)),
     }, origin)
   } catch (err: any) {
     if (err instanceof Error && err.name === 'AuthError') {
-      return authErrorResponse(err, origin)
+      return withHeaders(authErrorResponse(err, origin), origin)
     }
     if (err?.statusCode === 404) {
-      return withCors({ status: 404, body: JSON.stringify({ error: 'Profile not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 404, body: JSON.stringify({ error: 'Profile not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
     logError(ctx, 'getProfileHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
@@ -65,7 +81,7 @@ export async function putProfileHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   try {
     const owner = await resolveOwnerId(req, ctx)
@@ -73,9 +89,9 @@ export async function putProfileHandler(
     let rawBody: unknown
     try {
       rawBody = await req.json()
-    } catch (err) {
+    } catch (err: any) {
       logError(ctx, 'putProfileHandler: invalid JSON body', err)
-      return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     // Validate and parse body with zod; on failure, return 400 with details
@@ -83,7 +99,7 @@ export async function putProfileHandler(
     if (!parseResult.success) {
       const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
       logError(ctx, `putProfileHandler: validation failed - ${errors}`, parseResult.error)
-      return withCors({
+      return withHeaders({
         status: 400,
         body: JSON.stringify({ error: 'Invalid request body', details: errors }),
         headers: { 'Content-Type': 'application/json' }
@@ -127,7 +143,7 @@ export async function putProfileHandler(
       }
     } catch (err: any) {
       if (err.code === 'InvalidInput' || err.statusCode === 412) {
-        return withCors({ status: 409, body: JSON.stringify({ error: 'Conflict: profile was modified' }), headers: { 'Content-Type': 'application/json' } }, origin)
+        return withHeaders({ status: 409, body: JSON.stringify({ error: 'Conflict: profile was modified' }), headers: { 'Content-Type': 'application/json' } }, origin)
       }
       throw err
     }
@@ -141,17 +157,20 @@ export async function putProfileHandler(
         .filter(([k]) => !INTERNAL_FIELDS.has(k))
         .map(([k, v]) => [k, k === 'extensions' ? safeJsonParse(v as string) : v])
     )
-    return withCors({
+    return withHeaders({
       status: isNew ? 201 : 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(safeEntity),
     }, origin)
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof Error && err.name === 'AuthError') {
-      return authErrorResponse(err, origin)
+      return withHeaders(authErrorResponse(err, origin), origin)
+    }
+    if (err?.statusCode === 401) {
+      return withHeaders(authErrorResponse(err, origin), origin)
     }
     logError(ctx, 'putProfileHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 

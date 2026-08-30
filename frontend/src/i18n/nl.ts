@@ -270,5 +270,12 @@ export const nl: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Filter je reis',
+    removeTag: 'Verwijder {city}',
+    stopMarker: '{city}, stop {n}',
+    dayTripMarker: 'Dagtrip bij {base}',
+    mapLegend: 'Kaartlegende',
+    mapLabel: 'Kaart van Noordse roadtrip',
+    map3dLabel: '3D kaart van Noordse roadtrip',
+    localeDropdown: 'Kies je taal',
   },
 }

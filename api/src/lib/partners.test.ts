@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./tableClient', () => ({
   getTableClient: vi.fn(),
 }))
 
-import { getPartner, listPartners, clearPartnerCache } from './partners'
+import { clearPartnerCache, getPartner, listPartners } from './partners'
 import { getTableClient } from './tableClient'
 
 function makeClient(overrides: Record<string, unknown> = {}) {

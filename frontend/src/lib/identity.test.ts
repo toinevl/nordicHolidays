@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getOwnerId, clearOwnerId, isGuestOwner, onOwnerIdChange } from './identity'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { clearOwnerId, getOwnerId, isGuestOwner, onOwnerIdChange } from './identity'
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 

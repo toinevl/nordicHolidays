@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { Itinerary } from '../types'
 
 vi.mock('../lib/llmClient', () => ({
@@ -25,16 +26,16 @@ vi.mock('../lib/partners', () => ({
   getPartner: vi.fn().mockResolvedValue(null),
 }))
 
-import { generateHandler } from './generate'
+import { authErrorResponse, resolveOwnerId } from '../lib/identity'
+import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 import { getLlmClient } from '../lib/llmClient'
-import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { getPartner } from '../lib/partners'
 import {
   checkAndIncrementRateLimit,
   checkGlobalDailyGenerateCap,
   checkPartnerDailyGenerateCap,
 } from '../lib/rateLimit'
-import { getPartner } from '../lib/partners'
-import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { generateHandler } from './generate'
 
 function makeItinerary(): Itinerary {
   return {

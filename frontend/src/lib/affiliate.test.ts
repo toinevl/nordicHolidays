@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { lodgingUrl, activityUrl, carRentalUrl } from './affiliate'
+import { describe, expect, it } from 'vitest'
+
 import type { AffiliateConfig } from '../config'
+import { activityUrl, carRentalUrl, lodgingUrl } from './affiliate'
 
 const unconfigured: AffiliateConfig = {
   travelpayoutsMarker: null,

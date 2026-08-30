@@ -270,6 +270,20 @@ export interface LocaleStrings {
   }
   aria: {
     routeFilters: string
+    /** Template: "Remove {city}" — aria-label on tag remove buttons */
+    removeTag: string
+    /** Template: "{city}, stop {n}" — aria-label on map stop markers */
+    stopMarker: string
+    /** Template: "Day trip near {base}" — aria-label on map day-trip markers */
+    dayTripMarker: string
+    /** Static: "Map legend" — aria-label on the map legend region */
+    mapLegend: string
+    /** Static: "Nordic road trip map" — aria-label on the 2D map container */
+    mapLabel: string
+    /** Static: "3D map of Nordic road trip" — aria-label on the 3D map container */
+    map3dLabel: string
+    /** Static: "Choose your language" — aria-label on the locale dropdown */
+    localeDropdown: string
   }
 }
 

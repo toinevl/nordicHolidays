@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { CONSENT_STORAGE_KEY, resetConsent, setConsent } from '../lib/consent'
 import { ConsentBanner } from './ConsentBanner'
-import { CONSENT_STORAGE_KEY, setConsent, resetConsent } from '../lib/consent'
 
 beforeEach(() => {
   document.body.innerHTML = ''

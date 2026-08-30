@@ -1,8 +1,24 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { withCors, corsPreflightResponse } from '../lib/cors'
-import { logError } from '../lib/schemas'
-import { checkAndIncrementPartnerLookupRateLimit } from '../lib/rateLimit'
+import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
+
+import { corsPreflightResponse, withCors } from '../lib/cors'
 import { getPartner } from '../lib/partners'
+import { checkAndIncrementPartnerLookupRateLimit } from '../lib/rateLimit'
+import { logError } from '../lib/schemas'
+// WR-07 / H7: ensure every response carries Cache-Control and Content-Type
+// in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
+// injects. withCors is aliased so the wrapper can call it without recursion.
+const _withCors = withCors
+
+function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseInit {
+  return _withCors({
+    ...response,
+    headers: {
+      ...(response.status !== 204 ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-store',
+      ...((response.headers as Record<string, string>) ?? {}),
+    },
+  }, origin)
+}
 
 /**
  * GET /api/partners/{id} — public read-only partner config endpoint (#76).
@@ -16,13 +32,13 @@ export async function getPartnerHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   // Rate-limit per IP to prevent partner-ID enumeration
   const rateLimitResult = await checkAndIncrementPartnerLookupRateLimit(req, ctx)
   if (!rateLimitResult.allowed) {
     const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
-    return withCors(
+    return withHeaders(
       {
         status: 429,
         headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
@@ -35,12 +51,12 @@ export async function getPartnerHandler(
   try {
     const partnerId = req.params.id
     if (!partnerId) {
-      return withCors({ status: 400, body: JSON.stringify({ error: 'Missing partner id' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 400, body: JSON.stringify({ error: 'Missing partner id' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     const config = await getPartner(partnerId)
     if (!config) {
-      return withCors({ status: 404, body: JSON.stringify({ error: 'Partner not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 404, body: JSON.stringify({ error: 'Partner not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     // Sanitized public config — only expose fields needed for frontend theming
@@ -51,7 +67,7 @@ export async function getPartnerHandler(
       accentColor: config.accentColor,
     }
 
-    return withCors(
+    return withHeaders(
       {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -61,7 +77,7 @@ export async function getPartnerHandler(
     )
   } catch (err) {
     logError(ctx, 'getPartnerHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 

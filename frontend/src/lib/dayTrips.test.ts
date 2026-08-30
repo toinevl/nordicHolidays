@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { isDayTrip, baseFor } from './dayTrips'
+import { describe, expect, it } from 'vitest'
+
 import type { ItineraryStop } from '../types'
+import { baseFor, isDayTrip } from './dayTrips'
 
 const stop = (city: string, nights: number, day: number): ItineraryStop => ({
   day, city, region: 'Västra Götaland', lat: 57.7, lng: 11.9, nights,

@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { Preferences } from '../types'
 
 vi.mock('../lib/tableClient', () => {
@@ -18,8 +19,8 @@ vi.mock('../lib/identity', () => ({
   authErrorResponse: vi.fn((err, origin) => ({ status: 400, body: JSON.stringify({ error: (err as Error).message }), headers: {}, } as any)),
 }))
 
-import { getPreferencesHandler, putPreferencesHandler } from './preferences'
 import { getTableClient } from '../lib/tableClient'
+import { getPreferencesHandler, putPreferencesHandler } from './preferences'
 
 function makeContext() {
   return {

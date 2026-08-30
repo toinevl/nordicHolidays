@@ -1,5 +1,5 @@
 import type { CitySuggestion } from '../data/cities'
-import type { Stop, CulinaryRegion, Accommodation } from '../types'
+import type { Accommodation, CulinaryRegion, Stop } from '../types'
 
 export interface RegionConfig {
   brandName: string

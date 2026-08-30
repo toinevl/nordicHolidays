@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { citySearchHandler } from './citySearch'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { CitySuggestion } from '../types'
+import { citySearchHandler } from './citySearch'
 
 const GUEST_ID = 'owner-12345678-1234-1234-1234-123456789012'
 

@@ -1,12 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+
 import type { Locale } from '../types'
 import {
   detectInitialLocale,
-  normaliseLanguageTag,
-  langFromUrlParam,
-  langFromReferrer,
   langFromNavigator,
+  langFromReferrer,
   langFromStorage,
+  langFromUrlParam,
+  normaliseLanguageTag,
 } from './localeDetection'
 
 // A storage stub that mimics localStorage. Used because some test envs

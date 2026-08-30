@@ -1,5 +1,6 @@
-import { z } from 'zod'
 import type { InvocationContext } from '@azure/functions'
+import { z } from 'zod'
+
 import { regionConfig } from '../region'
 
 /**

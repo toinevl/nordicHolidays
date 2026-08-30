@@ -1,5 +1,6 @@
 import type { HttpRequest, InvocationContext } from '@azure/functions'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
+
 import { withCors } from './cors'
 import { logError } from './schemas'
 

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { nordicRegionConfig } from './nordic'
-import { us } from './us'
 import type { RegionConfig } from './types'
+import { us } from './us'
 
 const REGION = import.meta.env.VITE_REGION ?? 'nordic'
 

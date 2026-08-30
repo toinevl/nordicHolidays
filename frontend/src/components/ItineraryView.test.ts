@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { Stop, CulinaryRegion, Accommodation, Itinerary } from '../types'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { getLocale, setLocale, t } from '../i18n'
+import type { Accommodation, CulinaryRegion, Itinerary, Stop } from '../types'
 import { ItineraryView } from './ItineraryView'
-import { setLocale, getLocale, t } from '../i18n'
 
 // Mock IntersectionObserver which is not available in test environment
 global.IntersectionObserver = class IntersectionObserver {

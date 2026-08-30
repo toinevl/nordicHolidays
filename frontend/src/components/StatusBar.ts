@@ -1,6 +1,6 @@
+import { t } from '../i18n/index'
 import type { Store } from '../store'
 import type { Locale } from '../types'
-import { t } from '../i18n/index'
 
 /**
  * Manages the trip-status elements inside the unified #header.
@@ -55,6 +55,9 @@ export class StatusBar {
       e.stopPropagation()
       const isHidden = dropdown?.classList.contains('hidden')
       dropdown?.classList.toggle('hidden')
+      // Sync aria-hidden with the visible state so screen readers announce
+      // the dropdown only when it's actually open.
+      dropdown?.setAttribute('aria-hidden', String(!isHidden))
       current.setAttribute('aria-expanded', String(isHidden))
     })
 
@@ -62,6 +65,7 @@ export class StatusBar {
       if (!(e.target instanceof HTMLElement)) return
       if (!e.target.closest('#locale-switcher')) {
         dropdown?.classList.add('hidden')
+        dropdown?.setAttribute('aria-hidden', 'true')
         current?.setAttribute('aria-expanded', 'false')
       }
     })
@@ -71,6 +75,7 @@ export class StatusBar {
         const locale = (btn as HTMLElement).dataset.locale as Locale
         if (locale) this.onLocaleChange(locale)
         dropdown.classList.add('hidden')
+        dropdown.setAttribute('aria-hidden', 'true')
         current?.setAttribute('aria-expanded', 'false')
       })
     })
@@ -82,6 +87,7 @@ export class StatusBar {
     if (shareBtn) {
       shareBtn.style.display = activeTripId ? '' : 'none'
       shareBtn.title = t('status.shareTitle')
+      shareBtn.setAttribute('aria-label', t('status.shareTitle'))
     }
 
     // Locale current label

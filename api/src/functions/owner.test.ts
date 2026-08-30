@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/rateLimit', () => ({
   checkAndIncrementItineraryWriteRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
@@ -8,9 +8,9 @@ vi.mock('../lib/tableClient', () => ({
   getTableClient: vi.fn(),
 }))
 
-import { deleteOwnerHandler } from './owner'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
 import { getTableClient } from '../lib/tableClient'
+import { deleteOwnerHandler } from './owner'
 
 type Row = Record<string, unknown> & { partitionKey: string; rowKey: string }
 

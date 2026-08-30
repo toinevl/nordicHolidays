@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 // ALLOWED_ORIGINS is read once at module load, so control it via env + a fresh
 // dynamic import (vi.resetModules) before the helpers are imported.

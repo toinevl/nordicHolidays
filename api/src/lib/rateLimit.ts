@@ -1,6 +1,7 @@
 import type { HttpRequest } from '@azure/functions'
-import { getTableClient } from './tableClient'
+
 import { logError } from './schemas'
+import { getTableClient } from './tableClient'
 
 // Rate limit constants
 export const RATE_LIMIT_PER_OWNER_PER_HOUR = 5

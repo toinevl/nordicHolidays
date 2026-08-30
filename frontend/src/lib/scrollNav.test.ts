@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { isNavScrolled, NAV_SCROLL_THRESHOLD } from './scrollNav'
+import { describe, expect, it } from 'vitest'
+
+import { NAV_SCROLL_THRESHOLD, isNavScrolled } from './scrollNav'
 
 describe('isNavScrolled', () => {
   it('returns false at the top of the page', () => {

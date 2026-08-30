@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
-import { getOwnerId } from './identity'
 import { getConsent } from './consent'
+import { getOwnerId } from './identity'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net'
 

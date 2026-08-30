@@ -1,9 +1,11 @@
-import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+
+import maplibregl from 'maplibre-gl'
+
+import { t, tpl } from '../i18n/index'
+import { isDayTrip } from '../lib/dayTrips'
 import type { Stop } from '../types'
 import { buildBaseRouteCoords, buildExcursionLines, markerClassFor } from './mapGeometry'
-import { isDayTrip } from '../lib/dayTrips'
-import { t } from '../i18n/index'
 
 export type StopSelectCallback = (stop: Stop, options?: { scroll?: boolean }) => void
 
@@ -146,6 +148,8 @@ export class MapView {
     if (!this.map || !this._container) return
     const legend = document.createElement('div')
     legend.className = 'map-legend'
+    legend.setAttribute('role', 'region')
+    legend.setAttribute('aria-label', t('aria.mapLegend'))
     legend.innerHTML = `
       <div><span class="legend-overnight">● ${t('map.legendOvernight')}</span></div>
       <div><span class="legend-daytrip">◇ ${t('map.legendDayTrip')}</span></div>
@@ -248,7 +252,23 @@ export class MapView {
       el.className = markerClassFor(stop)
       el.dataset.id = String(stop.id)
       el.innerHTML = `<span>${stop.id}</span>`
+      // Keyboard accessibility: markers are interactive div overlays on the map canvas.
+      // They need tabindex + role="button" + aria-label + keydown so keyboard and
+      // screen-reader users can activate them without a mouse.
+      el.setAttribute('tabindex', '0')
+      el.setAttribute('role', 'button')
+      if (isDayTrip(stop)) {
+        el.setAttribute('aria-label', tpl('aria.dayTripMarker', { base: stop.dest }))
+      } else {
+        el.setAttribute('aria-label', tpl('aria.stopMarker', { city: stop.dest, n: String(stop.id) }))
+      }
       el.addEventListener('click', () => this.onStopSelect(stop, { scroll: true }))
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          this.onStopSelect(stop, { scroll: true })
+        }
+      })
       // Offset day-trip markers so they don't overlap their base marker at low zoom
       new maplibregl.Marker({
         element: el,

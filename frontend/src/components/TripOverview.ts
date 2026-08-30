@@ -1,9 +1,9 @@
-import type { Itinerary } from '../types'
+import { getLocale, t, tpl } from '../i18n/index'
 import { isDayTrip } from '../lib/dayTrips'
 import { formatDriveTime } from '../lib/distance'
-import { formatTravelDate } from '../lib/travelDates'
-import { t, tpl, getLocale } from '../i18n/index'
 import { escapeHtml } from '../lib/escape'
+import { formatTravelDate } from '../lib/travelDates'
+import type { Itinerary } from '../types'
 
 // ─── Data layer ─────────────────────────────────────────────────────────────
 
