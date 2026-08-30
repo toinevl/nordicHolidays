@@ -255,7 +255,9 @@ export const sv: LocaleStrings = {
     selectStartCity: 'Välj en startstad',
     selectFinishCity: 'Välj en slutstad',
     minDuration: 'Minsta reslängd är 7 dagar',
-    generationFailed: 'Generering misslyckades',
+    generationFailed: 'Resegenerering misslyckades — prova en annan rutt eller färre stopp.',
+    rateLimit: 'För många förfrågningar. Vänta en stund och försök igen.',
+    authFailed: 'Inloggning krävs för att spara resor.',
   },
   culinary: {
     mustTry: 'Måste provas',

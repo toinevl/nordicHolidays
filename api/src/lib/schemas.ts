@@ -22,6 +22,13 @@ export function logError(ctx: InvocationContext | undefined, message: string, er
   }
 }
 
+export interface ErrorResponse {
+  error: string
+  code?: string
+  details?: string
+  requestId?: string
+}
+
 /**
  * Schema for a single itinerary stop.
  * Enforces strict typing and reasonable limits on string lengths and arrays.

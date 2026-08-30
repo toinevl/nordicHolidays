@@ -255,7 +255,9 @@ export const nl: LocaleStrings = {
     selectStartCity: 'Selecteer een startstad',
     selectFinishCity: 'Selecteer een eindstad',
     minDuration: 'Minimale reisduur is 7 dagen',
-    generationFailed: 'Genereren mislukt',
+    generationFailed: 'Reis genereren mislukt — probeer een andere route of minder stops.',
+    rateLimit: 'Te veel verzoeken. Wacht even en probeer opnieuw.',
+    authFailed: 'Aanmelden vereist om reizen op te slaan.',
   },
   culinary: {
     mustTry: 'Must try',

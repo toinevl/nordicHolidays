@@ -255,7 +255,9 @@ export const de: LocaleStrings = {
     selectStartCity: 'Bitte wähle eine Startstadt',
     selectFinishCity: 'Bitte wähle eine Zielstadt',
     minDuration: 'Mindest-Reisedauer ist 7 Tage',
-    generationFailed: 'Erstellung fehlgeschlagen',
+    generationFailed: 'Reiserstellung fehlgeschlagen — bitte eine andere Route oder weniger Stopps versuchen.',
+    rateLimit: 'Zu viele Anfragen. Warten Sie einen Moment und versuchen Sie es erneut.',
+    authFailed: 'Anmeldung erforderlich, um Reisen zu speichern.',
   },
   culinary: {
     mustTry: 'Unbedingt probieren',

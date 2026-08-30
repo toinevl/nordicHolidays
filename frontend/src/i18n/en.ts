@@ -255,7 +255,9 @@ export const en: LocaleStrings = {
     selectStartCity: 'Please select a start city',
     selectFinishCity: 'Please select a finish city',
     minDuration: 'Minimum trip duration is 7 days',
-    generationFailed: 'Generation failed',
+    generationFailed: 'Trip generation failed — please try a different route or fewer stops.',
+    rateLimit: 'Too many requests. Wait a moment and try again.',
+    authFailed: 'Sign-in required to save trips.',
   },
   culinary: {
     mustTry: 'Must try',

@@ -255,7 +255,9 @@ export const no: LocaleStrings = {
     selectStartCity: 'Velg en startby',
     selectFinishCity: 'Velg en sluttby',
     minDuration: 'Minimum reiselengde er 7 dager',
-    generationFailed: 'Generering mislyktes',
+    generationFailed: 'Reisegenerering mislyktes — prøv en annen rute eller færre stopp.',
+    rateLimit: 'For mange forespørsler. Vent et øyeblikk og prøv igjen.',
+    authFailed: 'Innlogging kreves for å lagre turer.',
   },
   culinary: {
     mustTry: 'Må prøves',

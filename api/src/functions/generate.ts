@@ -300,7 +300,7 @@ export async function generateHandler(
     const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT ?? '(not set)'
     const model = process.env.LLM_MODEL ?? 'gpt-4o'
     logError(ctx, `generateHandler: generation error - endpoint: ${endpoint}, model: ${model}`, err)
-    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Generation failed. Please try again later.' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Generation failed. Please try again later.', code: 'generation_failed', requestId: ctx?.invocationId }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
