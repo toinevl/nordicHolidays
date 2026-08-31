@@ -280,4 +280,16 @@ export const en: LocaleStrings = {
     map3dLabel: '3D map of Nordic road trip',
     localeDropdown: 'Choose your language',
   },
+  gallery: {
+    title: 'Community Trips',
+    loadTrip: 'Load trip: {title}',
+  },
+  creator: {
+    title: '{name} — Creator Profile',
+    anonymous: 'Anonymous Creator',
+    created: 'Created',
+    updated: 'Updated',
+    notFound: 'Profile not found.',
+    loadError: 'Failed to load profile.',
+  },
 }

@@ -2,7 +2,7 @@
 
 **Scope:** Read-only review of the `nordicHolidays` codebase (Vite+TS SPA on Azure
 Static Web Apps consuming an Azure Functions Flex Consumption API that generates
-Nordic/US road-trip itineraries via Azure AI Foundry, persisted to Azure Table
+Nordic road-trip itineraries via Azure AI Foundry, persisted to Azure Table
 Storage). Multi-region: Nordic ("Fjordvia") on `westeurope` + US ("RouteKit") on
 `eastus`, single codebase with build-time region selection.
 

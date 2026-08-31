@@ -192,9 +192,9 @@ they inherit `--text-on-night` in immersive zones.
 (`:7`), and all OG/Twitter tags (`:27-35`) use the brand name and Nordic-specific copy as
 static HTML. This is intentional for the Nordic region — the brand *is* "Fjordvia" and
 the content *is* Nordic — but it is not driven through the `RegionConfig` interface that
-`region/index.ts` defines (`brandName`, `tagline`, `heroContent`). The US region (RouteKit)
-will need different title/description/og content, and there is no build-time injection
-path for that. The `heroContent` block in `RegionConfig` (`region/types.ts:16-22`)
+`region/index.ts` defines (`brandName`, `tagline`, `heroContent`). Other regions will need
+different title/description/og content, and there is no build-time injection path for that.
+The `heroContent` block in `RegionConfig` (`region/types.ts:16-22`)
 already provides `badgeKey`, `subtitleKey`, `metaDays`, etc. — but the static HTML meta
 tags are outside the JS i18n system entirely.
 

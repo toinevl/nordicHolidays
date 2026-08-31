@@ -208,7 +208,6 @@ describe('region audit: no hardcoded country codes outside region config', () =>
   // or test fixtures that test region config)
   const ALLOWED_FILES = new Set([
     'src/region/nordic.ts',
-    'src/region/us.ts',
     'src/region/types.ts',
   ])
 

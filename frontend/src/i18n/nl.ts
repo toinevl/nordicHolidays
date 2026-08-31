@@ -280,4 +280,16 @@ export const nl: LocaleStrings = {
     map3dLabel: '3D kaart van Noordse roadtrip',
     localeDropdown: 'Kies je taal',
   },
+  gallery: {
+    title: 'Gedeelde Reizen',
+    loadTrip: 'Laad reis: {title}',
+  },
+  creator: {
+    title: '{name} — Creatorprofiel',
+    anonymous: 'Anonieme Creator',
+    created: 'Aangemaakt',
+    updated: 'Bijgewerkt',
+    notFound: 'Profiel niet gevonden.',
+    loadError: 'Profiel laden mislukt.',
+  },
 }

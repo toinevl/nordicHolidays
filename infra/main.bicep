@@ -61,7 +61,7 @@ param actionGroupName string = 'nordic-holidays-alerts'
 @description('Monthly Azure cost budget in EUR for this resource group')
 param monthlyBudgetAmount int = 50
 
-@description('Travel region label — controls which region data pack the API and frontend use. Nordic = Fjordvia, US = RouteKit.')
+@description('Travel region label — Nordic = Fjordvia')
 param region string = 'nordic'
 
 // Variables

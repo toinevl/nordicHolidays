@@ -287,6 +287,18 @@ export interface LocaleStrings {
     /** Static: "Choose your language" — aria-label on the locale dropdown */
     localeDropdown: string
   }
+  gallery: {
+    title: string
+    loadTrip: string
+  }
+  creator: {
+    title: string
+    anonymous: string
+    created: string
+    updated: string
+    notFound: string
+    loadError: string
+  }
 }
 
 export type LocaleKey =
@@ -315,3 +327,5 @@ export type LocaleKey =
   | `accomPolicy.${keyof LocaleStrings['accomPolicy']}`
   | `tags.${keyof LocaleStrings['tags']}`
   | `aria.${keyof LocaleStrings['aria']}`
+  | `gallery.${keyof LocaleStrings['gallery']}`
+  | `creator.${keyof LocaleStrings['creator']}`

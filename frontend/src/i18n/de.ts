@@ -280,4 +280,16 @@ export const de: LocaleStrings = {
     map3dLabel: '3D-Karte des nordischen Roadtrips',
     localeDropdown: 'Sprache wählen',
   },
+  gallery: {
+    title: 'Geteilte Reisen',
+    loadTrip: 'Reise laden: {title}',
+  },
+  creator: {
+    title: '{name} — Erstellerprofil',
+    anonymous: 'Anonymer Ersteller',
+    created: 'Erstellt',
+    updated: 'Aktualisiert',
+    notFound: 'Profil nicht gefunden.',
+    loadError: 'Profil konnte nicht geladen werden.',
+  },
 }
