@@ -19,6 +19,7 @@ import { legalPageLocale } from './lib/legalPages'
 import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
 import { isNavScrolled } from './lib/scrollNav'
 import { affiliateClickPayload, trackAffiliateClickGated } from './lib/tracking'
+import { removeStopByIndex, reorderStopByIndex, replaceStopNoteByIndex } from './lib/stopActions'
 import { getPartnerSlug, isWidgetMode, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
 import { regionConfig } from './region'
 import { createStore } from './store'
@@ -188,14 +189,11 @@ function onReorderStopForMain(stopId: number, direction: 'up' | 'down'): void {
   const state = store.getState()
   const itinerary = state.currentItinerary
   if (!itinerary || !Array.isArray(itinerary.stops)) return
-  const idx = itinerary.stops.findIndex(
-    (s) => s.day === stopId || String(s.day) === String(stopId),
-  )
-  if (idx < 0) return
-  const target = direction === 'up' ? idx - 1 : idx + 1
-  if (target < 0 || target >= itinerary.stops.length) return
-  const stops = [...itinerary.stops]
-  ;[stops[idx], stops[target]] = [stops[target], stops[idx]]
+  // #171: stopId is the 1-based UI position (Stop.id = i+1), NOT the travel
+  // day — match on array index, never on `day` (days run 1,3,5… for
+  // multi-night stops).
+  const stops = reorderStopByIndex(itinerary.stops, stopId, direction)
+  if (stops === itinerary.stops) return
   const next = { ...itinerary, stops }
   store.setState({ currentItinerary: next, unsaved: true })
   itineraryView.renderFromItinerary(next)
@@ -211,10 +209,9 @@ function onRemoveStopForMain(stopId: number): void {
   const state = store.getState()
   const itinerary = state.currentItinerary
   if (!itinerary || !Array.isArray(itinerary.stops)) return
-  const stops = itinerary.stops.filter(
-    (s) => s.day !== stopId && String(s.day) !== String(stopId),
-  )
-  if (stops.length === itinerary.stops.length) return
+  // #171: see onReorderStopForMain — position, not day.
+  const stops = removeStopByIndex(itinerary.stops, stopId)
+  if (stops === itinerary.stops) return
   const next = { ...itinerary, stops }
   store.setState({ currentItinerary: next, unsaved: true })
   itineraryView.renderFromItinerary(next)
@@ -267,19 +264,36 @@ function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
     return Promise.resolve()
   }
 
-  const updatedStops = state.currentItinerary.stops.map((item) => {
-    if (item.day === stop.day) {
-      return { ...item, userNotes: note }
-    }
-    return item
-  })
+  // #171: the callback now receives the REAL stop from
+  // this.currentItinerary (matched by 1-based UI position), so we can
+  // identify it by identity instead of by `day` — `day` is the travel day,
+  // not the position, and multi-night stops break day-matching.
+  const position = state.currentItinerary.stops.indexOf(stop)
+  if (position < 0) {
+    // Fallback for the demo-itinerary path where no ItineraryStop object is
+    // available: match on `day` as before (best effort, demo-only).
+    const updatedStops = state.currentItinerary.stops.map((item) => {
+      if (item.day === stop.day) {
+        return { ...item, userNotes: note }
+      }
+      return item
+    })
+    return commitStopNote(state, updatedStops)
+  }
+  const updatedStops = replaceStopNoteByIndex(state.currentItinerary.stops, position + 1, note)
+  return commitStopNote(state, updatedStops)
+}
 
-  const next = { ...state.currentItinerary, stops: updatedStops }
+function commitStopNote(
+  state: ReturnType<typeof store.getState>,
+  updatedStops: ItineraryStop[],
+): Promise<void> {
+  const next = { ...state.currentItinerary!, stops: updatedStops }
   store.setState({ currentItinerary: next, unsaved: true })
   itineraryView.renderFromItinerary(next)
 
   return Promise.resolve(
-    apiClient.saveStopNote(state.activeTripId, updatedStops)
+    apiClient.saveStopNote(state.activeTripId!, updatedStops)
   ).then((updated) => {
     itineraryView.setHasPreviousVersion(Boolean(updated.hasPreviousVersion))
   }).catch((error) => {

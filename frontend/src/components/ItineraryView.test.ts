@@ -971,4 +971,40 @@ describe('ItineraryView stop-notes round-trip (#134)', () => {
     expect(tas[0].value).toBe('Braucht ein Café-Day')
     expect(tas[1].value).toBe('')
   })
+
+  // #171: the save-note button must pass the REAL ItineraryStop for the
+  // clicked position, not a {day: position} fake. With multi-night stops
+  // day != position (days 1,3,5 at positions 1,2,3), and the old payload
+  // made main.ts match on `day` — landing the note on the wrong stop.
+  // This fixture deliberately uses day != position for every stop.
+  it('save-note callback receives the real stop object for the clicked position even when day != position (#171)', async () => {
+    const onSaveNote = vi.fn().mockResolvedValue(undefined)
+    const view = new ItineraryView(vi.fn(), vi.fn(), vi.fn(), vi.fn(), onSaveNote)
+    const stops = [
+      { day: 1, city: 'Malmö', region: 'Skåne', lat: 55.6, lng: 13.0, nights: 2, highlights: ['a'], accommodation: 'x', culinaryNotes: 'y' },
+      { day: 3, city: 'Göteborg', region: 'Västra Götaland', lat: 57.7, lng: 11.97, nights: 2, highlights: ['b'], accommodation: 'x', culinaryNotes: 'y' },
+      { day: 5, city: 'Oslo', region: 'Oslo', lat: 59.9, lng: 10.75, nights: 1, highlights: ['c'], accommodation: 'x', culinaryNotes: 'y' },
+    ]
+    view.renderFromItinerary({
+      title: 'T', totalDays: 7, startCity: 'Malmö', endCity: 'Oslo', generatedAt: '',
+      stops,
+    })
+
+    // Type a note on the SECOND card (position 2 → Göteborg, day 3) and save.
+    const noteInput = document.getElementById('note-2') as HTMLTextAreaElement
+    expect(noteInput).not.toBeNull()
+    noteInput.value = 'Fika bij het uitkijkpunt'
+    const saveBtn = document.querySelector('.btn-save-note[data-id="2"]') as HTMLButtonElement
+    expect(saveBtn).not.toBeNull()
+    saveBtn.click()
+
+    expect(onSaveNote).toHaveBeenCalledTimes(1)
+    const [receivedStop, receivedNote] = onSaveNote.mock.calls[0]
+    // The callback must receive the ACTUAL stop at position 2 (Göteborg,
+    // day 3) — not a {day: 2} fake that matches nothing / the wrong stop.
+    expect(receivedStop).toBe(stops[1])
+    expect(receivedStop.city).toBe('Göteborg')
+    expect(receivedStop.day).toBe(3)
+    expect(receivedNote).toBe('Fika bij het uitkijkpunt')
+  })
 })

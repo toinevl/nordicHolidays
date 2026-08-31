@@ -614,7 +614,17 @@ export class ItineraryView {
         if (!Number.isFinite(stopId)) return
         const noteInput = document.getElementById(`note-${stopId}`) as HTMLTextAreaElement | null
         const note = noteInput?.value ?? ''
-        this.onSaveNoteCallback?.({ day: stopId, note } as any, note)
+        // #171: pass the REAL itinerary stop for this UI position, not a
+        // {day: position} fake. `day` is the travel day (1,3,5…) and does not
+        // match the 1-based position for multi-night stops, so the old
+        // {day: stopId} payload landed notes on the wrong stop or lost them.
+        const itineraryStop = this.currentItinerary?.stops[stopId - 1]
+        if (itineraryStop) {
+          this.onSaveNoteCallback?.(itineraryStop, note)
+        } else {
+          // No itinerary loaded (default demo) — fall back to position only.
+          this.onSaveNoteCallback?.({ day: stopId } as ItineraryStop, note)
+        }
       })
     })
 
