@@ -9,6 +9,7 @@ import { getPartner } from '../lib/partners'
 import { checkAndIncrementRateLimit, checkGlobalDailyGenerateCap, checkPartnerDailyGenerateCap } from '../lib/rateLimit'
 import { getRouteSegments } from '../lib/routing'
 import { GenerateRequestBodySchema, logError } from '../lib/schemas'
+import { emitDuration, emitError, emitEvent } from '../lib/telemetry'
 import { regionConfig } from '../region'
 import type { Itinerary, Preferences } from '../types'
 // WR-07 / H7: ensure every response carries Cache-Control and Content-Type
@@ -172,6 +173,7 @@ export async function generateHandler(
     }, origin)
   }
 
+  const generateStart = Date.now()
   try {
     const client = getLlmClient()
     // Token cap: structured itineraries for up to 21-day trips measure
@@ -291,6 +293,19 @@ export async function generateHandler(
     }
 
     const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString(), startDate: prefs.startDate }
+
+    emitEvent(ctx, 'trip_generated', {
+      ownerId: ownerId.slice(0, 8),
+      days: prefs.tripDays,
+      stopCount: input.stops.length,
+      country: body.country,
+      model: getModel(),
+    })
+    emitDuration(ctx, 'generate_duration_ms', Date.now() - generateStart, {
+      success: true,
+      stopCount: input.stops.length,
+    })
+
     return withHeaders({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -300,6 +315,10 @@ export async function generateHandler(
     const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT ?? '(not set)'
     const model = process.env.LLM_MODEL ?? 'gpt-4o'
     logError(ctx, `generateHandler: generation error - endpoint: ${endpoint}, model: ${model}`, err)
+    emitError(ctx, err, { event: 'generation_failed', ownerId: ownerId.slice(0, 8) })
+    emitDuration(ctx, 'generate_duration_ms', Date.now() - generateStart, {
+      success: false,
+    })
     return withHeaders({ status: 500, body: JSON.stringify({ error: 'Generation failed. Please try again later.', code: 'generation_failed', requestId: ctx?.invocationId }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }

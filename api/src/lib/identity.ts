@@ -19,10 +19,11 @@ export class AuthError extends Error {
 }
 
 /**
- * Module-level JWKS cache: create once per issuer URL and reuse across invocations.
- * Keyed by issuer to support multiple issuer hosts.
+ * Module-level JWKS cache with TTL (B-7 / M1): create once per issuer URL,
+ * reuse across invocations, and evict after 1 hour.
  */
-const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>()
+const JWKS_CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+const jwksCache = new Map<string, { jwks: ReturnType<typeof createRemoteJWKSet>; expiresAt: number }>()
 
 function getTenant(claims: Record<string, unknown>): string {
   return typeof claims.tid === 'string' ? claims.tid : ''
@@ -30,12 +31,17 @@ function getTenant(claims: Record<string, unknown>): string {
 
 /**
  * Get or create a cached JWKS instance for the given issuer URL.
+ * Evicts stale entries (older than JWKS_CACHE_TTL_MS) on access.
  */
 function getOrCreateJwks(issuerUrl: string): ReturnType<typeof createRemoteJWKSet> {
-  if (!jwksCache.has(issuerUrl)) {
-    jwksCache.set(issuerUrl, createRemoteJWKSet(new URL(issuerUrl)))
+  const now = Date.now()
+  const cached = jwksCache.get(issuerUrl)
+  if (cached && cached.expiresAt > now) {
+    return cached.jwks
   }
-  return jwksCache.get(issuerUrl)!
+  const jwks = createRemoteJWKSet(new URL(issuerUrl))
+  jwksCache.set(issuerUrl, { jwks, expiresAt: now + JWKS_CACHE_TTL_MS })
+  return jwks
 }
 
 export async function verifyAccessToken(token: string, ctx?: InvocationContext): Promise<Record<string, unknown>> {

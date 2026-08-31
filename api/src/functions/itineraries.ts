@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid'
 import { corsPreflightResponse, withCors } from '../lib/cors'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
 import { ItineraryPatchBodySchema, SaveItineraryBodySchema, logError } from '../lib/schemas'
+import { emitEvent } from '../lib/telemetry'
 import { ensureTable, getTableClient } from '../lib/tableClient'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 // WR-07 / H7: ensure every response carries Cache-Control and Content-Type
@@ -215,6 +216,10 @@ export async function saveItineraryHandler(
       itineraryJson: JSON.stringify(body.itinerary),
       thumbnail: thumb,
     })
+    emitEvent(ctx, 'trip_saved', {
+      id,
+      stopCount: body.itinerary.stops.length,
+    })
     return successResponse(origin, { id }, 201)
   } catch (err: any) {
     if (err?.statusCode === 404) {
@@ -311,9 +316,14 @@ export async function updateItineraryHandler(
     // The merged `itinerary` object above is exactly what we persisted, so
     // return it directly instead of trying to re-read a non-existent body
     // (which would throw on JSON.parse(undefined) → 500).
+    emitEvent(ctx, 'trip_edited', {
+      id,
+      fieldsChanged: Object.keys(patch).join(','),
+    })
     return withHeaders({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...itinerary, hasPreviousVersion: true }) }, origin)
   } catch (err: any) {
     if (err?.statusCode === 404) return withHeaders({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    if (err?.statusCode === 412 || err?.code === 'UpdateConditionNotSatisfied') return withHeaders({ status: 409, body: JSON.stringify({ error: 'Conflict: itinerary was modified concurrently' }), headers: { 'Content-Type': 'application/json' } }, origin)
     logError(ctx, 'updateItineraryHandler: internal error', err)
     return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }

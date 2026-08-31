@@ -256,6 +256,8 @@ export interface LocaleStrings {
     selectFinishCity: string
     minDuration: string
     generationFailed: string
+    rateLimit: string
+    authFailed: string
   }
   culinary: {
     mustTry: string

@@ -174,6 +174,53 @@ export async function putProfileHandler(
   }
 }
 
+/**
+ * Public profile endpoint (Phase A): returns only non-sensitive fields
+ * so any visitor can see creator attribution without exposing internal
+ * partition/row keys or email. Uses existing anonymous identity only.
+ */
+export async function getPublicProfileHandler(
+  req: HttpRequest,
+  ctx: InvocationContext,
+): Promise<HttpResponseInit> {
+  const origin = req.headers.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
+
+  const ownerId = req.query.get('ownerId') ?? ''
+  if (!ownerId) {
+    return withHeaders({ status: 400, body: JSON.stringify({ error: 'Missing ownerId' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  }
+
+  try {
+    const client = getTableClient('Profiles')
+    const entity = await client.getEntity(ownerId, ROW_KEY) as Record<string, unknown>
+    const profile = entityToProfile(entity)
+    const safeProfile = {
+      displayName: profile.displayName,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    }
+    return withHeaders({
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(safeProfile),
+    }, origin)
+  } catch (err: any) {
+    if (err?.statusCode === 404) {
+      return withHeaders({ status: 404, body: JSON.stringify({ error: 'Profile not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    }
+    logError(ctx, 'getPublicProfileHandler: internal error', err)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  }
+}
+
+app.http('publicProfile', {
+  methods: ['GET', 'OPTIONS'],
+  authLevel: 'anonymous',
+  route: 'profile/public',
+  handler: getPublicProfileHandler,
+})
+
 app.http('getProfile', {
   methods: ['GET', 'OPTIONS'],
   authLevel: 'anonymous',
