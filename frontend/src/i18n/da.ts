@@ -255,7 +255,9 @@ export const da: LocaleStrings = {
     selectStartCity: 'Vælg en startby',
     selectFinishCity: 'Vælg en slutby',
     minDuration: 'Minimale rejselængde er 7 dage',
-    generationFailed: 'Generering mislykkedes',
+    generationFailed: 'Rejsegenerering mislykkedes — prøv en anden rute eller færre stop.',
+    rateLimit: 'For mange anmodninger. Vent et øjeblik og prøv igen.',
+    authFailed: 'Log ind påkrævet for at gemme rejser.',
   },
   culinary: {
     mustTry: 'Must try',
@@ -270,5 +272,24 @@ export const da: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Filtrér din rejse',
+    removeTag: 'Fjern {city}',
+    stopMarker: '{city}, stop {n}',
+    dayTripMarker: 'Dagstur nær {base}',
+    mapLegend: 'Kortforklaring',
+    mapLabel: 'Nordisk roadtrip-kort',
+    map3dLabel: '3D-kort af nordisk roadtrip',
+    localeDropdown: 'Vælg sprog',
+  },
+  gallery: {
+    title: 'Fællesskabsture',
+    loadTrip: 'Indlæs tur: {title}',
+  },
+  creator: {
+    title: '{name} — Skaberprofil',
+    anonymous: 'Anonym skaber',
+    created: 'Oprettet',
+    updated: 'Opdateret',
+    notFound: 'Profil blev ikke fundet.',
+    loadError: 'Profilen kunne ikke indlæses.',
   },
 }

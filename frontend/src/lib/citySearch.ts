@@ -1,4 +1,4 @@
-import { CITIES, type CitySuggestion } from '../data/cities'
+import { type CitySuggestion, CITIES } from '../data/cities'
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 

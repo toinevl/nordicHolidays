@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { Itinerary, SavedItinerarySummary } from '../types'
 
 vi.mock('../lib/tableClient', () => {
@@ -18,15 +19,15 @@ vi.mock('../lib/rateLimit', () => ({
 }))
 vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-id-123') }))
 
-import {
-  listItinerariesHandler,
-  getItineraryHandler,
-  saveItineraryHandler,
-  updateItineraryHandler,
-  undoItineraryHandler,
-} from './itineraries'
-import { getTableClient } from '../lib/tableClient'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
+import { getTableClient } from '../lib/tableClient'
+import {
+  getItineraryHandler,
+  listItinerariesHandler,
+  saveItineraryHandler,
+  undoItineraryHandler,
+  updateItineraryHandler,
+} from './itineraries'
 
 function makeClient(overrides: Record<string, unknown> = {}) {
   const base = {

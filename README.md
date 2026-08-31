@@ -1,10 +1,8 @@
-# Fjordvia / RouteKit
+# Fjordvia
 
 [![CI](https://github.com/toinevl/nordicHolidays/actions/workflows/ci.yml/badge.svg)](https://github.com/toinevl/nordicHolidays/actions/workflows/ci.yml)
 
 **Fjordvia** — AI-Planned Road Trips Across the Nordics. Plan your Nordic holiday by selecting a start and end point — we'll generate the rest with AI.
-
-**RouteKit** — AI-Planned Road Trips Across the United States. Same engine, US data pack.
 
 Both apps share a single codebase. Region-specific data (countries, cities, seasons, default itinerary, LLM prompt, branding) is config-driven and selected at build time.
 
@@ -61,7 +59,6 @@ This codebase serves multiple travel regions from a single shared codebase. The 
 | Region | Brand | Env value | Countries | Default trip |
 |--------|-------|-----------|-----------|-------------|
 | Nordic | Fjordvia | `nordic` (default) | SE, NO, DK, FI | Sweden 21-day Grand Tour |
-| US | RouteKit | `us` | US | Pacific Coast Highway + Rockies |
 
 ### What's region-specific
 

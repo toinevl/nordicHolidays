@@ -11,7 +11,8 @@
  * entities, async-iterable listEntities, 404 on missing entity, and ETag
  * handling for updates.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { Itinerary, SavedItinerarySummary } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -115,14 +116,14 @@ let idCounter = 0
 vi.mock('nanoid', () => ({ nanoid: () => `id-${++idCounter}` }))
 
 // Import handlers AFTER mocks are registered.
+import { ensureTable, getTableClient } from '../lib/tableClient'
 import {
-  listItinerariesHandler,
   getItineraryHandler,
+  listItinerariesHandler,
   saveItineraryHandler,
-  updateItineraryHandler,
   undoItineraryHandler,
+  updateItineraryHandler,
 } from './itineraries'
-import { getTableClient, ensureTable } from '../lib/tableClient'
 
 // ---------------------------------------------------------------------------
 // Request / context helpers — build real-ish HttpRequest objects.

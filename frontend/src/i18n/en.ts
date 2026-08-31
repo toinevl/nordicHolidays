@@ -255,7 +255,9 @@ export const en: LocaleStrings = {
     selectStartCity: 'Please select a start city',
     selectFinishCity: 'Please select a finish city',
     minDuration: 'Minimum trip duration is 7 days',
-    generationFailed: 'Generation failed',
+    generationFailed: 'Trip generation failed — please try a different route or fewer stops.',
+    rateLimit: 'Too many requests. Wait a moment and try again.',
+    authFailed: 'Sign-in required to save trips.',
   },
   culinary: {
     mustTry: 'Must try',
@@ -270,5 +272,24 @@ export const en: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Filter your trip',
+    removeTag: 'Remove {city}',
+    stopMarker: '{city}, stop {n}',
+    dayTripMarker: 'Day trip near {base}',
+    mapLegend: 'Map legend',
+    mapLabel: 'Nordic road trip map',
+    map3dLabel: '3D map of Nordic road trip',
+    localeDropdown: 'Choose your language',
+  },
+  gallery: {
+    title: 'Community Trips',
+    loadTrip: 'Load trip: {title}',
+  },
+  creator: {
+    title: '{name} — Creator Profile',
+    anonymous: 'Anonymous Creator',
+    created: 'Created',
+    updated: 'Updated',
+    notFound: 'Profile not found.',
+    loadError: 'Failed to load profile.',
   },
 }

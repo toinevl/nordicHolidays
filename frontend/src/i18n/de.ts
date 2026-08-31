@@ -255,7 +255,9 @@ export const de: LocaleStrings = {
     selectStartCity: 'Bitte wähle eine Startstadt',
     selectFinishCity: 'Bitte wähle eine Zielstadt',
     minDuration: 'Mindest-Reisedauer ist 7 Tage',
-    generationFailed: 'Erstellung fehlgeschlagen',
+    generationFailed: 'Reiserstellung fehlgeschlagen — bitte eine andere Route oder weniger Stopps versuchen.',
+    rateLimit: 'Zu viele Anfragen. Warten Sie einen Moment und versuchen Sie es erneut.',
+    authFailed: 'Anmeldung erforderlich, um Reisen zu speichern.',
   },
   culinary: {
     mustTry: 'Unbedingt probieren',
@@ -270,5 +272,24 @@ export const de: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Reise filtern',
+    removeTag: 'Entfernen {city}',
+    stopMarker: '{city}, Stopp {n}',
+    dayTripMarker: 'Tagesausflug bei {base}',
+    mapLegend: 'Kartenlegende',
+    mapLabel: 'Nordische Roadtrip-Karte',
+    map3dLabel: '3D-Karte des nordischen Roadtrips',
+    localeDropdown: 'Sprache wählen',
+  },
+  gallery: {
+    title: 'Geteilte Reisen',
+    loadTrip: 'Reise laden: {title}',
+  },
+  creator: {
+    title: '{name} — Erstellerprofil',
+    anonymous: 'Anonymer Ersteller',
+    created: 'Erstellt',
+    updated: 'Aktualisiert',
+    notFound: 'Profil nicht gefunden.',
+    loadError: 'Profil konnte nicht geladen werden.',
   },
 }

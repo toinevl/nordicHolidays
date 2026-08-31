@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { Itinerary } from '../types'
 import {
-  itineraryToGPX,
-  itineraryToICS,
-  itineraryToGoogleMapsUrl,
-  itineraryToWazeUrl,
   downloadFile,
+  itineraryToGPX,
+  itineraryToGoogleMapsUrl,
+  itineraryToICS,
+  itineraryToWazeUrl,
 } from './export'
 
 const sampleItinerary: Itinerary = {

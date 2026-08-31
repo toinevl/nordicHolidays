@@ -1,5 +1,6 @@
-import { z } from 'zod'
 import type { InvocationContext } from '@azure/functions'
+import { z } from 'zod'
+
 import { regionConfig } from '../region'
 
 /**
@@ -19,6 +20,13 @@ export function logError(ctx: InvocationContext | undefined, message: string, er
   } else if (typeof anyCtx.log === 'function') {
     anyCtx.log(message, err)
   }
+}
+
+export interface ErrorResponse {
+  error: string
+  code?: string
+  details?: string
+  requestId?: string
 }
 
 /**
@@ -68,8 +76,11 @@ export const ItinerarySchema = z.object({
   endCity: z.string().max(200),
   stops: z.array(ItineraryStopSchema).max(365),
   generatedAt: z.string().optional(),
-  thumbnail: z.string().max(1 * 1024 * 1024).optional(), // 1MB max at schema level; validateThumbnail enforces 48KB
+  thumbnail: z.string().max(1 * 1024 * 1024).optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  // Phase A: creator attribution for public shared trips; no visitor managed identity (existing anonymous owner-<uuid> model preserved)
+  creatorId: z.string().max(500).optional(),
+  verified: z.boolean().optional(),
 }).strict()
 
 /**
@@ -163,6 +174,19 @@ export const ProfilePutBodySchema = z.object({
  * right language. `.strict()` rejects anything else so the endpoint can't be
  * used as a data sink.
  */
+/**
+ * Schema for public trip notes (Phase B): append-only community notes
+ * per stop. No managed identity for visitors; uses existing anonymous
+ * owner-<uuid> via X-Owner-Id. No Azure SKU changes.
+ */
+export const TripNoteSchema = z.object({
+  tripId: z.string().min(1).max(200),
+  stopIndex: z.number().int().nonnegative(),
+  text: z.string().min(1).max(500),
+  displayName: z.string().min(1).max(60).optional(),
+  createdAt: z.string().optional(),
+}).strict()
+
 export const LeadBodySchema = z.object({
   partnerId: z.string().min(1),
   email: z.string().email(),

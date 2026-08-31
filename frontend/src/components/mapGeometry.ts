@@ -1,5 +1,5 @@
+import { baseFor, isDayTrip } from '../lib/dayTrips'
 import type { Stop } from '../types'
-import { isDayTrip, baseFor } from '../lib/dayTrips'
 
 /**
  * Build the main route as a line through overnight bases only.

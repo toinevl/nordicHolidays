@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { loadWidgetConfig, isWidgetMode, getPartnerSlug } from './widget'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { getPartnerSlug, isWidgetMode, loadWidgetConfig } from './widget'
 
 describe('isWidgetMode (#75)', () => {
   afterEach(() => {

@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { Itinerary, ItineraryStop } from '../types'
 import { buildOverviewRows, totalKm } from './TripOverview'
-import type { ItineraryStop, Itinerary } from '../types'
 
 // Mock i18n so we don't depend on locale state
 vi.mock('../i18n/index', () => ({

@@ -1,7 +1,23 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { withCors, corsPreflightResponse } from '../lib/cors'
+import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
+
+import { corsPreflightResponse, withCors } from '../lib/cors'
 import { checkAndIncrementTrackRateLimit } from '../lib/rateLimit'
 import { TrackEventSchema, logError } from '../lib/schemas'
+// WR-07 / H7: ensure every response carries Cache-Control and Content-Type
+// in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
+// injects. withCors is aliased so the wrapper can call it without recursion.
+const _withCors = withCors
+
+function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseInit {
+  return _withCors({
+    ...response,
+    headers: {
+      ...(response.status !== 204 ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-store',
+      ...((response.headers as Record<string, string>) ?? {}),
+    },
+  }, origin)
+}
 
 /**
  * First-party affiliate click-tracking beacon (#74).
@@ -25,13 +41,13 @@ export async function trackHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   const ownerId = req.headers?.get('x-owner-id') ?? 'unknown'
   const rateLimitResult = await checkAndIncrementTrackRateLimit(req, ownerId, ctx)
   if (!rateLimitResult.allowed) {
     const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
-    return withCors({
+    return withHeaders({
       status: 429,
       headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
       body: JSON.stringify({ error: 'Too many requests' }),
@@ -42,12 +58,12 @@ export async function trackHandler(
   try {
     rawBody = await req.json()
   } catch {
-    return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 
   const parseResult = TrackEventSchema.safeParse(rawBody)
   if (!parseResult.success) {
-    return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid request body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 400, body: JSON.stringify({ error: 'Invalid request body' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 
   const { linkType, city, locale } = parseResult.data
@@ -63,7 +79,7 @@ export async function trackHandler(
     logError(ctx, 'trackHandler: failed to log event', err)
   }
 
-  return withCors({ status: 204 }, origin)
+  return withHeaders({ status: 204 }, origin)
 }
 
 app.http('track', {

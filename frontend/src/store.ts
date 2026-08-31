@@ -1,6 +1,6 @@
-import type { AppState, Preferences, Locale } from './types'
-import { setLocale, LOCALE_STORAGE_KEY } from './i18n/index'
+import { LOCALE_STORAGE_KEY, setLocale } from './i18n/index'
 import { regionConfig } from './region'
+import type { AppState, Locale, Preferences } from './types'
 
 function readInitialLocale(): Locale {
   try {

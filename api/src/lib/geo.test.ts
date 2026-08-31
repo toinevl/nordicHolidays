@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { haversineKm, type Coordinate } from './geo'
+import { describe, expect, it } from 'vitest'
+
+import { type Coordinate, haversineKm } from './geo'
 
 describe('haversineKm', () => {
   it('calculates zero distance for identical points', () => {

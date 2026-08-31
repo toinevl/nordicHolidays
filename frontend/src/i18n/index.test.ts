@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { t, tpl, setLocale, getLocale } from './index'
-import { en } from './en'
-import { nl } from './nl'
-import { de } from './de'
-import { sv } from './sv'
+import { beforeEach, describe, expect, it } from 'vitest'
+
 import { da } from './da'
+import { de } from './de'
+import { en } from './en'
+import { getLocale, setLocale, t, tpl } from './index'
+import { nl } from './nl'
 import { no } from './no'
+import { sv } from './sv'
 
 describe('i18n module', () => {
   beforeEach(() => {

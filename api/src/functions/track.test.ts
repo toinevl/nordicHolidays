@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/rateLimit', () => ({
   checkAndIncrementTrackRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
 }))
 
-import { trackHandler } from './track'
 import { checkAndIncrementTrackRateLimit } from '../lib/rateLimit'
+import { trackHandler } from './track'
 
 function makeContext() {
   return {

@@ -1,8 +1,24 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getTableClient } from '../lib/tableClient'
-import { withCors, corsPreflightResponse } from '../lib/cors'
-import { logError } from '../lib/schemas'
+import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
+
+import { corsPreflightResponse, withCors } from '../lib/cors'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
+import { logError } from '../lib/schemas'
+import { getTableClient } from '../lib/tableClient'
+// WR-07 / H7: ensure every response carries Cache-Control and Content-Type
+// in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
+// injects. withCors is aliased so the wrapper can call it without recursion.
+const _withCors = withCors
+
+function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseInit {
+  return _withCors({
+    ...response,
+    headers: {
+      ...(response.status !== 204 ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-store',
+      ...((response.headers as Record<string, string>) ?? {}),
+    },
+  }, origin)
+}
 
 /**
  * #140 — data-subject deletion endpoint.
@@ -65,11 +81,11 @@ export async function deleteOwnerHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   const ownerId = req.params.ownerId ?? ''
   if (!ownerId) {
-    return withCors(
+    return withHeaders(
       { status: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing owner id' }) },
       origin,
     )
@@ -78,7 +94,7 @@ export async function deleteOwnerHandler(
   const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, `owner-delete:${ownerId}`, ctx)
   if (!rateLimitResult.allowed) {
     const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
-    return withCors(
+    return withHeaders(
       {
         status: 429,
         headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
@@ -92,7 +108,7 @@ export async function deleteOwnerHandler(
     const preferences = await deletePartition('Preferences', ownerId, ctx)
     const profiles = await deletePartition('Profiles', ownerId, ctx)
 
-    return withCors(
+    return withHeaders(
       {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -102,7 +118,7 @@ export async function deleteOwnerHandler(
     )
   } catch (err) {
     logError(ctx, 'deleteOwnerHandler: internal error', err)
-    return withCors(
+    return withHeaders(
       { status: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Internal error' }) },
       origin,
     )

@@ -255,7 +255,9 @@ export const sv: LocaleStrings = {
     selectStartCity: 'Välj en startstad',
     selectFinishCity: 'Välj en slutstad',
     minDuration: 'Minsta reslängd är 7 dagar',
-    generationFailed: 'Generering misslyckades',
+    generationFailed: 'Resegenerering misslyckades — prova en annan rutt eller färre stopp.',
+    rateLimit: 'För många förfrågningar. Vänta en stund och försök igen.',
+    authFailed: 'Inloggning krävs för att spara resor.',
   },
   culinary: {
     mustTry: 'Måste provas',
@@ -270,5 +272,24 @@ export const sv: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Filtrera din resa',
+    removeTag: 'Ta bort {city}',
+    stopMarker: '{city}, stopp {n}',
+    dayTripMarker: 'Dagsutflykt nära {base}',
+    mapLegend: 'Kartlegend',
+    mapLabel: 'Nordisk roadtrip-karta',
+    map3dLabel: '3D-karta av nordisk roadtrip',
+    localeDropdown: 'Välj språk',
+  },
+  gallery: {
+    title: 'Communityresor',
+    loadTrip: 'Ladd resa: {title}',
+  },
+  creator: {
+    title: '{name} — Skaparprofil',
+    anonymous: 'Anonym skapare',
+    created: 'Skapad',
+    updated: 'Uppdaterad',
+    notFound: 'Profilen hittades inte.',
+    loadError: 'Det gick inte att läsa in profilen.',
   },
 }

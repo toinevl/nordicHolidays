@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { citySearchHandler } from './citySearch'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { CitySuggestion } from '../types'
+import { citySearchHandler } from './citySearch'
 
 const GUEST_ID = 'owner-12345678-1234-1234-1234-123456789012'
 
@@ -45,7 +46,7 @@ describe('GET /api/city-search', () => {
 
     expect(result.status).toBe(200)
     expect(JSON.parse(result.body as string)).toEqual([])
-    expect(fetchSpy).toHaveBeenCalledWith('https://nominatim.openstreetmap.org/search?q=st')
+    expect(fetchSpy.mock.calls[0][0]).toBe('https://nominatim.openstreetmap.org/search?q=st&limit=8')
   })
 
   it('normalizes a configured provider response', async () => {
@@ -55,36 +56,58 @@ describe('GET /api/city-search', () => {
       json: async () => ({
         features: [
           {
-            id: 'stockholm',
+            id: 'mogot',
             properties: {
-              name: 'Stockholm',
+              name: 'Malmö',
               country_code: 'se',
-              country_name: 'Sweden',
-              region: 'Stockholm County',
-              aliases: ['Stockholm City'],
+              country_name: 'Sverige',
+              region: 'Skåne län',
+              aliases: ['Malmö Stad'],
             },
-            geometry: { coordinates: [18.0686, 59.3293] },
+            geometry: { coordinates: [13.0038, 55.6058] },
           },
         ],
       }),
     } as Response)
 
-    const result = await citySearchHandler(requestWithQuery('sto'))
+    const result = await citySearchHandler(requestWithQuery('Malmö'))
     const body = JSON.parse(result.body as string) as CitySuggestion[]
 
     expect(result.status).toBe(200)
-    expect(globalThis.fetch).toHaveBeenCalledWith('https://example.test/cities?q=sto')
+    expect((globalThis.fetch as any).mock.calls[0][0]).toBe('https://example.test/cities?q=Malm%C3%B6&limit=8')
     expect(body).toEqual([
       {
-        id: 'stockholm',
-        name: 'Stockholm',
+        id: 'mogot',
+        name: 'Malmö',
         countryCode: 'SE',
-        countryName: 'Sweden',
-        region: 'Stockholm County',
-        lat: 59.3293,
-        lng: 18.0686,
-        aliases: ['Stockholm City'],
+        countryName: 'Sverige',
+        region: 'Skåne län',
+        lat: 55.6058,
+        lng: 13.0038,
+        aliases: ['Malmö Stad'],
       },
     ])
+  })
+
+  it('returns empty results on fetch timeout (AbortError)', async () => {
+    const timeoutError = new Error('The operation was aborted')
+    timeoutError.name = 'AbortError'
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(timeoutError)
+
+    const result = await citySearchHandler(requestWithQuery('Malmö'))
+
+    expect(result.status).toBe(200)
+    expect(JSON.parse(result.body as string)).toEqual([])
+  })
+
+  it('passes an AbortSignal to fetch for timeout protection', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response)
+
+    await citySearchHandler(requestWithQuery('Malmö'))
+
+    expect(fetchSpy.mock.calls[0][1]).toEqual(expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 })

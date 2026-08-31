@@ -1,16 +1,16 @@
-import type { Stop, CulinaryRegion, Accommodation, Itinerary, ItineraryStop } from '../types'
-import { haversineKm, formatDriveTime } from '../lib/distance'
-import { getSeasonInfo } from '../data/seasonData'
-import { t, tpl, getLocale } from '../i18n/index'
-import { escapeHtml } from '../lib/escape'
-import { itineraryToGPX, itineraryToICS, downloadFile, itineraryToGoogleMapsUrl, itineraryToWazeUrl } from '../lib/export'
-import { renderOverview } from './TripOverview'
-import { isDayTrip, baseFor } from '../lib/dayTrips'
-import { lodgingUrl, activityUrl, carRentalUrl } from '../lib/affiliate'
 import { affiliateConfig } from '../config'
-import { formatStopDateRange, formatTripStart } from '../lib/travelDates'
-import { AddStopForm } from './AddStopForm'
+import { getSeasonInfo } from '../data/seasonData'
+import { getLocale, t, tpl } from '../i18n/index'
+import { activityUrl, carRentalUrl, lodgingUrl } from '../lib/affiliate'
 import { preloadCityPhotos } from '../lib/cityPhoto'
+import { baseFor, isDayTrip } from '../lib/dayTrips'
+import { formatDriveTime, haversineKm } from '../lib/distance'
+import { escapeHtml } from '../lib/escape'
+import { downloadFile, itineraryToGPX, itineraryToGoogleMapsUrl, itineraryToICS, itineraryToWazeUrl } from '../lib/export'
+import { formatStopDateRange, formatTripStart } from '../lib/travelDates'
+import type { Accommodation, CulinaryRegion, Itinerary, ItineraryStop, Stop } from '../types'
+import { AddStopForm } from './AddStopForm'
+import { renderOverview } from './TripOverview'
 
 export type FilterChangeCallback = (filter: string) => void
 export type StopSelectCallback = (stop: Stop, options?: Record<string, unknown>) => void
@@ -155,7 +155,7 @@ export class ItineraryView {
     if (document.getElementById('btn-print')) return
     const container = document.createElement('div')
     container.id = 'itinerary-actions'
-    container.style.cssText = 'position:absolute;top:0;right:0;z-index:1;display:flex;gap:8px;'
+    container.style.cssText = 'position:absolute;top:0;right:0;z-index:101;display:flex;gap:8px;'
 
     const printBtn = document.createElement('button')
     printBtn.id = 'btn-print'

@@ -256,6 +256,8 @@ export interface LocaleStrings {
     selectFinishCity: string
     minDuration: string
     generationFailed: string
+    rateLimit: string
+    authFailed: string
   }
   culinary: {
     mustTry: string
@@ -270,6 +272,32 @@ export interface LocaleStrings {
   }
   aria: {
     routeFilters: string
+    /** Template: "Remove {city}" — aria-label on tag remove buttons */
+    removeTag: string
+    /** Template: "{city}, stop {n}" — aria-label on map stop markers */
+    stopMarker: string
+    /** Template: "Day trip near {base}" — aria-label on map day-trip markers */
+    dayTripMarker: string
+    /** Static: "Map legend" — aria-label on the map legend region */
+    mapLegend: string
+    /** Static: "Nordic road trip map" — aria-label on the 2D map container */
+    mapLabel: string
+    /** Static: "3D map of Nordic road trip" — aria-label on the 3D map container */
+    map3dLabel: string
+    /** Static: "Choose your language" — aria-label on the locale dropdown */
+    localeDropdown: string
+  }
+  gallery: {
+    title: string
+    loadTrip: string
+  }
+  creator: {
+    title: string
+    anonymous: string
+    created: string
+    updated: string
+    notFound: string
+    loadError: string
   }
 }
 
@@ -299,3 +327,5 @@ export type LocaleKey =
   | `accomPolicy.${keyof LocaleStrings['accomPolicy']}`
   | `tags.${keyof LocaleStrings['tags']}`
   | `aria.${keyof LocaleStrings['aria']}`
+  | `gallery.${keyof LocaleStrings['gallery']}`
+  | `creator.${keyof LocaleStrings['creator']}`

@@ -255,7 +255,9 @@ export const nl: LocaleStrings = {
     selectStartCity: 'Selecteer een startstad',
     selectFinishCity: 'Selecteer een eindstad',
     minDuration: 'Minimale reisduur is 7 dagen',
-    generationFailed: 'Genereren mislukt',
+    generationFailed: 'Reis genereren mislukt — probeer een andere route of minder stops.',
+    rateLimit: 'Te veel verzoeken. Wacht even en probeer opnieuw.',
+    authFailed: 'Aanmelden vereist om reizen op te slaan.',
   },
   culinary: {
     mustTry: 'Must try',
@@ -270,5 +272,24 @@ export const nl: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Filter je reis',
+    removeTag: 'Verwijder {city}',
+    stopMarker: '{city}, stop {n}',
+    dayTripMarker: 'Dagtrip bij {base}',
+    mapLegend: 'Kaartlegende',
+    mapLabel: 'Kaart van Noordse roadtrip',
+    map3dLabel: '3D kaart van Noordse roadtrip',
+    localeDropdown: 'Kies je taal',
+  },
+  gallery: {
+    title: 'Gedeelde Reizen',
+    loadTrip: 'Laad reis: {title}',
+  },
+  creator: {
+    title: '{name} — Creatorprofiel',
+    anonymous: 'Anonieme Creator',
+    created: 'Aangemaakt',
+    updated: 'Bijgewerkt',
+    notFound: 'Profiel niet gevonden.',
+    loadError: 'Profiel laden mislukt.',
   },
 }

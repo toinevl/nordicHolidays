@@ -1,27 +1,28 @@
 import './styles/main.css'
-import { createStore } from './store'
-import { MapView } from './components/MapView'
-import { ItineraryView } from './components/ItineraryView'
-import { StatusBar } from './components/StatusBar'
-import { GeneratorPanel } from './components/GeneratorPanel'
-import { SavedTripsPanel } from './components/SavedTripsPanel'
-import { Toast } from './components/Toast'
-import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
-import type { Itinerary, ItineraryStop, Locale } from './types'
+
 import { apiClient, warmUpApi } from './api/client'
-import { setLocale, getLocale, t, tpl } from './i18n/index'
-import { initialize, handleRedirect } from './lib/auth'
-import { affiliateClickPayload, trackAffiliateClickGated } from './lib/tracking'
-import { resetConsent, onConsentChange } from './lib/consent'
-import { ConsentBanner } from './components/ConsentBanner'
 import { B2BSection } from './components/B2BSection'
-import { isWidgetMode, getPartnerSlug, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
+import { ConsentBanner } from './components/ConsentBanner'
+import { GeneratorPanel } from './components/GeneratorPanel'
+import { ItineraryView } from './components/ItineraryView'
+import { MapView } from './components/MapView'
+import { SavedTripsPanel } from './components/SavedTripsPanel'
+import { StatusBar } from './components/StatusBar'
+import { Toast } from './components/Toast'
 import { WidgetFooter } from './components/WidgetFooter'
-import { isNavScrolled } from './lib/scrollNav'
+import { ACCOMMODATIONS, CULINARY, STOPS } from './data/defaultItinerary'
+import { getLocale, setLocale, t, tpl } from './i18n/index'
 import { pickActiveSection } from './lib/activeSection'
-import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
+import { handleRedirect, initialize } from './lib/auth'
+import { onConsentChange, resetConsent } from './lib/consent'
 import { legalPageLocale } from './lib/legalPages'
+import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
+import { isNavScrolled } from './lib/scrollNav'
+import { affiliateClickPayload, trackAffiliateClickGated } from './lib/tracking'
+import { getPartnerSlug, isWidgetMode, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
 import { regionConfig } from './region'
+import { createStore } from './store'
+import type { Itinerary, ItineraryStop, Locale } from './types'
 const store = createStore()
 
 // #85: resolve the boot locale from URL param → referrer → navigator.language
@@ -110,6 +111,11 @@ function applyStaticI18n(): void {
   })
   // 3D map hint
   setText('.map-hint', t('map3d.hint'))
+  // Map containers — role is in index.html, label is i18n
+  setAttr('#map', 'aria-label', t('aria.mapLabel'))
+  setAttr('#map-3d', 'aria-label', t('aria.map3dLabel'))
+  // Locale dropdown
+  setAttr('#locale-dropdown', 'aria-label', t('aria.localeDropdown'))
   // Footer stat labels (order matches index.html .stat-lbl elements)
   const footerLabels = [
     t('footer.days'),
