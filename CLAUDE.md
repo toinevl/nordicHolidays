@@ -153,6 +153,16 @@ leftover references — before committing; one agent in this session
 correctly caught and fixed its own stale doc claim, but that only surfaced
 because the diff was actually read, not because the agent's summary said so.
 
+**Merge-day rule (2026-08-31 les):** parallel stream-agents that were allowed
+to push left `main` red for 2 days unnoticed. When merging a parallel batch:
+(1) check `gh run list` for *every* branch that landed since your last sync —
+a green local suite does not cover what other agents pushed; (2) run
+`npx tsc --noEmit` in both frontend/ and api/ *after* the merge, before
+pushing the merge commit; (3) half-wired features (components added but
+never imported into `main.ts`, i18n keys added to some locales only) are the
+signature failure of stream agents — grep for the new component names in
+`main.ts` and diff locale files against `types.ts` before pushing.
+
 When delegating research tasks (e.g. prospect lists, market scans) that
 involve iterative web search: (1) set a realistic output target — 25–30
 solid entries beats 50 that never get written; (2) include an explicit
