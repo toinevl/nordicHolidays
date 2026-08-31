@@ -145,7 +145,7 @@ export async function checkAndIncrementRateLimit(
     const ownerPartitionKey = `owner:${ownerId}`
     try {
       const ownerEntity = await client.getEntity(ownerPartitionKey, hourWindow)
-      const ownerCount = (ownerEntity.count as number) ?? 0
+      let ownerCount = (ownerEntity.count as number) ?? 0
       if (ownerCount >= RATE_LIMIT_PER_OWNER_PER_HOUR) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
@@ -203,7 +203,7 @@ export async function checkAndIncrementRateLimit(
     const ipPartitionKey = `ip:${ip}`
     try {
       const ipEntity = await client.getEntity(ipPartitionKey, hourWindow)
-      const ipCount = (ipEntity.count as number) ?? 0
+      let ipCount = (ipEntity.count as number) ?? 0
       if (ipCount >= RATE_LIMIT_PER_IP_PER_HOUR) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
@@ -354,7 +354,7 @@ export async function checkAndIncrementItineraryWriteRateLimit(
     const ownerPartitionKey = `itinerary-owner:${ownerId}`
     try {
       const ownerEntity = await client.getEntity(ownerPartitionKey, hourWindow)
-      const ownerCount = (ownerEntity.count as number) ?? 0
+      let ownerCount = (ownerEntity.count as number) ?? 0
       if (ownerCount >= RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
@@ -384,7 +384,7 @@ export async function checkAndIncrementItineraryWriteRateLimit(
     const ipPartitionKey = `itinerary-ip:${ip}`
     try {
       const ipEntity = await client.getEntity(ipPartitionKey, hourWindow)
-      const ipCount = (ipEntity.count as number) ?? 0
+      let ipCount = (ipEntity.count as number) ?? 0
       if (ipCount >= RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
