@@ -240,6 +240,20 @@ export async function generateHandler(
       input.totalDays = prefs.tripDays
     }
 
+    // #175: the model is instructed to start at `startCity`, but can still
+    // return a route that begins in a different city. The frontend treats
+    // `stops[0]` as the true origin everywhere (timeline, export, thumbnail),
+    // so a mismatched first stop is user-visible. Correct it here rather than
+    // trusting the model's structured `startCity`/`stops[0].city` pair.
+    if (
+      input.stops.length > 0 &&
+      typeof input.stops[0].city === 'string' &&
+      input.stops[0].city.trim().toLowerCase() !== prefs.startCity.trim().toLowerCase()
+    ) {
+      ctx?.warn(`generateHandler: correcting first stop city from "${input.stops[0].city}" to requested startCity "${prefs.startCity}"`)
+      input.stops[0] = { ...input.stops[0], city: prefs.startCity }
+    }
+
     // Promote day trips further than MAX_DAY_TRIP_KM (straight-line) from
     // their base to overnight stops. Bases are resolved against the original
     // stop structure in a first pass so one promotion can't change which base
