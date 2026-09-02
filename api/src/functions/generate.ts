@@ -32,6 +32,40 @@ function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseI
 const MAX_DAY_TRIP_KM = 150
 
 /**
+ * Normalize a city name for lookup: trim, lowercase, strip diacritics.
+ * Mirrors the frontend's `normalize()` in `citySearch.ts` so that
+ * "Gräslehamn" / "Grisslehamn" / "grisslehamn " all resolve to the same
+ * catalogue entry.
+ */
+function normalizeCity(name: string): string {
+  return name
+    .trim()
+    .toLocaleLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+/**
+ * Look up a city's coordinates from the active region's `cities` catalogue
+ * by exact or alias match (#176). Returns `{lat, lng}` when found, `undefined`
+ * otherwise. This is a synchronous, zero-I/O lookup over the static region
+ * catalogue — no external geocoder call at generation time.
+ */
+function lookupCityCoords(cityName: string): { lat: number; lng: number } | undefined {
+  const q = normalizeCity(cityName)
+  const entry = regionConfig.cities.find(
+    c =>
+      normalizeCity(c.name) === q ||
+      (c.aliases ?? []).some(a => normalizeCity(a) === q) ||
+      normalizeCity(c.id.replace(/-\w+$/, '')).replace(/-/g, ' ') === q,
+  )
+  if (entry && typeof entry.lat === 'number' && typeof entry.lng === 'number') {
+    return { lat: entry.lat, lng: entry.lng }
+  }
+  return undefined
+}
+
+/**
  * Builds the user message for the LLM. Delegates to the active region's
  * prompt template so region-specific phrasing (label, border constraint,
  * seasonal context) is sourced from regionConfig.
@@ -245,13 +279,36 @@ export async function generateHandler(
     // `stops[0]` as the true origin everywhere (timeline, export, thumbnail),
     // so a mismatched first stop is user-visible. Correct it here rather than
     // trusting the model's structured `startCity`/`stops[0].city` pair.
-    if (
-      input.stops.length > 0 &&
-      typeof input.stops[0].city === 'string' &&
-      input.stops[0].city.trim().toLowerCase() !== prefs.startCity.trim().toLowerCase()
-    ) {
-      ctx?.warn(`generateHandler: correcting first stop city from "${input.stops[0].city}" to requested startCity "${prefs.startCity}"`)
-      input.stops[0] = { ...input.stops[0], city: prefs.startCity }
+    // #176: the original #175 fix only overrode `stops[0].city` — the 3D map
+    // and route polyline render from `stop.coords`, not the city name, so
+    // mismatched lat/lng still caused the map to start in the wrong place
+    // (e.g. Malmö coordinates for a Grisslehamn→Uppsala trip). Also override
+    // coordinates from the region's city catalogue. We only touch the last
+    // stop's coords when its city name already matches `endCity` — the LLM
+    // may choose a different terminus on round trips, and we don't want to
+    // clobber that.
+    if (input.stops.length > 0) {
+      const first = input.stops[0]
+      if (typeof first.city === 'string' && first.city.trim().toLowerCase() !== prefs.startCity.trim().toLowerCase()) {
+        const known = lookupCityCoords(prefs.startCity)
+        const patch: Record<string, unknown> = { city: prefs.startCity }
+        if (known) patch.lat = known.lat
+        if (known) patch.lng = known.lng
+        ctx?.warn(
+          `generateHandler: correcting first stop city/coords from "${first.city}"(${first.lat},${first.lng}) to requested startCity "${prefs.startCity}"(${patch.lat ?? '?'},${patch.lng ?? '?'})`,
+        )
+        input.stops[0] = { ...first, ...patch }
+      }
+    }
+    if (input.stops.length > 1) {
+      const last = input.stops[input.stops.length - 1]
+      if (typeof last.city === 'string' && last.city.trim().toLowerCase() === prefs.endCity.trim().toLowerCase()) {
+        const known = lookupCityCoords(prefs.endCity)
+        if (known) {
+          ctx?.warn(`generateHandler: correcting last stop coords to endCity "${prefs.endCity}"(${known.lat},${known.lng})`)
+          input.stops[input.stops.length - 1] = { ...last, lat: known.lat, lng: known.lng }
+        }
+      }
     }
 
     // Promote day trips further than MAX_DAY_TRIP_KM (straight-line) from
