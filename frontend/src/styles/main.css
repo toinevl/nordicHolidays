@@ -873,6 +873,13 @@ a:focus-visible {
 .trip-index-item--daytrip .trip-index-dest { color: var(--ink-muted); }
 
 /* Affiliate links on timeline cards: lodging on overnight bases (#70), activities on day trips (#71) */
+/* Affiliate disclosure (#138): one-line notice above the first affiliate link block */
+.affiliate-disclosure {
+  margin: 0 0 0.6rem 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-muted);
+  font-style: italic;
+}
 .card-lodging-link, .card-activity-link {
   display: inline-flex; align-items: center; gap: 0.35rem;
   font-size: var(--fs-sm); color: var(--ink-muted);
