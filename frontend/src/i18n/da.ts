@@ -149,6 +149,7 @@ export const da: LocaleStrings = {
     itineraryLabel: 'Dag for dag',
     itineraryTitle: 'Hele ruten',
     itineraryDesc: '21 dage fra Malmö til Höga Kusten og tilbage — middelalderbyer, skovsøer, vikingearv og uventede perler.',
+    itineraryDescDynamic: '{totalDays}-dages rejse fra {startCity} til {endCity} — en kurateret nordisk vejrtur med stops i {stopCount} byer.',
     culinaryLabel: 'Spis & drik',
     culinaryTitle: 'Kulinariske højdepunkter',
     culinaryDesc: 'Seks forskellige madkulturer — Göteborg-skaldyr, vildt fra Dalarna, røget fisk fra Höga Kusten og Stockholms nye nordiske køkken.',

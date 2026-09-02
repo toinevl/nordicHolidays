@@ -149,6 +149,7 @@ export const nl: LocaleStrings = {
     itineraryLabel: 'Dag voor Dag',
     itineraryTitle: 'De Volledige Route',
     itineraryDesc: '21 dagen van Malmö naar de Hoge Kust en terug — middeleeuwse steden, bosmeren, Viking-erfgoed en verborgen parels.',
+    itineraryDescDynamic: '{totalDays}-daagse reis van {startCity} naar {endCity} — een nieuw opgeëpte Nordische route met stops in {stopCount} steden.',
     culinaryLabel: 'Eten & Drinken',
     culinaryTitle: 'Culinaire Hoogtepunten',
     culinaryDesc: 'Zes unieke keukens — Gothenburgs schaaldieren, Dalarna wild, Hoge Kust gerookte vis en Stockholms nieuwe Nordic kitchen.',

@@ -149,6 +149,7 @@ export const de: LocaleStrings = {
     itineraryLabel: 'Tag für Tag',
     itineraryTitle: 'Die gesamte Route',
     itineraryDesc: '21 Tage von Malmö zur Hohen Küste und zurück — mittelalterliche Städte, Waldseen, Wikinger-Erbe und Geheimtipps abseits der Massen.',
+    itineraryDescDynamic: '{totalDays}-tägige Reise von {startCity} nach {endCity} — eine kurierte nordische Straßenfahrt mit Stopps in {stopCount} Städten.',
     culinaryLabel: 'Essen & Trinken',
     culinaryTitle: 'Kulinarische Highlights',
     culinaryDesc: 'Sechs unterschiedliche Küchen — Gothenburger Schalentiere, Dalarna Wild, Hohe-Küste-Räucherfisch und Stockholms neue Nordic Kitchen.',

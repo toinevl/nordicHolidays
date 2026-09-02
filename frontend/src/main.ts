@@ -159,7 +159,10 @@ function changeLocale(lang: Locale): void {
   store.setState({ locale: lang })
   applyStaticI18n()
   const { currentItinerary } = store.getState()
-  if (currentItinerary) itineraryView.renderFromItinerary(currentItinerary)
+  if (currentItinerary) {
+    itineraryView.renderFromItinerary(currentItinerary)
+    updateItineraryDesc(currentItinerary)
+  }
   // #86: B2B section is rendered once at boot with t(); re-render it so the
   // new locale's strings take effect immediately instead of on next page load.
   const b2bRoot = document.getElementById('b2b-root')
@@ -495,6 +498,21 @@ function toMapStops(itinerary: Itinerary): typeof STOPS {
   }))
 }
 
+// #20: "The Full Route" description was a static i18n string ("21 days from Malmö
+// to the High Coast...") that never reflected the actual itinerary's length.
+// Update it from the actual itinerary data via the parameterized key.
+function updateItineraryDesc(itinerary: Itinerary): void {
+  const descEl = document.getElementById('itinerary-desc')
+  if (descEl) {
+    descEl.textContent = tpl('sections.itineraryDescDynamic', {
+      totalDays: String(itinerary.totalDays ?? itinerary.stops.length),
+      startCity: itinerary.startCity ?? '',
+      endCity: itinerary.endCity ?? '',
+      stopCount: String(itinerary.stops?.length ?? 0),
+    })
+  }
+}
+
 function applyItinerary(itinerary: Itinerary): void {
   itineraryView.renderFromItinerary(itinerary)
   mapView.replaceStops(toMapStops(itinerary))
@@ -502,6 +520,7 @@ function applyItinerary(itinerary: Itinerary): void {
     map3DView.replaceStops(toMapStops(itinerary))
   }
   statusBar.syncFromStore(store)
+  updateItineraryDesc(itinerary)
 }
 
 const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: string, id: string) => {
@@ -572,6 +591,13 @@ if (urlId) {
 }
 
 applyStaticI18n()
+
+// #20: "The Full Route" description was a static i18n string ("21 days from Malmö
+// to the High Coast...") that never reflected the actual itinerary's length.
+// Update it from the current itinerary in the store — this covers the default
+// boot itinerary (rendered via itineraryView.render() above) as well as
+// generated/loaded itineraries (via applyItinerary).
+updateItineraryDesc(store.getState().currentItinerary as Itinerary)
 
 // ---------------------------------------------------------------------------
 // Cookie consent (#137): render the banner (only shows while the visitor

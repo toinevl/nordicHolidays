@@ -149,6 +149,7 @@ export const sv: LocaleStrings = {
     itineraryLabel: 'Dag för dag',
     itineraryTitle: 'Hela rutten',
     itineraryDesc: '21 dagar från Malmö till Höga Kusten och tillbaka — medeltidsstäder, skogssjöar, vikingaarv och oväntade pärlor.',
+    itineraryDescDynamic: '{totalDays}-dagars resa från {startCity} till {endCity} — en kuraterad nordisk vägsträcka med stopp i {stopCount} städer.',
     culinaryLabel: 'Äta & dricka',
     culinaryTitle: 'Kulinariska höjdpunkter',
     culinaryDesc: 'Sex distinkta matkulturer — Göteborgs skaldjur, Dalarnas vilt, rökt fisk från Höga Kusten och Stockholms nya nordiska kök.',

@@ -191,6 +191,8 @@ export interface LocaleStrings {
     itineraryLabel: string
     itineraryTitle: string
     itineraryDesc: string
+    /** Parameterized template: '{totalDays}-day trip from {startCity} to {endCity} — ... #20 */
+    itineraryDescDynamic: string
     culinaryLabel: string
     culinaryTitle: string
     culinaryDesc: string

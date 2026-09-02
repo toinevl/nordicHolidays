@@ -149,6 +149,7 @@ export const en: LocaleStrings = {
     itineraryLabel: 'Day by Day',
     itineraryTitle: 'The Full Route',
     itineraryDesc: '21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.',
+    itineraryDescDynamic: '{totalDays}-day trip from {startCity} to {endCity} — a curated Nordic road-trip with stops in {stopCount} cities.',
     culinaryLabel: 'Eat & Drink',
     culinaryTitle: 'Culinary Highlights',
     culinaryDesc: 'Six distinct food cultures — Gothenburg shellfish, Dalarna game, High Coast smoked fish, and Stockholm\'s new Nordic kitchen.',
