@@ -1,9 +1,11 @@
 import './styles/main.css'
+import './styles/hero-v2.css'
 
 import { apiClient, warmUpApi } from './api/client'
 import { B2BSection } from './components/B2BSection'
 import { ConsentBanner } from './components/ConsentBanner'
 import { GeneratorPanel } from './components/GeneratorPanel'
+import { HeroV2 } from './components/HeroV2'
 import { ItineraryView } from './components/ItineraryView'
 import { MapView } from './components/MapView'
 import { NotesBoard } from './components/NotesBoard'
@@ -16,6 +18,7 @@ import { getLocale, setLocale, t, tpl } from './i18n/index'
 import { pickActiveSection } from './lib/activeSection'
 import { handleRedirect, initialize } from './lib/auth'
 import { onConsentChange, resetConsent } from './lib/consent'
+import { isHeroV2Enabled } from './lib/heroFlag'
 import { legalPageLocale } from './lib/legalPages'
 import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
 import { isNavScrolled } from './lib/scrollNav'
@@ -69,16 +72,19 @@ function applyStaticI18n(): void {
   setText('#header [href="#culinary-section"]', t('nav.food'))
   setText('#header [href="#accom-section"]', t('nav.stay'))
   setText('#header [href="#map-page"]', t('nav.map3d'))
-  // Hero buttons
-  setText('#btn-fly', t('hero.flyRoute'))
-  setText('.hero-actions [href="#itinerary"]', t('hero.viewItinerary'))
-  // Hero badge + subtitle + meta labels
-  setText('#hero-badge', t('hero.badge'))
-  setText('#hero-sub', t('hero.subtitle'))
-  setText('#meta-days', t('hero.metaDays'))
-  setText('#meta-km', t('hero.metaKm'))
-  setText('#meta-destinations', t('hero.metaDestinations'))
-  setText('#meta-food-regions', t('hero.metaFoodRegions'))
+  // Hero buttons — skipped while hero-v2 (#21) is active: the old hero is
+  // suppressed (hero-v2-hidden) and its elements are removed from the DOM.
+  if (!isHeroV2Enabled()) {
+    setText('#btn-fly', t('hero.flyRoute'))
+    setText('.hero-actions [href="#itinerary"]', t('hero.viewItinerary'))
+    // Hero badge + subtitle + meta labels
+    setText('#hero-badge', t('hero.badge'))
+    setText('#hero-sub', t('hero.subtitle'))
+    setText('#meta-days', t('hero.metaDays'))
+    setText('#meta-km', t('hero.metaKm'))
+    setText('#meta-destinations', t('hero.metaDestinations'))
+    setText('#meta-food-regions', t('hero.metaFoodRegions'))
+  }
   // Overview section chrome
   setText('#overview-label', t('sections.overviewLabel'))
   setText('#overview-title', t('sections.overviewTitle'))
@@ -142,8 +148,8 @@ function applyStaticI18n(): void {
   setText('#build-label', t('footer.buildLocal'))
   // Loading spinner label
   setText('.spinner-label', t('loading.generating'))
-  // Hero scroll cue
-  setText('.scroll-cue-label', t('hero.scrollCue'))
+  // Hero scroll cue — also suppressed while hero-v2 is active.
+  if (!isHeroV2Enabled()) setText('.scroll-cue-label', t('hero.scrollCue'))
   // Map legend labels (one legend per MapView instance — 2D and 3D map)
   const legendLabels: Array<[string, string]> = [
     ['.map-legend .legend-overnight', `● ${t('map.legendOvernight')}`],
@@ -172,6 +178,8 @@ function changeLocale(lang: Locale): void {
   // #87: widget footer + map fallback messages use t() at render time; refresh
   // them so they don't stay in the old language after a locale switch.
   widgetFooter?.render()
+  // #21: re-render hero-v2 so a locale switch doesn't leave it stale.
+  heroV2View?.render()
   mapView.updateFallbackMessage()
   map3DView?.updateFallbackMessage()
 }
@@ -179,6 +187,10 @@ function changeLocale(lang: Locale): void {
 // #87: held at module scope so changeLocale() can re-render it after a
 // locale switch. null until widget mode actually instantiates it.
 let widgetFooter: WidgetFooter | null = null
+
+// #21: hero-v2 landing — same pattern: module scope so changeLocale() can
+// re-render it after a locale switch. null until mounted at boot.
+let heroV2View: HeroV2 | null = null
 
 const loadingOverlay = document.createElement('div')
 loadingOverlay.className = 'loading-overlay hidden'
@@ -604,6 +616,12 @@ if (seoCountry || seoDays) {
 
 // B2B landing page section (#77), now in a hash-routed overlay (#110)
 new B2BSection().render(document.getElementById('b2b-root')!)
+
+// #21: hero-v2 editorial landing — renders ONLY with the ?hero=2 flag (or
+// localStorage fjordvia:heroV2) and NEVER in widget mode; mount() checks both
+// and is a no-op otherwise, so the existing hero stays untouched for everyone.
+heroV2View = new HeroV2({ onPlanTrip: () => generatorPanel.open() })
+heroV2View.mount(document.getElementById('hero-v2-section') ?? document.body)
 
 // ---------------------------------------------------------------------------
 // Widget mode (#75): embeddable ?partner=<slug> iframe mode.

@@ -184,6 +184,31 @@ export interface LocaleStrings {
     metaDestinations: string
     metaFoodRegions: string
   }
+  /** #21: hero-v2 editorial landing — flag-gated behind ?hero=2 / fjordvia:heroV2 */
+  hero2: {
+    brand: string
+    tagline: string
+    ctaPlan: string
+    ctaSee: string
+    statbar: string
+    why1Title: string
+    why1Body: string
+    why2Title: string
+    why2Body: string
+    why3Title: string
+    why3Body: string
+    showpieceTitle: string
+    showpieceDemo: string
+    showpieceCta: string
+    howTitle: string
+    howStep1: string
+    howStep2: string
+    howStep3: string
+    storyTitle: string
+    storyBody: string
+    finalTitle: string
+    finalCta: string
+  }
   sections: {
     overviewLabel: string
     overviewTitle: string
@@ -332,6 +357,7 @@ export type LocaleKey =
   | `country.${keyof LocaleStrings['country']}`
   | `nav.${keyof LocaleStrings['nav']}`
   | `hero.${keyof LocaleStrings['hero']}`
+  | `hero2.${keyof LocaleStrings['hero2']}`
   | `sections.${keyof LocaleStrings['sections']}`
   | `accom.${keyof LocaleStrings['accom']}`
   | `map.${keyof LocaleStrings['map']}`

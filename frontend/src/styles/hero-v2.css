@@ -1,0 +1,122 @@
+
+/* ===========================================================================
+   HERO-V2 — editorial landing (#21), flag-gated behind ?hero=2
+   Subtle gradients only — no external photos (per hero-v2 brief).
+   =========================================================================== */
+.hero-v2.hidden { display: none; }
+#hero.hero-v2-hidden { display: none; }
+
+.hero-v2 {
+  background:
+    radial-gradient(120% 90% at 15% 0%, rgba(59, 79, 232, 0.16), transparent 55%),
+    radial-gradient(100% 80% at 85% 12%, rgba(232, 93, 42, 0.12), transparent 50%),
+    linear-gradient(175deg, var(--night-deep) 0%, var(--night-mid) 58%, #241E33 100%);
+  color: var(--text-on-night);
+}
+.hero-v2-inner {
+  max-width: 1080px; margin: 0 auto;
+  padding: calc(56px + 4rem) 2rem 5rem;
+  display: flex; flex-direction: column; gap: 5.5rem;
+}
+
+/* 1 · persona hero */
+.hero-v2-intro { text-align: center; padding-top: 2.5rem; }
+.hero-v2-brand {
+  font-size: clamp(3.4rem, 9vw, 6.5rem); font-weight: 700; line-height: 1.04;
+  letter-spacing: -0.02em; color: #fff; margin-bottom: 1rem;
+}
+.hero-v2-tagline {
+  font-family: var(--font-serif); font-style: italic;
+  font-size: clamp(1.25rem, 2.6vw, 1.7rem);
+  color: var(--text-on-night-muted); margin-bottom: 2.2rem;
+}
+.hero-v2-actions { display: flex; gap: 0.85rem; justify-content: center; flex-wrap: wrap; }
+
+/* 2 · static stat bar */
+.hero-v2-statbar {
+  text-align: center; font-family: var(--font-mono); font-size: 0.78rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-on-night-muted);
+  padding: 1.1rem 0; border-top: 1px solid var(--night-border);
+  border-bottom: 1px solid var(--night-border);
+}
+
+/* 3 · why — three cards */
+.hero-v2-why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+.hero-v2-card {
+  background: rgba(255, 245, 235, 0.04);
+  border: 1px solid var(--night-border); border-radius: var(--r);
+  padding: 1.8rem 1.5rem;
+}
+.hero-v2-icon { display: inline-flex; margin-bottom: 1rem; }
+.hero-v2-icon svg {
+  width: 1.6rem; height: 1.6rem; fill: none;
+  stroke: var(--accent-2); stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.hero-v2-card-title { font-size: 1.3rem; font-weight: 600; color: #fff; margin-bottom: 0.5rem; }
+.hero-v2-card-body { color: var(--text-on-night-muted); font-size: 0.95rem; line-height: 1.55; }
+
+/* 4 · showpiece */
+.hero-v2-showpiece {
+  text-align: center; padding: 3.5rem 2rem;
+  border: 1px solid var(--night-border); border-radius: var(--r);
+  background:
+    radial-gradient(90% 120% at 50% 0%, rgba(29, 110, 93, 0.18), transparent 65%),
+    rgba(255, 245, 235, 0.03);
+}
+.hero-v2-showpiece .hero-v2-section-title { margin-bottom: 0.75rem; }
+.hero-v2-showcase-label { color: var(--text-on-night-muted); margin-bottom: 1.5rem; }
+.hero-v2-demo {
+  font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: #fff; text-decoration: none;
+  border-bottom: 1px solid var(--accent-2); padding-bottom: 2px;
+}
+.hero-v2-demo:hover { color: var(--accent-2); }
+
+/* 5 · how it works */
+.hero-v2-how .hero-v2-section-title { text-align: center; }
+.hero-v2-steps {
+  list-style: none; display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem; counter-reset: step;
+}
+.hero-v2-step {
+  display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
+  text-align: center;
+}
+.hero-v2-step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.2rem; height: 2.2rem; border-radius: 50%;
+  border: 1px solid var(--accent-2); color: var(--accent-2);
+  font-family: var(--font-mono); font-size: 0.8rem;
+}
+.hero-v2-step-label { color: var(--text-on-night); font-size: 1rem; }
+
+/* 6 · story */
+.hero-v2-story { max-width: 640px; margin: 0 auto; }
+.hero-v2-story .hero-v2-section-title { text-align: center; }
+.hero-v2-story-body {
+  color: var(--text-on-night-muted); line-height: 1.7;
+  font-family: var(--font-serif); font-size: 1.12rem; text-align: center;
+}
+
+/* 7 · final CTA */
+.hero-v2-final { text-align: center; }
+.hero-v2-final-title {
+  font-size: clamp(2rem, 4.5vw, 3rem); font-weight: 600;
+  color: #fff; margin-bottom: 1.8rem;
+}
+
+.hero-v2-section-title {
+  font-size: clamp(1.7rem, 3.2vw, 2.4rem); font-weight: 600;
+  color: #fff; margin-bottom: 1.5rem;
+}
+
+/* Mobile (#106 lesson: check compressed vertical space, stack everything) */
+@media (max-width: 768px) {
+  .hero-v2-inner { padding: calc(56px + 2.5rem) 1.25rem 3.5rem; gap: 3.5rem; }
+  .hero-v2-why { grid-template-columns: 1fr; }
+  .hero-v2-steps { grid-template-columns: 1fr; }
+  .hero-v2-actions .btn { width: 100%; justify-content: center; }
+}
