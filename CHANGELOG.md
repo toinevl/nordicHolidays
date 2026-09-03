@@ -7,8 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.1.0] — 2026-09-03
+
 ### Fixed
 
+- **3D map could start/end at the wrong coordinates (#176)** — when the LLM returned a first/last stop whose lat/lng belonged to a different place than its city name, the 3D map started in Malmö and ended in Mora instead of the requested route endpoints. First/last-stop lat/lng are now overridden from the city catalogue whenever they mismatch the requested start/end city.
+- **'The Full Route' description always said '21 days' (#20)** — the section description hardcoded the demo itinerary's length regardless of the generated trip. It now uses the new dynamic `itineraryDescDynamic` i18n key with `{totalDays}`/`{startCity}`/`{endCity}`/`{stopCount}` placeholders, added in all 6 locales.
 - **Stop-notes/reorder/remove hit the wrong stop on multi-night stops (#171)** — stop actions matched on `day`, but `day` is the travel day (1,3,5… for 2+-night stops) while the UI addresses stops by 1-based position (`Stop.id = i+1`). Notes on stop #2+ landed on the wrong stop or vanished silently. Timeline callbacks now pass the real `ItineraryStop`; `main.ts` identifies by identity/position via new pure helpers in `frontend/src/lib/stopActions.ts`; regression test uses a `day != position` fixture (the old #134 test masked the bug with `day == position`).
 - **Generated itinerary can ignore the requested start city (#175)** — `api/src/functions/generate.ts` passes the requested `startCity` to the LLM, but does not enforce it against `stops[0]`. Reported 2026-09-01: a Grisslehamn→Uppsala 7-day trip started in Malmö. Because the frontend derives origin/destination/thumbnail export from `stops[0]`/`stops[last]`, the mismatch is user-visible. **Opgelost 2026-09-01**: `generate.ts` corrigeert `stops[0].city` naar de gevraagde `startCity` wanneer het afwijkt, met een logwaarschuwing. Regressietest in `generate.test.ts` met exacte Grisslehamn→Uppsala fixture. 220/220 API + 322/322 frontend groen.
 - **Parallel-stream CI break (2026-08-31)** — the 2026-08-30/31 parallel batch left `main` red: (1) `da/no/sv` locale files were missing the new `gallery`/`creator` sections (TS2739); (2) `CreatorProfile.ts`/`GalleryView.ts` called `t()` with interpolation vars instead of `tpl()` (TS2554); (3) `SharePreview.ts` referenced a `share.*` key section that exists in no locale and hardcoded the retired `sweden.van-vliet.eu` domain — dead code (never imported; sharing already lives in `main.ts` via `window.location.origin`), removed; (4) `citySearch.test.ts` still asserted pre-B-4 URLs without the new `&limit=8` param.
@@ -18,6 +24,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Stop-notes prikbord (community notes per stop, PR #22 — #173/#174)** — visitors can leave short notes on any stop of a saved itinerary. Backend: new `Notes` table (`partitionKey=tripId`, `rowKey=stopId:nanoid`) with `GET/POST/DELETE /api/itineraries/{id}/notes`, `X-Owner-Id` header scoping, zod validation (`text` ≤ 500, `displayName` ≤ 30), max 1 active note per owner/stop (409 on duplicate), rate limit 20/hour per owner + 30/hour per IP (last XFF hop); DELETE only allowed for the note's own `ownerUuid` (403 otherwise). Frontend: new `NotesBoard.ts` component — collapsed count-badge expands to the note list with an add form, `displayName` persisted in `localStorage`, own notes deletable, 30 s per-itinerary cache, i18n in all 6 locales. The old `userNotes` textarea and `userNotes` stop field were removed in favour of the shared board. End-to-end verified live in production (201/200/403/204).
 - **Production cutover table wipe (#169)** — `scripts/wipe-itineraries.sh` removes all `PartitionKey='shared'` entities from the `Itineraries` table using the Function App's system-assigned managed identity (no account key). Dry-run by default, optional blob backup export, typed confirmation prompt. Full procedure in `infra/COMMERCIAL-LAUNCH-RUNBOOK.md` §6. **Executed 2026-08-29**: 16 pilot itineraries removed, table empty.
 - **Single-region architecture** — the codebase ships the Nordic (Fjordvia) region with config-driven region data packs. Region is selected at build time via `VITE_REGION` (frontend) and `REGION` (API) env vars.
 - `frontend/src/region/` — RegionConfig interface, Nordic data pack (extracted from existing hardcoded values)
