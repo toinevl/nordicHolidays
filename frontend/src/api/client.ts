@@ -2,7 +2,7 @@
 import { getAccessToken } from '../lib/auth'
 import type { CitySuggestion } from '../lib/citySearch'
 import { getOwnerId } from '../lib/identity'
-import type { Itinerary, Locale, Preferences, SavedItinerarySummary } from '../types'
+import type { Itinerary, Locale, Preferences, SavedItinerarySummary, StopNote } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net'
 const MAX_LIMIT = 100
@@ -79,15 +79,14 @@ export const apiClient = {
   saveItinerary: (name: string, itinerary: Itinerary, thumbnail?: string) => request<{ id: string }>('/api/itineraries', { method: 'POST', body: JSON.stringify({ name, itinerary, thumbnail }) }),
   updateItinerary: (id: string, patch: Partial<Itinerary>) => request<Itinerary>(`/api/itineraries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   undoItinerary: (id: string) => request<Itinerary>(`/api/itineraries/${id}/undo`, { method: 'POST' }),
-  saveStopNote: (itineraryId: string, stops: Itinerary['stops']) =>
-    request<Itinerary>(`/api/itineraries/${itineraryId}`, {
-      method: 'PATCH',
-      // #134: send the FULL stops array. The backend's ItineraryStopSchema is
-      // .strict() and requires every stop field (city, region, lat, lng, nights,
-      // highlights, accommodation, culinaryNotes) — a sparse {day, userNotes}
-      // fragment 400's, so notes were never persisted.
-      body: JSON.stringify({ stops }),
-    }),
+  // #173/#174: stop-notes are an append-only board — separate endpoints,
+  // never merged through the itinerary PATCH (last-write-wins trap).
+  getNotes: (itineraryId: string) =>
+    request<{ notes: StopNote[] }>(`/api/itineraries/${itineraryId}/notes`),
+  addNote: (itineraryId: string, body: { stopId: string; text: string; displayName?: string }) =>
+    request<StopNote>(`/api/itineraries/${itineraryId}/notes`, { method: 'POST', body: JSON.stringify(body) }),
+  deleteNote: (itineraryId: string, noteId: string) =>
+    request<void>(`/api/itineraries/${itineraryId}/notes/${noteId}`, { method: 'DELETE' }),
   searchCities: (query: string, limit?: number) => {
     // WR-02 / H2: reject an out-of-range limit client-side before hitting the
     // network. The server also enforces MAX_LIMIT as a backstop.

@@ -6,6 +6,7 @@ import { ConsentBanner } from './components/ConsentBanner'
 import { GeneratorPanel } from './components/GeneratorPanel'
 import { ItineraryView } from './components/ItineraryView'
 import { MapView } from './components/MapView'
+import { NotesBoard } from './components/NotesBoard'
 import { SavedTripsPanel } from './components/SavedTripsPanel'
 import { StatusBar } from './components/StatusBar'
 import { Toast } from './components/Toast'
@@ -19,11 +20,11 @@ import { legalPageLocale } from './lib/legalPages'
 import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
 import { isNavScrolled } from './lib/scrollNav'
 import { affiliateClickPayload, trackAffiliateClickGated } from './lib/tracking'
-import { removeStopByIndex, reorderStopByIndex, replaceStopNoteByIndex } from './lib/stopActions'
+import { removeStopByIndex, reorderStopByIndex } from './lib/stopActions'
 import { getPartnerSlug, isWidgetMode, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
 import { regionConfig } from './region'
 import { createStore } from './store'
-import type { Itinerary, ItineraryStop, Locale } from './types'
+import type { Itinerary, Locale } from './types'
 const store = createStore()
 
 // #85: resolve the boot locale from URL param → referrer → navigator.language
@@ -161,6 +162,7 @@ function changeLocale(lang: Locale): void {
   const { currentItinerary } = store.getState()
   if (currentItinerary) {
     itineraryView.renderFromItinerary(currentItinerary)
+    mountNotesBoards(currentItinerary.id ?? "default")
     updateItineraryDesc(currentItinerary)
   }
   // #86: B2B section is rendered once at boot with t(); re-render it so the
@@ -257,55 +259,7 @@ function onAddStopForMain(stop: { city: string; region: string; lat: number; lng
   }
 }
 
-function onSaveNoteForMain(stop: ItineraryStop, note: string): Promise<void> {
-  const state = store.getState()
-  if (!state.currentItinerary || !Array.isArray(state.currentItinerary.stops)) {
-    return Promise.resolve()
-  }
-  if (!state.activeTripId) {
-    toast.info(t('toast.saveNoteFirst'))
-    return Promise.resolve()
-  }
 
-  // #171: the callback now receives the REAL stop from
-  // this.currentItinerary (matched by 1-based UI position), so we can
-  // identify it by identity instead of by `day` — `day` is the travel day,
-  // not the position, and multi-night stops break day-matching.
-  const position = state.currentItinerary.stops.indexOf(stop)
-  if (position < 0) {
-    // Fallback for the demo-itinerary path where no ItineraryStop object is
-    // available: match on `day` as before (best effort, demo-only).
-    const updatedStops = state.currentItinerary.stops.map((item) => {
-      if (item.day === stop.day) {
-        return { ...item, userNotes: note }
-      }
-      return item
-    })
-    return commitStopNote(state, updatedStops)
-  }
-  const updatedStops = replaceStopNoteByIndex(state.currentItinerary.stops, position + 1, note)
-  return commitStopNote(state, updatedStops)
-}
-
-function commitStopNote(
-  state: ReturnType<typeof store.getState>,
-  updatedStops: ItineraryStop[],
-): Promise<void> {
-  const next = { ...state.currentItinerary!, stops: updatedStops }
-  store.setState({ currentItinerary: next, unsaved: true })
-  itineraryView.renderFromItinerary(next)
-
-  return Promise.resolve(
-    apiClient.saveStopNote(state.activeTripId!, updatedStops)
-  ).then((updated) => {
-    itineraryView.setHasPreviousVersion(Boolean(updated.hasPreviousVersion))
-  }).catch((error) => {
-    // #129: never surface the raw API error text — always the translated fallback.
-    if (error instanceof Error) console.error('[saveStopNote]', error)
-    toast.error(t('toast.saveNoteFailed'))
-    throw error
-  })
-}
 
 function onUndoForMain(): void {
   const state = store.getState()
@@ -338,11 +292,24 @@ const itineraryView = new ItineraryView(
   },
   onReorderStopForMain,
   onRemoveStopForMain,
-  onSaveNoteForMain,
   onUndoForMain,
   onAddStopForMain,
   () => generatorPanel.open(),
 )
+
+function mountNotesBoards(itineraryId: string): void {
+  document.querySelectorAll<HTMLElement>('.notes-mount').forEach((el) => {
+    const stopId = el.dataset.stopId
+    if (!stopId) return
+    if (el.dataset.mounted === 'true') return
+    el.dataset.mounted = 'true'
+    const board = new NotesBoard(itineraryId, stopId, (msg, kind = 'error') => {
+      if (kind === 'ok') toast.success(msg)
+      else toast.error(msg)
+    })
+    el.replaceWith(board.render())
+  })
+}
 
 const mapView = new MapView('map', (stop, opts) => {
   store.setState({ selectedStopId: stop.id })
@@ -555,6 +522,7 @@ store.subscribe(() => {
 itineraryView.render(STOPS, CULINARY, ACCOMMODATIONS)
 store.setState({
   currentItinerary: {
+    id: 'default',
     title: regionConfig.brandName,
     totalDays: STOPS.reduce((sum, s) => sum + s.nights, 0),
     startCity: STOPS[0]?.dest ?? '',

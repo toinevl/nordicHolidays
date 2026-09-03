@@ -12,6 +12,8 @@ export const RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR = 60
 export const RATE_LIMIT_TRACK_PER_IP_PER_HOUR = 120
 export const RATE_LIMIT_PARTNER_LOOKUP_PER_IP_PER_HOUR = 60
 export const RATE_LIMIT_LEADS_PER_IP_PER_HOUR = 5
+export const RATE_LIMIT_NOTES_PER_OWNER_PER_HOUR = 20
+export const RATE_LIMIT_NOTES_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_TABLE_NAME = 'RateLimits'
 
 // Lazy initialization for table creation
@@ -414,6 +416,71 @@ export async function checkAndIncrementItineraryWriteRateLimit(
     return { allowed: true }
   } catch (err) {
     logError(logger, `Itinerary-write rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    return { allowed: true }
+  }
+}
+
+/**
+ * Check and increment rate limit for trip-board notes (#173).
+ * Notes are anonymous-ish (owner id is a spoofable X-Owner-Id header, same
+ * caveat as the other limiters), so per-IP is the harder-to-bypass signal.
+ * Both POST and DELETE count against the same buckets. Uses `notes-owner:` /
+ * `notes-ip:` partition prefixes so counters never share a bucket with the
+ * other limiters.
+ */
+export async function checkAndIncrementNoteRateLimit(
+  req: HttpRequest,
+  ownerId: string,
+  logger?: any
+): Promise<RateLimitResult> {
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const hourWindow = getCurrentHourWindow()
+    const ip = extractIp(req)
+    const retryAfter = getSecondsUntilHourEnd()
+
+    const buckets: Array<{ partitionKey: string; limit: number; label: string }> = [
+      { partitionKey: `notes-owner:${ownerId}`, limit: RATE_LIMIT_NOTES_PER_OWNER_PER_HOUR, label: `owner ${ownerId}` },
+      { partitionKey: `notes-ip:${ip}`, limit: RATE_LIMIT_NOTES_PER_IP_PER_HOUR, label: `IP ${ip}` },
+    ]
+
+    for (const bucket of buckets) {
+      try {
+        const entity = await client.getEntity(bucket.partitionKey, hourWindow)
+        const count = (entity.count as number) ?? 0
+        if (count >= bucket.limit) {
+          return { allowed: false, retryAfterSeconds: retryAfter }
+        }
+        await client.updateEntity(
+          {
+            partitionKey: entity.partitionKey as string,
+            rowKey: entity.rowKey as string,
+            ...entity,
+            count: count + 1,
+          },
+          'Merge'
+        )
+      } catch (err: any) {
+        if (err?.statusCode === 404) {
+          await client.createEntity({
+            partitionKey: bucket.partitionKey,
+            rowKey: hourWindow,
+            count: 1,
+            timestamp: now.toISOString(),
+          })
+        } else {
+          logError(logger, `Notes rate limit check failed for ${bucket.label}: ${err instanceof Error ? err.message : String(err)}`)
+          return { allowed: true }
+        }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    logError(logger, `Notes rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
     return { allowed: true }
   }
 }

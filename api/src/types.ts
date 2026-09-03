@@ -25,7 +25,6 @@ export type ItineraryStop = {
   highlights: string[]
   accommodation: string
   culinaryNotes: string
-  userNotes?: string
   /**
    * Real driving distance in km from the previous stop (0 for the first stop).
    * Populated server-side from Azure Maps (#89); absent on itineraries
