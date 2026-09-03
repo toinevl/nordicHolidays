@@ -1,0 +1,70 @@
+name: Deploy Dev (hero preview)
+
+# Deployt feature-branches naar de losse dev-SWA (fjordvia-dev) voor preview.
+# Prod (fjordvia.com / nordicholidays-SWA) wordt NIET aangeraakt.
+on:
+  push:
+    branches:
+      - 'feature/hero-**'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: frontend
+
+      - name: Stamp build metadata
+        run: |
+          cat > frontend/public/build-info.json <<EOF
+          {
+            "runNumber": "dev-${GITHUB_RUN_NUMBER}",
+            "sha": "${GITHUB_SHA}",
+            "ref": "${GITHUB_REF_NAME}",
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Generate SEO itinerary library (#73)
+        run: npx tsx ../scripts/generate-seo-pages.ts
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+        env:
+          VITE_ENTRA_CLIENT_ID: ${{ secrets.VITE_ENTRA_CLIENT_ID }}
+          VITE_ENTRA_TENANT_ID: ${{ secrets.VITE_ENTRA_TENANT_ID }}
+          VITE_TRAVELPAYOUTS_MARKER: ${{ vars.TRAVELPAYOUTS_MARKER }}
+          VITE_API_BASE: ${{ vars.DEV_API_BASE }}
+
+      - name: Deploy to fjordvia-dev SWA
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.FJORDVIA_DEV_DEPLOY_TOKEN }}
+          action: 'upload'
+          app_location: 'frontend'
+          output_location: 'dist'
+          skip_app_build: 'true'
+
+      - name: Preview URL
+        run: |
+          echo "Dev preview: https://mango-pebble-075d15e03.5.azurestaticapps.net"
