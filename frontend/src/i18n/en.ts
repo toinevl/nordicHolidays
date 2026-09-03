@@ -149,6 +149,7 @@ export const en: LocaleStrings = {
     itineraryLabel: 'Day by Day',
     itineraryTitle: 'The Full Route',
     itineraryDesc: '21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.',
+    itineraryDescDynamic: '{totalDays}-day trip from {startCity} to {endCity} — a curated Nordic road-trip with stops in {stopCount} cities.',
     culinaryLabel: 'Eat & Drink',
     culinaryTitle: 'Culinary Highlights',
     culinaryDesc: 'Six distinct food cultures — Gothenburg shellfish, Dalarna game, High Coast smoked fish, and Stockholm\'s new Nordic kitchen.',
@@ -273,7 +274,9 @@ export const en: LocaleStrings = {
     selectStartCity: 'Please select a start city',
     selectFinishCity: 'Please select a finish city',
     minDuration: 'Minimum trip duration is 7 days',
-    generationFailed: 'Generation failed',
+    generationFailed: 'Trip generation failed — please try a different route or fewer stops.',
+    rateLimit: 'Too many requests. Wait a moment and try again.',
+    authFailed: 'Sign-in required to save trips.',
   },
   culinary: {
     mustTry: 'Must try',
@@ -288,5 +291,24 @@ export const en: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Filter your trip',
+    removeTag: 'Remove {city}',
+    stopMarker: '{city}, stop {n}',
+    dayTripMarker: 'Day trip near {base}',
+    mapLegend: 'Map legend',
+    mapLabel: 'Nordic road trip map',
+    map3dLabel: '3D map of Nordic road trip',
+    localeDropdown: 'Choose your language',
+  },
+  gallery: {
+    title: 'Community Trips',
+    loadTrip: 'Load trip: {title}',
+  },
+  creator: {
+    title: '{name} — Creator Profile',
+    anonymous: 'Anonymous Creator',
+    created: 'Created',
+    updated: 'Updated',
+    notFound: 'Profile not found.',
+    loadError: 'Failed to load profile.',
   },
 }

@@ -1,28 +1,30 @@
 import './styles/main.css'
-import { createStore } from './store'
-import { MapView } from './components/MapView'
-import { ItineraryView } from './components/ItineraryView'
-import { StatusBar } from './components/StatusBar'
-import { GeneratorPanel } from './components/GeneratorPanel'
-import { SavedTripsPanel } from './components/SavedTripsPanel'
-import { NotesBoard } from './components/NotesBoard'
-import { Toast } from './components/Toast'
-import { STOPS, CULINARY, ACCOMMODATIONS } from './data/defaultItinerary'
-import type { Itinerary, Locale } from './types'
+
 import { apiClient, warmUpApi } from './api/client'
-import { setLocale, getLocale, t, tpl } from './i18n/index'
-import { initialize, handleRedirect } from './lib/auth'
-import { affiliateClickPayload, trackAffiliateClickGated } from './lib/tracking'
-import { resetConsent, onConsentChange } from './lib/consent'
-import { ConsentBanner } from './components/ConsentBanner'
 import { B2BSection } from './components/B2BSection'
-import { isWidgetMode, getPartnerSlug, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
+import { ConsentBanner } from './components/ConsentBanner'
+import { GeneratorPanel } from './components/GeneratorPanel'
+import { ItineraryView } from './components/ItineraryView'
+import { MapView } from './components/MapView'
+import { NotesBoard } from './components/NotesBoard'
+import { SavedTripsPanel } from './components/SavedTripsPanel'
+import { StatusBar } from './components/StatusBar'
+import { Toast } from './components/Toast'
 import { WidgetFooter } from './components/WidgetFooter'
-import { isNavScrolled } from './lib/scrollNav'
+import { ACCOMMODATIONS, CULINARY, STOPS } from './data/defaultItinerary'
+import { getLocale, setLocale, t, tpl } from './i18n/index'
 import { pickActiveSection } from './lib/activeSection'
-import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
+import { handleRedirect, initialize } from './lib/auth'
+import { onConsentChange, resetConsent } from './lib/consent'
 import { legalPageLocale } from './lib/legalPages'
+import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
+import { isNavScrolled } from './lib/scrollNav'
+import { affiliateClickPayload, trackAffiliateClickGated } from './lib/tracking'
+import { removeStopByIndex, reorderStopByIndex } from './lib/stopActions'
+import { getPartnerSlug, isWidgetMode, loadWidgetConfig, setActiveWidgetConfig } from './lib/widget'
 import { regionConfig } from './region'
+import { createStore } from './store'
+import type { Itinerary, Locale } from './types'
 const store = createStore()
 
 // #85: resolve the boot locale from URL param → referrer → navigator.language
@@ -111,6 +113,11 @@ function applyStaticI18n(): void {
   })
   // 3D map hint
   setText('.map-hint', t('map3d.hint'))
+  // Map containers — role is in index.html, label is i18n
+  setAttr('#map', 'aria-label', t('aria.mapLabel'))
+  setAttr('#map-3d', 'aria-label', t('aria.map3dLabel'))
+  // Locale dropdown
+  setAttr('#locale-dropdown', 'aria-label', t('aria.localeDropdown'))
   // Footer stat labels (order matches index.html .stat-lbl elements)
   const footerLabels = [
     t('footer.days'),
@@ -156,6 +163,7 @@ function changeLocale(lang: Locale): void {
   if (currentItinerary) {
     itineraryView.renderFromItinerary(currentItinerary)
     mountNotesBoards(currentItinerary.id ?? "default")
+    updateItineraryDesc(currentItinerary)
   }
   // #86: B2B section is rendered once at boot with t(); re-render it so the
   // new locale's strings take effect immediately instead of on next page load.
@@ -186,14 +194,11 @@ function onReorderStopForMain(stopId: number, direction: 'up' | 'down'): void {
   const state = store.getState()
   const itinerary = state.currentItinerary
   if (!itinerary || !Array.isArray(itinerary.stops)) return
-  const idx = itinerary.stops.findIndex(
-    (s) => s.day === stopId || String(s.day) === String(stopId),
-  )
-  if (idx < 0) return
-  const target = direction === 'up' ? idx - 1 : idx + 1
-  if (target < 0 || target >= itinerary.stops.length) return
-  const stops = [...itinerary.stops]
-  ;[stops[idx], stops[target]] = [stops[target], stops[idx]]
+  // #171: stopId is the 1-based UI position (Stop.id = i+1), NOT the travel
+  // day — match on array index, never on `day` (days run 1,3,5… for
+  // multi-night stops).
+  const stops = reorderStopByIndex(itinerary.stops, stopId, direction)
+  if (stops === itinerary.stops) return
   const next = { ...itinerary, stops }
   store.setState({ currentItinerary: next, unsaved: true })
   itineraryView.renderFromItinerary(next)
@@ -209,10 +214,9 @@ function onRemoveStopForMain(stopId: number): void {
   const state = store.getState()
   const itinerary = state.currentItinerary
   if (!itinerary || !Array.isArray(itinerary.stops)) return
-  const stops = itinerary.stops.filter(
-    (s) => s.day !== stopId && String(s.day) !== String(stopId),
-  )
-  if (stops.length === itinerary.stops.length) return
+  // #171: see onReorderStopForMain — position, not day.
+  const stops = removeStopByIndex(itinerary.stops, stopId)
+  if (stops === itinerary.stops) return
   const next = { ...itinerary, stops }
   store.setState({ currentItinerary: next, unsaved: true })
   itineraryView.renderFromItinerary(next)
@@ -254,6 +258,7 @@ function onAddStopForMain(stop: { city: string; region: string; lat: number; lng
       .catch(() => toast.error(t('saved.saveFailed')))
   }
 }
+
 
 
 function onUndoForMain(): void {
@@ -460,6 +465,21 @@ function toMapStops(itinerary: Itinerary): typeof STOPS {
   }))
 }
 
+// #20: "The Full Route" description was a static i18n string ("21 days from Malmö
+// to the High Coast...") that never reflected the actual itinerary's length.
+// Update it from the actual itinerary data via the parameterized key.
+function updateItineraryDesc(itinerary: Itinerary): void {
+  const descEl = document.getElementById('itinerary-desc')
+  if (descEl) {
+    descEl.textContent = tpl('sections.itineraryDescDynamic', {
+      totalDays: String(itinerary.totalDays ?? itinerary.stops.length),
+      startCity: itinerary.startCity ?? '',
+      endCity: itinerary.endCity ?? '',
+      stopCount: String(itinerary.stops?.length ?? 0),
+    })
+  }
+}
+
 function applyItinerary(itinerary: Itinerary): void {
   itineraryView.renderFromItinerary(itinerary)
   mapView.replaceStops(toMapStops(itinerary))
@@ -467,6 +487,7 @@ function applyItinerary(itinerary: Itinerary): void {
     map3DView.replaceStops(toMapStops(itinerary))
   }
   statusBar.syncFromStore(store)
+  updateItineraryDesc(itinerary)
 }
 
 const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: string, id: string) => {
@@ -538,6 +559,13 @@ if (urlId) {
 }
 
 applyStaticI18n()
+
+// #20: "The Full Route" description was a static i18n string ("21 days from Malmö
+// to the High Coast...") that never reflected the actual itinerary's length.
+// Update it from the current itinerary in the store — this covers the default
+// boot itinerary (rendered via itineraryView.render() above) as well as
+// generated/loaded itineraries (via applyItinerary).
+updateItineraryDesc(store.getState().currentItinerary as Itinerary)
 
 // ---------------------------------------------------------------------------
 // Cookie consent (#137): render the banner (only shows while the visitor

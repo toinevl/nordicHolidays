@@ -38,13 +38,7 @@ Generation typically takes 5–15 seconds depending on trip length.
 
 ## Share a Trip
 
-Every saved trip has a shareable URL in the form:
-
-```
-https://nordicholidays.azurestaticapps.net/?id=<tripId>
-```
-
-Opening the link loads the full itinerary directly. The URL is updated automatically after saving and can be copied from the browser address bar.
+Every saved trip has a shareable URL (`?id=<tripId>`). The `SharePreview` component provides a preview card (title, route, copy-link). Trips support attribution (`creatorId`, `verified` optional fields) and a public profile endpoint (`GET /profile/public?ownerId=`) — no internal fields exposed.
 
 ---
 

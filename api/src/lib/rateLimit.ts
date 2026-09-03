@@ -1,6 +1,7 @@
 import type { HttpRequest } from '@azure/functions'
-import { getTableClient } from './tableClient'
+
 import { logError } from './schemas'
+import { getTableClient } from './tableClient'
 
 // Rate limit constants
 export const RATE_LIMIT_PER_OWNER_PER_HOUR = 5
@@ -146,20 +147,44 @@ export async function checkAndIncrementRateLimit(
     const ownerPartitionKey = `owner:${ownerId}`
     try {
       const ownerEntity = await client.getEntity(ownerPartitionKey, hourWindow)
-      const ownerCount = (ownerEntity.count as number) ?? 0
+      let ownerCount = (ownerEntity.count as number) ?? 0
       if (ownerCount >= RATE_LIMIT_PER_OWNER_PER_HOUR) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
-      // Increment count
-      await client.updateEntity(
-        {
-          partitionKey: ownerEntity.partitionKey as string,
-          rowKey: ownerEntity.rowKey as string,
-          ...ownerEntity,
-          count: ownerCount + 1,
-        },
-        'Merge'
-      )
+      // Atomic increment with retry loop for TOCTOU (WR-08 / H8)
+      const maxRetries = 2
+      let updated = false
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          await client.updateEntity(
+            {
+              partitionKey: ownerEntity.partitionKey as string,
+              rowKey: ownerEntity.rowKey as string,
+              ...ownerEntity,
+              count: ownerCount + 1,
+            },
+            'Merge'
+          )
+          updated = true
+          break
+        } catch (updateErr: any) {
+          // ETag/precondition conflict: retry once after refreshing count
+          if (updateErr?.statusCode === 412 || updateErr?.code === 'UpdateConditionNotSatisfied') {
+            const refreshed = await client.getEntity(ownerPartitionKey, hourWindow)
+            const refreshedCount = (refreshed.count as number) ?? 0
+            if (refreshedCount >= RATE_LIMIT_PER_OWNER_PER_HOUR) {
+              return { allowed: false, retryAfterSeconds: retryAfter }
+            }
+            ownerCount = refreshedCount
+            continue
+          }
+          throw updateErr
+        }
+      }
+      if (!updated) {
+        logError(logger, `Rate limit update failed for owner ${ownerId}: max retries exceeded`)
+        return { allowed: true }
+      }
     } catch (err: any) {
       // Entity doesn't exist; create it
       if (err?.statusCode === 404) {
@@ -180,20 +205,43 @@ export async function checkAndIncrementRateLimit(
     const ipPartitionKey = `ip:${ip}`
     try {
       const ipEntity = await client.getEntity(ipPartitionKey, hourWindow)
-      const ipCount = (ipEntity.count as number) ?? 0
+      let ipCount = (ipEntity.count as number) ?? 0
       if (ipCount >= RATE_LIMIT_PER_IP_PER_HOUR) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
-      // Increment count
-      await client.updateEntity(
-        {
-          partitionKey: ipEntity.partitionKey as string,
-          rowKey: ipEntity.rowKey as string,
-          ...ipEntity,
-          count: ipCount + 1,
-        },
-        'Merge'
-      )
+      // Atomic increment with retry loop for TOCTOU (IP)
+      const maxRetries = 2
+      let ipUpdated = false
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          await client.updateEntity(
+            {
+              partitionKey: ipEntity.partitionKey as string,
+              rowKey: ipEntity.rowKey as string,
+              ...ipEntity,
+              count: ipCount + 1,
+            },
+            'Merge'
+          )
+          ipUpdated = true
+          break
+        } catch (updateErr: any) {
+          if (updateErr?.statusCode === 412 || updateErr?.code === 'UpdateConditionNotSatisfied') {
+            const refreshed = await client.getEntity(ipPartitionKey, hourWindow)
+            const refreshedCount = (refreshed.count as number) ?? 0
+            if (refreshedCount >= RATE_LIMIT_PER_IP_PER_HOUR) {
+              return { allowed: false, retryAfterSeconds: retryAfter }
+            }
+            ipCount = refreshedCount
+            continue
+          }
+          throw updateErr
+        }
+      }
+      if (!ipUpdated) {
+        logError(logger, `Rate limit update failed for IP ${ip}: max retries exceeded`)
+        return { allowed: true }
+      }
     } catch (err: any) {
       // Entity doesn't exist; create it
       if (err?.statusCode === 404) {
@@ -308,7 +356,7 @@ export async function checkAndIncrementItineraryWriteRateLimit(
     const ownerPartitionKey = `itinerary-owner:${ownerId}`
     try {
       const ownerEntity = await client.getEntity(ownerPartitionKey, hourWindow)
-      const ownerCount = (ownerEntity.count as number) ?? 0
+      let ownerCount = (ownerEntity.count as number) ?? 0
       if (ownerCount >= RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }
@@ -338,7 +386,7 @@ export async function checkAndIncrementItineraryWriteRateLimit(
     const ipPartitionKey = `itinerary-ip:${ip}`
     try {
       const ipEntity = await client.getEntity(ipPartitionKey, hourWindow)
-      const ipCount = (ipEntity.count as number) ?? 0
+      let ipCount = (ipEntity.count as number) ?? 0
       if (ipCount >= RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR) {
         return { allowed: false, retryAfterSeconds: retryAfter }
       }

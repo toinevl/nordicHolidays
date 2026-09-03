@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { haversineKm, formatDriveTime } from './distance'
+import { describe, expect, it } from 'vitest'
+
 import { t } from '../i18n/index'
+import { formatDriveTime, haversineKm } from './distance'
 
 describe('haversineKm', () => {
   it('estimates Stockholm to Gothenburg as ~395 km straight-line (no multiplier, #89)', () => {

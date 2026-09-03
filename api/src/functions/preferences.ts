@@ -1,10 +1,26 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getTableClient, ensureTable } from '../lib/tableClient'
+import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
+
+import { corsPreflightResponse, withCors } from '../lib/cors'
+import { authErrorResponse, resolveOwnerId } from '../lib/identity'
+import { PreferencesSchema, logError } from '../lib/schemas'
+import { ensureTable, getTableClient } from '../lib/tableClient'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
-import { withCors, corsPreflightResponse } from '../lib/cors'
-import { resolveOwnerId, authErrorResponse } from '../lib/identity'
-import { PreferencesSchema, logError } from '../lib/schemas'
+// WR-07 / H7: ensure every response carries Cache-Control and Content-Type
+// in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
+// injects. withCors is aliased so the wrapper can call it without recursion.
+const _withCors = withCors
+
+function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseInit {
+  return _withCors({
+    ...response,
+    headers: {
+      ...(response.status !== 204 ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-store',
+      ...((response.headers as Record<string, string>) ?? {}),
+    },
+  }, origin)
+}
 
 const ROW_KEY = 'default'
 
@@ -25,30 +41,30 @@ export async function getPreferencesHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   try {
     const owner = await resolveOwnerId(req, ctx)
     const client = getTableClient('Preferences')
     const entity = await client.getEntity(owner.ownerId, ROW_KEY)
-    return withCors({
+    return withHeaders({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entityToPreferences(entity as Record<string, unknown>)),
     }, origin)
   } catch (err: any) {
     if (err instanceof Error && err.name === 'AuthError') {
-      return authErrorResponse(err, origin)
+      return withHeaders(authErrorResponse(err, origin), origin)
     }
     if (err?.statusCode === 404) {
-      return withCors({
+      return withHeaders({
         status: 200,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(DEFAULT_PREFERENCES),
       }, origin)
     }
     logError(ctx, 'getPreferencesHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
@@ -57,7 +73,7 @@ export async function putPreferencesHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   try {
     const owner = await resolveOwnerId(req, ctx)
@@ -67,7 +83,7 @@ export async function putPreferencesHandler(
       rawBody = await req.json()
     } catch (err) {
       logError(ctx, 'putPreferencesHandler: invalid JSON body', err)
-      return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     // Validate and parse body with zod; on failure, return 400 with details
@@ -75,7 +91,7 @@ export async function putPreferencesHandler(
     if (!parseResult.success) {
       const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
       logError(ctx, `putPreferencesHandler: validation failed - ${errors}`, parseResult.error)
-      return withCors({
+      return withHeaders({
         status: 400,
         body: JSON.stringify({ error: 'Invalid request body', details: errors }),
         headers: { 'Content-Type': 'application/json' }
@@ -114,22 +130,22 @@ export async function putPreferencesHandler(
       }
     } catch (err: any) {
       if (err.code === 'InvalidInput' || err.statusCode === 412) {
-        return withCors({ status: 409, body: JSON.stringify({ error: 'Conflict: preferences were modified' }), headers: { 'Content-Type': 'application/json' } }, origin)
+        return withHeaders({ status: 409, body: JSON.stringify({ error: 'Conflict: preferences were modified' }), headers: { 'Content-Type': 'application/json' } }, origin)
       }
       throw err
     }
 
-    return withCors({
+    return withHeaders({
       status: isNew ? 201 : 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prefs),
     }, origin)
   } catch (err) {
     if (err instanceof Error && err.name === 'AuthError') {
-      return authErrorResponse(err, origin)
+      return withHeaders(authErrorResponse(err, origin), origin)
     }
     logError(ctx, 'putPreferencesHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 

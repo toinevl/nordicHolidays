@@ -1,18 +1,69 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getLlmClient, getModel } from '../lib/llmClient'
-import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
-import { withCors, corsPreflightResponse } from '../lib/cors'
-import { resolveOwnerId, authErrorResponse } from '../lib/identity'
-import { checkAndIncrementRateLimit, checkGlobalDailyGenerateCap, checkPartnerDailyGenerateCap } from '../lib/rateLimit'
-import { getPartner } from '../lib/partners'
+import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
+
+import { corsPreflightResponse, withCors } from '../lib/cors'
 import { haversineKm } from '../lib/geo'
+import { authErrorResponse, resolveOwnerId } from '../lib/identity'
+import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { getLlmClient, getModel } from '../lib/llmClient'
+import { getPartner } from '../lib/partners'
+import { checkAndIncrementRateLimit, checkGlobalDailyGenerateCap, checkPartnerDailyGenerateCap } from '../lib/rateLimit'
 import { getRouteSegments } from '../lib/routing'
-import type { Itinerary, Preferences } from '../types'
 import { GenerateRequestBodySchema, logError } from '../lib/schemas'
+import { emitDuration, emitError, emitEvent } from '../lib/telemetry'
 import { regionConfig } from '../region'
+import type { Itinerary, Preferences } from '../types'
+// WR-07 / H7: ensure every response carries Cache-Control and Content-Type
+// in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
+// injects. withCors is aliased so the wrapper can call it without recursion.
+const _withCors = withCors
+
+function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseInit {
+  return _withCors({
+    ...response,
+    headers: {
+      ...(response.status !== 204 ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-store',
+      ...((response.headers as Record<string, string>) ?? {}),
+    },
+  }, origin)
+}
 
 // Day trips beyond 150 km (~1.5h drive) are promoted to overnight stops for geographic honesty
 const MAX_DAY_TRIP_KM = 150
+
+/**
+ * Normalize a city name for lookup: trim, lowercase, strip diacritics.
+ * Mirrors the frontend's `normalize()` in `citySearch.ts` so that
+ * "Gräslehamn" / "Grisslehamn" / "grisslehamn " all resolve to the same
+ * catalogue entry.
+ */
+function normalizeCity(name: string): string {
+  return name
+    .trim()
+    .toLocaleLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+/**
+ * Look up a city's coordinates from the active region's `cities` catalogue
+ * by exact or alias match (#176). Returns `{lat, lng}` when found, `undefined`
+ * otherwise. This is a synchronous, zero-I/O lookup over the static region
+ * catalogue — no external geocoder call at generation time.
+ */
+function lookupCityCoords(cityName: string): { lat: number; lng: number } | undefined {
+  const q = normalizeCity(cityName)
+  const entry = regionConfig.cities.find(
+    c =>
+      normalizeCity(c.name) === q ||
+      (c.aliases ?? []).some(a => normalizeCity(a) === q) ||
+      normalizeCity(c.id.replace(/-\w+$/, '')).replace(/-/g, ' ') === q,
+  )
+  if (entry && typeof entry.lat === 'number' && typeof entry.lng === 'number') {
+    return { lat: entry.lat, lng: entry.lng }
+  }
+  return undefined
+}
 
 /**
  * Builds the user message for the LLM. Delegates to the active region's
@@ -44,7 +95,7 @@ export async function generateHandler(
   ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
   const origin = req.headers?.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   // Resolve identity first (required for rate limiting)
   let ownerId: string
@@ -52,7 +103,7 @@ export async function generateHandler(
     const owner = await resolveOwnerId(req, ctx)
     ownerId = owner.ownerId
   } catch (err) {
-    return authErrorResponse(err, origin)
+    return withHeaders(authErrorResponse(err, origin), origin)
   }
 
   let rawBody: unknown
@@ -60,7 +111,7 @@ export async function generateHandler(
     rawBody = await req.json()
   } catch (err) {
     logError(ctx, 'generateHandler: invalid JSON body', err)
-    return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 
   // Validate and parse body with zod; on failure, return 400 with details
@@ -68,7 +119,7 @@ export async function generateHandler(
   if (!parseResult.success) {
     const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
     logError(ctx, `generateHandler: validation failed - ${errors}`, parseResult.error)
-    return withCors({
+    return withHeaders({
       status: 400,
       body: JSON.stringify({ error: 'Invalid request body', details: errors }),
       headers: { 'Content-Type': 'application/json' }
@@ -91,7 +142,7 @@ export async function generateHandler(
   const rateLimitResult = await checkAndIncrementRateLimit(req, ownerId, ctx)
   if (!rateLimitResult.allowed) {
     const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
-    return withCors(
+    return withHeaders(
       {
         status: 429,
         headers: {
@@ -118,7 +169,7 @@ export async function generateHandler(
     if (partner && typeof partner.llmDailyCap === 'number') {
       const partnerCap = await checkPartnerDailyGenerateCap(partnerSlug, partner.llmDailyCap, ctx)
       if (!partnerCap.allowed) {
-        return withCors({
+        return withHeaders({
           status: 429,
           headers: {
             'Content-Type': 'application/json',
@@ -142,7 +193,7 @@ export async function generateHandler(
   // the attempt was made and may still bill; that edge is accepted.)
   const globalCap = await checkGlobalDailyGenerateCap(ctx)
   if (!globalCap.allowed) {
-    return withCors({
+    return withHeaders({
       status: 429,
       headers: {
         'Content-Type': 'application/json',
@@ -156,6 +207,7 @@ export async function generateHandler(
     }, origin)
   }
 
+  const generateStart = Date.now()
   try {
     const client = getLlmClient()
     // Token cap: structured itineraries for up to 21-day trips measure
@@ -177,13 +229,13 @@ export async function generateHandler(
     const choice = response.choices[0]
     if (choice.finish_reason === 'length') {
       logError(ctx, 'generateHandler: model returned length overflow')
-      return withCors({ status: 502, body: JSON.stringify({ error: 'Itinerary too long to generate — try fewer days' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 502, body: JSON.stringify({ error: 'Itinerary too long to generate — try fewer days' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     const toolCall = choice.message.tool_calls?.[0]
     if (!toolCall || toolCall.function.name !== 'create_itinerary') {
       logError(ctx, 'generateHandler: model did not return structured tool call', { toolCall })
-      return withCors({ status: 502, body: JSON.stringify({ error: 'Model did not return a structured itinerary' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 502, body: JSON.stringify({ error: 'Model did not return a structured itinerary' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     let input: unknown
@@ -191,12 +243,12 @@ export async function generateHandler(
       input = JSON.parse(toolCall.function.arguments)
     } catch (err) {
       logError(ctx, 'generateHandler: failed to parse tool arguments', err)
-      return withCors({ status: 502, body: JSON.stringify({ error: 'Model returned unparseable itinerary arguments' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 502, body: JSON.stringify({ error: 'Model returned unparseable itinerary arguments' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     if (!validateItinerary(input)) {
       logError(ctx, 'generateHandler: validateItinerary failed', { input: JSON.stringify(input) })
-      return withCors({ status: 502, body: JSON.stringify({ error: 'Model returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 502, body: JSON.stringify({ error: 'Model returned an invalid itinerary structure' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     if (input.stops.length > 0 && input.stops[0].nights === 0) {
@@ -220,6 +272,43 @@ export async function generateHandler(
     if (input.totalDays !== prefs.tripDays) {
       ctx?.warn(`generateHandler: correcting model-provided totalDays (${input.totalDays}) to requested tripDays (${prefs.tripDays})`)
       input.totalDays = prefs.tripDays
+    }
+
+    // #175: the model is instructed to start at `startCity`, but can still
+    // return a route that begins in a different city. The frontend treats
+    // `stops[0]` as the true origin everywhere (timeline, export, thumbnail),
+    // so a mismatched first stop is user-visible. Correct it here rather than
+    // trusting the model's structured `startCity`/`stops[0].city` pair.
+    // #176: the original #175 fix only overrode `stops[0].city` — the 3D map
+    // and route polyline render from `stop.coords`, not the city name, so
+    // mismatched lat/lng still caused the map to start in the wrong place
+    // (e.g. Malmö coordinates for a Grisslehamn→Uppsala trip). Also override
+    // coordinates from the region's city catalogue. We only touch the last
+    // stop's coords when its city name already matches `endCity` — the LLM
+    // may choose a different terminus on round trips, and we don't want to
+    // clobber that.
+    if (input.stops.length > 0) {
+      const first = input.stops[0]
+      if (typeof first.city === 'string' && first.city.trim().toLowerCase() !== prefs.startCity.trim().toLowerCase()) {
+        const known = lookupCityCoords(prefs.startCity)
+        const patch: Record<string, unknown> = { city: prefs.startCity }
+        if (known) patch.lat = known.lat
+        if (known) patch.lng = known.lng
+        ctx?.warn(
+          `generateHandler: correcting first stop city/coords from "${first.city}"(${first.lat},${first.lng}) to requested startCity "${prefs.startCity}"(${patch.lat ?? '?'},${patch.lng ?? '?'})`,
+        )
+        input.stops[0] = { ...first, ...patch }
+      }
+    }
+    if (input.stops.length > 1) {
+      const last = input.stops[input.stops.length - 1]
+      if (typeof last.city === 'string' && last.city.trim().toLowerCase() === prefs.endCity.trim().toLowerCase()) {
+        const known = lookupCityCoords(prefs.endCity)
+        if (known) {
+          ctx?.warn(`generateHandler: correcting last stop coords to endCity "${prefs.endCity}"(${known.lat},${known.lng})`)
+          input.stops[input.stops.length - 1] = { ...last, lat: known.lat, lng: known.lng }
+        }
+      }
     }
 
     // Promote day trips further than MAX_DAY_TRIP_KM (straight-line) from
@@ -275,17 +364,33 @@ export async function generateHandler(
     }
 
     const itinerary: Itinerary = { ...input, generatedAt: new Date().toISOString(), startDate: prefs.startDate }
-    return withCors({
+
+    emitEvent(ctx, 'trip_generated', {
+      ownerId: ownerId.slice(0, 8),
+      days: prefs.tripDays,
+      stopCount: input.stops.length,
+      country: body.country,
+      model: getModel(),
+    })
+    emitDuration(ctx, 'generate_duration_ms', Date.now() - generateStart, {
+      success: true,
+      stopCount: input.stops.length,
+    })
+
+    return withHeaders({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(itinerary),
     }, origin)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error'
     const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT ?? '(not set)'
     const model = process.env.LLM_MODEL ?? 'gpt-4o'
     logError(ctx, `generateHandler: generation error - endpoint: ${endpoint}, model: ${model}`, err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Generation failed. Please try again.' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    emitError(ctx, err, { event: 'generation_failed', ownerId: ownerId.slice(0, 8) })
+    emitDuration(ctx, 'generate_duration_ms', Date.now() - generateStart, {
+      success: false,
+    })
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Generation failed. Please try again later.', code: 'generation_failed', requestId: ctx?.invocationId }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 

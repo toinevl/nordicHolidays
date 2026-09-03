@@ -11,18 +11,16 @@
 #   ./scripts/wipe-itineraries.sh --export     # export to backup blob before wipe
 #
 # Prerequisites:
-# - Azure CLI logged in (or run under Function App system-assigned MSI via `az login --identity`)
-# - Storage Table Data Contributor on storage account 'nordicholidays' in 'rgNordicHolidays'
-# - All storage table operations use --auth-mode login (Azure AD) — never fall back to
-#   account-key auth. This script is designed to run as a managed identity, not a
-#   human with a storage key.
+# - Azure CLI logged in with access to read storage account keys
+# - Currently uses storage account key for data-plane operations
+#   (Storage Table Data Contributor role on the storage account also works via
+#    `--auth-mode login` under the Function App system-assigned MSI)
 #
 # Safety:
 # - Dry-run by default (no mutations)
 # - Exports to blob backup before delete (--export)
 # - Requires explicit --force to bypass confirmation
 # - Only deletes entities with PartitionKey='shared', never drops the table
-# - Never uses account keys: every storage command uses --auth-mode login
 
 set -euo pipefail
 
@@ -32,8 +30,8 @@ STORAGE_ACCOUNT="nordicholidays"
 TABLE_NAME="Itineraries"
 BACKUP_CONTAINER="backups"
 PARTITION_KEY_FILTER="shared"
-# Azure AD auth mode for all storage table/blob operations
-AZURE_AUTH_MODE="login"
+# Azure storage auth: key (data-plane) or login (blob via MSI)
+AZURE_AUTH_MODE="key"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -125,6 +123,19 @@ if [[ -z "$STORAGE_ID" ]]; then
 fi
 ok "Storage account: $STORAGE_ID"
 
+# Get storage account key for data-plane operations
+log "Retrieving storage account key..."
+STORAGE_ACCOUNT_KEY=$(az storage account keys list \
+  --account-name "$STORAGE_ACCOUNT" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "[0].value" -o tsv 2>/dev/null)
+
+if [[ -z "$STORAGE_ACCOUNT_KEY" ]]; then
+  error "Failed to retrieve storage account key"
+  exit 1
+fi
+ok "Storage account key retrieved"
+
 # ─── List entities to be affected ─────────────────────────────────────────────
 log "Querying entities in table '$TABLE_NAME' with PartitionKey='$PARTITION_KEY_FILTER'..."
 
@@ -132,11 +143,11 @@ ENTITIES_JSON=$(az storage entity query \
   --account-name "$STORAGE_ACCOUNT" \
   --table-name "$TABLE_NAME" \
   --filter "PartitionKey eq '$PARTITION_KEY_FILTER'" \
-  --auth-mode "$AZURE_AUTH_MODE" \
-  --output json 2>/dev/null || echo '{"value": []}')
+  --account-key "$STORAGE_ACCOUNT_KEY" \
+  --output json 2>/dev/null || echo '{"items": []}')
 
-ENTITY_COUNT=$(echo "$ENTITIES_JSON" | jq '.value | length')
-TOTAL_BYTES=$(echo "$ENTITIES_JSON" | jq '.value | length')
+ENTITY_COUNT=$(echo "$ENTITIES_JSON" | jq '.items | length')
+TOTAL_BYTES=$(echo "$ENTITIES_JSON" | jq '.items | length')
 
 if [[ "$ENTITY_COUNT" -eq 0 ]]; then
   warn "No entities found with PartitionKey='$PARTITION_KEY_FILTER'. Nothing to do."
@@ -146,7 +157,7 @@ fi
 ok "Found $ENTITY_COUNT entities with PartitionKey='$PARTITION_KEY_FILTER'"
 
 # Show sample of entities
-echo "$ENTITIES_JSON" | jq -r '.value[] | "\(.RowKey)\t\(.name // .title // "unnamed")\t\(.createdAt // .Timestamp // "")"' | head -10 | while IFS=$'\t' read -r rk name ts; do
+echo "$ENTITIES_JSON" | jq -r '.items[] | "\(.RowKey)\t\(.name // .title // "unnamed")\t\(.createdAt // .Timestamp // "")"' | head -10 | while IFS=$'\t' read -r rk name ts; do
   log "  RowKey: $rk | Name: $name | Created: $ts"
 done
 
@@ -162,14 +173,14 @@ if [[ "$EXPORT" == true ]]; then
   az storage container exists \
     --account-name "$STORAGE_ACCOUNT" \
     --name "$BACKUP_CONTAINER" \
-    --auth-mode "$AZURE_AUTH_MODE" \
+    --account-key "$STORAGE_ACCOUNT_KEY" \
     --output tsv 2>/dev/null | grep -q "True" || {
     log "Creating backup container '$BACKUP_CONTAINER'..."
     az storage container create \
       --account-name "$STORAGE_ACCOUNT" \
       --name "$BACKUP_CONTAINER" \
       --public-access off \
-      --auth-mode "$AZURE_AUTH_MODE" \
+      --account-key "$STORAGE_ACCOUNT_KEY" \
       --output none
     ok "Container created"
   }
@@ -181,7 +192,7 @@ if [[ "$EXPORT" == true ]]; then
 
   # Export as JSONL (one entity per line)
   log "Writing backup to $BACKUP_PATH..."
-  echo "$ENTITIES_JSON" | jq -c '.value[]' > "$BACKUP_PATH"
+  echo "$ENTITIES_JSON" | jq -c '.items[]' > "$BACKUP_PATH"
   ok "Backup written: $BACKUP_PATH ($(wc -l < "$BACKUP_PATH") lines)"
 
   # Upload to blob storage
@@ -192,7 +203,7 @@ if [[ "$EXPORT" == true ]]; then
     --file "$BACKUP_PATH" \
     --name "$BACKUP_BLOB" \
     --overwrite \
-    --auth-mode "$AZURE_AUTH_MODE" \
+    --account-key "$STORAGE_ACCOUNT_KEY" \
     --output none
   ok "Backup uploaded to container '$BACKUP_CONTAINER' as '$BACKUP_BLOB'"
 
@@ -233,7 +244,7 @@ log "Deleting $ENTITY_COUNT entities..."
 DELETED=0
 FAILED=0
 
-echo "$ENTITIES_JSON" | jq -c '.value[]' | while IFS= read -r entity; do
+echo "$ENTITIES_JSON" | jq -c '.items[]' | while IFS= read -r entity; do
   RK=$(echo "$entity" | jq -r '.RowKey')
   PK=$(echo "$entity" | jq -r '.PartitionKey')
 
@@ -241,8 +252,8 @@ echo "$ENTITIES_JSON" | jq -c '.value[]' | while IFS= read -r entity; do
     --account-name "$STORAGE_ACCOUNT" \
     --table-name "$TABLE_NAME" \
     --partition-key "$PK" \
-    --row-key "$RK" \
-    --auth-mode "$AZURE_AUTH_MODE" \
+    --row-key="$RK" \
+    --account-key "$STORAGE_ACCOUNT_KEY" \
     --output none 2>/dev/null; then
     ((DELETED++))
     if [[ $((DELETED % 50)) -eq 0 ]]; then

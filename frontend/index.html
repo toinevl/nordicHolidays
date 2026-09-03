@@ -69,19 +69,19 @@
       </ul>
     </nav>
     <div class="header-actions">
-      <button class="header-btn" id="btn-share" title="Share this trip">🔗</button>
+      <button class="header-btn" id="btn-share" title="Share this trip" aria-label="Share this trip">🔗</button>
       <div class="locale-switcher" id="locale-switcher">
-        <button class="header-btn locale-current" id="locale-current" aria-haspopup="true" aria-expanded="false">EN</button>
-        <div class="locale-dropdown hidden" id="locale-dropdown">
-          <button data-locale="en" class="locale-option locale-option--active">EN</button>
-          <button data-locale="nl" class="locale-option">NL</button>
-          <button data-locale="de" class="locale-option">DE</button>
-          <button data-locale="sv" class="locale-option">SV</button>
-          <button data-locale="da" class="locale-option">DA</button>
-          <button data-locale="no" class="locale-option">NO</button>
+        <button class="header-btn locale-current" id="locale-current" aria-haspopup="menu" aria-expanded="false" aria-controls="locale-dropdown">EN</button>
+        <div class="locale-dropdown hidden" id="locale-dropdown" role="menu" aria-hidden="true">
+          <button data-locale="en" class="locale-option locale-option--active" role="menuitem">EN</button>
+          <button data-locale="nl" class="locale-option" role="menuitem">NL</button>
+          <button data-locale="de" class="locale-option" role="menuitem">DE</button>
+          <button data-locale="sv" class="locale-option" role="menuitem">SV</button>
+          <button data-locale="da" class="locale-option" role="menuitem">DA</button>
+          <button data-locale="no" class="locale-option" role="menuitem">NO</button>
         </div>
       </div>
-      <button class="header-btn header-trips" id="btn-open-saved">🔖</button>
+      <button class="header-btn header-trips" id="btn-open-saved" aria-label="Open saved trips">🔖</button>
       <button class="btn btn-primary header-generate" id="btn-open-generator">Plan my trip!</button>
       <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -91,7 +91,7 @@
 </header>
 
 <section id="hero">
-  <div id="map"></div>
+  <div id="map" role="region" aria-label="Nordic road trip map"></div>
   <div class="hero-overlay">
     <div class="hero-badge" id="hero-badge">Road Trip · Aug 25 – Sep 14, 2026</div>
     <h1 class="hero-title">Fjordvia</h1>
@@ -128,7 +128,7 @@
     <span class="section-num">02</span>
     <div class="section-label" data-reveal>Day by Day</div>
     <h2 class="section-title" data-reveal style="transition-delay:0.08s">The Full Route</h2>
-    <p class="section-desc" data-reveal style="transition-delay:0.14s" id="itinerary-desc">21 days from Malmö to the High Coast and back — medieval towns, forest lakes, Viking heritage, and off-the-beaten-track surprises.</p>
+    <p class="section-desc" data-reveal style="transition-delay:0.14s" id="itinerary-desc"></p>
     <div class="route-tools">
       <div>
         <div class="route-summary" id="route-summary"></div>
@@ -181,7 +181,7 @@
 </section>
 
 <section id="map-page" class="map-page hidden">
-  <div id="map-3d"></div>
+  <div id="map-3d" role="region" aria-label="3D map of Nordic road trip"></div>
   <button id="btn-close-map" class="map-close" aria-label="Close 3D map">✕</button>
   <div class="map-hint">3D map — drag to rotate · scroll to zoom</div>
 </section>

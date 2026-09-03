@@ -1,10 +1,11 @@
 /// <reference types="vite/client" />
-import type { Preferences, Itinerary, SavedItinerarySummary, Locale, StopNote } from '../types'
-import type { CitySuggestion } from '../lib/citySearch'
 import { getAccessToken } from '../lib/auth'
+import type { CitySuggestion } from '../lib/citySearch'
 import { getOwnerId } from '../lib/identity'
+import type { Itinerary, Locale, Preferences, SavedItinerarySummary, StopNote } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net'
+const MAX_LIMIT = 100
 
 // #129: carries the HTTP status (and, if the API sends one, a structured error
 // code) separately from the human-readable `.message`. `.message` stays the raw
@@ -87,6 +88,11 @@ export const apiClient = {
   deleteNote: (itineraryId: string, noteId: string) =>
     request<void>(`/api/itineraries/${itineraryId}/notes/${noteId}`, { method: 'DELETE' }),
   searchCities: (query: string, limit?: number) => {
+    // WR-02 / H2: reject an out-of-range limit client-side before hitting the
+    // network. The server also enforces MAX_LIMIT as a backstop.
+    if (limit !== undefined && (typeof limit !== 'number' || limit > MAX_LIMIT || limit < 1)) {
+      throw new ApiError(`limit must be between 1 and ${MAX_LIMIT}`, 400)
+    }
     const url = new URL('/api/city-search', import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net')
     url.searchParams.set('q', query)
     if (typeof limit === 'number') url.searchParams.set('limit', String(limit))

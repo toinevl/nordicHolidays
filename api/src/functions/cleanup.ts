@@ -1,6 +1,7 @@
-import { app, InvocationContext, Timer } from '@azure/functions'
-import { getTableClient } from '../lib/tableClient'
+import { InvocationContext, Timer, app } from '@azure/functions'
+
 import { logError } from '../lib/schemas'
+import { getTableClient } from '../lib/tableClient'
 
 /**
  * #152 — data-retention cleanup.

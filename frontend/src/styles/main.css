@@ -248,11 +248,11 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
   padding: 0.38rem 0.9rem; border-radius: var(--r); margin-bottom: 1rem;
 }
 .hero-title { font-size: clamp(1.5rem, 4vw, 2.5rem); font-weight: 700; color: #fff; margin-bottom: 0.3rem; line-height: 1.2; }
-.hero-sub   { font-size: clamp(1rem,2vw,1.2rem); color: rgba(232,223,208,0.72); font-style: italic; margin-bottom: 0.75rem; }
+.hero-sub   { font-size: clamp(1rem,2vw,1.2rem); color: var(--text-on-night); font-style: italic; margin-bottom: 0.75rem; }
 .hero-meta  {
   display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1rem;
-  font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em;
-  color: var(--text-on-night-muted);
+  font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.06em;
+  color: var(--text-on-night);
 }
 .hero-actions { display: flex; gap: 0.85rem; flex-wrap: wrap; pointer-events: all; }
 
@@ -511,7 +511,7 @@ tbody td:first-child { font-weight: 600; color: var(--ink); }
   position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%);
   z-index: 95; padding: 0.5rem 1rem; border-radius: var(--r);
   background: rgba(21,17,14,0.88); color: var(--text-on-night-muted);
-  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em;
+  font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em;
   border: 1px solid var(--night-border); backdrop-filter: blur(10px);
   pointer-events: none;
 }
@@ -532,7 +532,7 @@ tbody td:first-child { font-weight: 600; color: var(--ink); }
 footer { background: var(--bg); color: var(--ink-muted); text-align: center; padding: 4rem 2rem; }
 .footer-stats { display: flex; gap: 3.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2.5rem; }
 .stat-val { font-family: var(--font-serif); font-size: 3rem; font-weight: 700; color: var(--ink); line-height: 1; margin-bottom: 0.25rem; }
-.stat-lbl { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; }
+.stat-lbl { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; }
 .footer-div { width: 36px; height: 1px; background: var(--border); margin: 2rem auto; }
 .footer-brand { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.5rem; }
 .footer-business-link {
@@ -654,6 +654,7 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
 .form-label { font-size: 0.75rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); }
 .form-input { background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--r); color: var(--ink); padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+.form-input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-color: var(--primary); }
 .form-input:focus { outline: none; border-color: var(--primary); }
 .form-hint { font-size: 0.7rem; color: var(--ink-muted); margin: 0; }
 .city-combobox { position: relative; }
@@ -698,6 +699,30 @@ footer { background: var(--bg); color: var(--ink-muted); text-align: center; pad
 .btn--danger:hover { border-color: var(--accent-2); }
 .btn--small { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
 .btn--full { width: 100%; }
+
+/* ── FOCUS STYLES ────────────────────────────────────────────────────────── */
+/* All interactive elements get a visible focus ring for keyboard users.
+   Use :focus-visible so mouse users don't see a persistent ring. */
+.btn:focus-visible,
+.header-btn:focus-visible,
+.city-option:focus-visible,
+.locale-option:focus-visible,
+.tag-remove:focus-visible,
+.panel-close:focus-visible,
+.saved-card:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* Ensure header buttons (emoji-only) have a visible ring that contrasts well */
+.header-btn:focus-visible {
+  outline-color: var(--primary);
+  outline-offset: 3px;
+}
 
 /* ── SAVED CARDS ────────────────────────────────────────────────────────── */
 .save-form { display: flex; gap: 0.5rem; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }

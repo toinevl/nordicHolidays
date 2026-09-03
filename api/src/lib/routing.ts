@@ -1,5 +1,6 @@
 import type { InvocationContext } from '@azure/functions'
-import { haversineKm, type Coordinate } from './geo'
+
+import { type Coordinate, haversineKm } from './geo'
 
 /**
  * Real driving distances/times via Azure Maps Route Directions API (#89).

@@ -149,6 +149,7 @@ export const de: LocaleStrings = {
     itineraryLabel: 'Tag für Tag',
     itineraryTitle: 'Die gesamte Route',
     itineraryDesc: '21 Tage von Malmö zur Hohen Küste und zurück — mittelalterliche Städte, Waldseen, Wikinger-Erbe und Geheimtipps abseits der Massen.',
+    itineraryDescDynamic: '{totalDays}-tägige Reise von {startCity} nach {endCity} — eine kurierte nordische Straßenfahrt mit Stopps in {stopCount} Städten.',
     culinaryLabel: 'Essen & Trinken',
     culinaryTitle: 'Kulinarische Highlights',
     culinaryDesc: 'Sechs unterschiedliche Küchen — Gothenburger Schalentiere, Dalarna Wild, Hohe-Küste-Räucherfisch und Stockholms neue Nordic Kitchen.',
@@ -273,7 +274,9 @@ export const de: LocaleStrings = {
     selectStartCity: 'Bitte wähle eine Startstadt',
     selectFinishCity: 'Bitte wähle eine Zielstadt',
     minDuration: 'Mindest-Reisedauer ist 7 Tage',
-    generationFailed: 'Erstellung fehlgeschlagen',
+    generationFailed: 'Reiserstellung fehlgeschlagen — bitte eine andere Route oder weniger Stopps versuchen.',
+    rateLimit: 'Zu viele Anfragen. Warten Sie einen Moment und versuchen Sie es erneut.',
+    authFailed: 'Anmeldung erforderlich, um Reisen zu speichern.',
   },
   culinary: {
     mustTry: 'Unbedingt probieren',
@@ -288,5 +291,24 @@ export const de: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Reise filtern',
+    removeTag: 'Entfernen {city}',
+    stopMarker: '{city}, Stopp {n}',
+    dayTripMarker: 'Tagesausflug bei {base}',
+    mapLegend: 'Kartenlegende',
+    mapLabel: 'Nordische Roadtrip-Karte',
+    map3dLabel: '3D-Karte des nordischen Roadtrips',
+    localeDropdown: 'Sprache wählen',
+  },
+  gallery: {
+    title: 'Geteilte Reisen',
+    loadTrip: 'Reise laden: {title}',
+  },
+  creator: {
+    title: '{name} — Erstellerprofil',
+    anonymous: 'Anonymer Ersteller',
+    created: 'Erstellt',
+    updated: 'Aktualisiert',
+    notFound: 'Profil nicht gefunden.',
+    loadError: 'Profil konnte nicht geladen werden.',
   },
 }

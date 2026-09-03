@@ -152,12 +152,18 @@ The platform-level CORS allow-list (`az functionapp cors`) is now persisted in `
 - **Platform CORS** on the Function App (`az functionapp cors`) — **this is what actually governs** the browser preflight. Allow-list: `https://sweden.van-vliet.eu`, `http://localhost:5173`, `https://agreeable-island-03429a403.7.azurestaticapps.net`, and the dead `https://nordicholidays.azurestaticapps.net`. Persisted in `infra/main.bicep` (`corsAllowedOrigins`), so a Function-App recreate no longer drops it.
 - **App-level CORS** in `api/src/lib/cors.ts`, driven by `ALLOWED_ORIGINS` — now **set in production** (`https://sweden.van-vliet.eu,http://localhost:5173`, via the same Bicep param) so code and prod config agree. Still effectively a no-op for preflight itself (platform CORS answers OPTIONS first), but it now matches rather than contradicts prod.
 
-**Hardening controls**
-- Response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'` (API responses).
-- Input validation: Zod schemas on every handler body.
-- Output escaping: `t()`/`tpl()` HTML-escape interpolated values; user/LLM/stored data escaped in all `innerHTML` paths; thumbnail URLs validated.
-- Rate limiting: per-owner counter in the `RateLimits` table (`checkAndIncrementRateLimit`) → 429 with `Retry-After`.
-- Guest id 30-day rolling expiry; profile schema hardening strips internal fields on PUT.
+**Hardening controls (updated 2026-08-30 — manual fixes applied):**
+- Response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, CSP (`default-src 'none'`).
+- Input validation: Zod (`.strict()`); `ItinerarySchema` includes `creatorId`, `verified`, `tags`, `km`, `driveTimeMin`; `TripNoteSchema` for public community notes.
+- Rate limiting: atomic `updateEntity` with `Merge` + retry loop (`maxRetries=2`) to close TOCTOU gap (B-5); per-owner (`RateLimits`) + per-IP (`IP` bucket) with `412` refresh.
+- JWKS cache (`identity.ts`): `JWKS_CACHE_TTL_MS` (1h) with `expiresAt` eviction on access (B-7); `getOrCreateJwks()` handles refresh.
+- Profile public endpoint (`GET /profile/public?ownerId=`): exposes only `displayName`, `createdAt`, `updatedAt` — no internal fields (`partitionKey`, `etag`, etc.).
+- Guest identity: anonymous (`X-Owner-Id` / `localStorage` 30-day rolling); no MSAL/bearer for visitors; no managed identity introduced for visitor access.
+- Itinerary updates: `412` (`UpdateConditionNotSatisfied`) mapped to `409` conflict response (A-2) in `itineraries.ts`.
+- Public itineraries (`#47`): shared partition (`PK='shared'`); no rate limit on writes (accepted risk); single-level undo available (`POST .../undo`).
+- CORS: `ALLOWED_ORIGINS` env + Bicep param reconciled; platform `functionapp cors` governs preflight.
+- No Azure SKU changes: SWA Free, Function Flex Consumption, Storage Standard LRS preserved.
+- D streams (`D-1..D-5`): excluded from current batch; handled by Hermes (integration/E2E/deployment guide/monitoring).
 
 **Open items:** (a) itineraries have no rate limit or abuse protection despite being fully open to writes (#47, follow-up not yet scheduled); (b) no versioning/undo for itinerary edits, so one visitor's overwrite of another's trip is unrecoverable; (c) the dead `nordicholidays.azurestaticapps.net` origin is still allow-listed and could be removed.
 

@@ -1,11 +1,11 @@
-import type { Locale, LocaleKey, LocaleStrings } from './types'
+import { escapeHtml } from '../lib/escape'
+import { da } from './da'
+import { de } from './de'
 import { en } from './en'
 import { nl } from './nl'
-import { de } from './de'
-import { sv } from './sv'
-import { da } from './da'
 import { no } from './no'
-import { escapeHtml } from '../lib/escape'
+import { sv } from './sv'
+import type { Locale, LocaleKey, LocaleStrings } from './types'
 
 // Key deliberately unchanged after the Fjordvia rebrand so existing visitors keep their stored locale.
 export const LOCALE_STORAGE_KEY = 'nordicholidays_locale'

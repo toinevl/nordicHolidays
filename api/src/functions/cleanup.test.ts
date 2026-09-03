@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/tableClient', () => ({
   getTableClient: vi.fn(),
 }))
 
-import { sweepTable, retentionCleanupHandler } from './cleanup'
 import { getTableClient } from '../lib/tableClient'
+import { retentionCleanupHandler, sweepTable } from './cleanup'
 
 type FakeEntity = Record<string, unknown> & {
   partitionKey: string

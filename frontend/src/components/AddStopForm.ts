@@ -1,5 +1,5 @@
-import { searchLocalCities, searchNominatim, type CitySuggestion } from '../lib/citySearch'
 import { t } from '../i18n/index'
+import { type CitySuggestion, searchLocalCities, searchNominatim } from '../lib/citySearch'
 import { escapeHtml } from '../lib/escape'
 
 export type AddStopSubmitCallback = (stop: {

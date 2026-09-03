@@ -1,10 +1,27 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
+import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
 import { nanoid } from 'nanoid'
-import { getTableClient, ensureTable } from '../lib/tableClient'
-import type { Itinerary, SavedItinerarySummary } from '../types'
-import { withCors, corsPreflightResponse } from '../lib/cors'
-import { SaveItineraryBodySchema, ItineraryPatchBodySchema, logError } from '../lib/schemas'
+
+import { corsPreflightResponse, withCors } from '../lib/cors'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
+import { ItineraryPatchBodySchema, SaveItineraryBodySchema, logError } from '../lib/schemas'
+import { emitEvent } from '../lib/telemetry'
+import { ensureTable, getTableClient } from '../lib/tableClient'
+import type { Itinerary, SavedItinerarySummary } from '../types'
+// WR-07 / H7: ensure every response carries Cache-Control and Content-Type
+// in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
+// injects. withCors is aliased so the wrapper can call it without recursion.
+const _withCors = withCors
+
+function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseInit {
+  return _withCors({
+    ...response,
+    headers: {
+      ...(response.status !== 204 ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-store',
+      ...((response.headers as Record<string, string>) ?? {}),
+    },
+  }, origin)
+}
 
 const SHARED_PARTITION_KEY = 'shared'
 
@@ -78,7 +95,7 @@ function entityToSummary(e: Record<string, unknown>, includeThumbnail = true): S
 }
 
 function successResponse(origin: string | undefined, data: unknown, status = 200): HttpResponseInit {
-  return withCors(
+  return withHeaders(
     {
       status,
       headers: { 'Content-Type': 'application/json' },
@@ -93,7 +110,7 @@ export async function listItinerariesHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   try {
     const client = getTableClient('Itineraries')
@@ -109,7 +126,7 @@ export async function listItinerariesHandler(
       return successResponse(origin, [])
     }
     logError(ctx, 'listItinerariesHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
@@ -118,7 +135,7 @@ export async function getItineraryHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   try {
     const id = req.params.id
@@ -133,11 +150,11 @@ export async function getItineraryHandler(
       },
       body: JSON.stringify({ ...itinerary, hasPreviousVersion }),
     }
-    return withCors(response, origin)
+    return withHeaders(response, origin)
   } catch (err: any) {
-    if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    if (err?.statusCode === 404) return withHeaders({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
     logError(ctx, 'getItineraryHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
@@ -146,13 +163,13 @@ export async function saveItineraryHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   const rateLimitOwnerId = req.headers?.get('X-Owner-Id') ?? 'unknown'
   const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, rateLimitOwnerId, ctx)
   if (!rateLimitResult.allowed) {
     const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
-    return withCors(
+    return withHeaders(
       {
         status: 429,
         headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
@@ -166,9 +183,9 @@ export async function saveItineraryHandler(
     let rawBody: unknown
     try {
       rawBody = await req.json()
-    } catch (err) {
+    } catch (err: any) {
       logError(ctx, 'saveItineraryHandler: invalid JSON body', err)
-      return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     // Validate and parse body with zod; on failure, return 400 with details
@@ -176,7 +193,7 @@ export async function saveItineraryHandler(
     if (!parseResult.success) {
       const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
       logError(ctx, `saveItineraryHandler: validation failed - ${errors}`, parseResult.error)
-      return withCors({
+      return withHeaders({
         status: 400,
         body: JSON.stringify({ error: 'Invalid request body', details: errors }),
         headers: { 'Content-Type': 'application/json' }
@@ -199,10 +216,20 @@ export async function saveItineraryHandler(
       itineraryJson: JSON.stringify(body.itinerary),
       thumbnail: thumb,
     })
+    emitEvent(ctx, 'trip_saved', {
+      id,
+      stopCount: body.itinerary.stops.length,
+    })
     return successResponse(origin, { id }, 201)
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.statusCode === 404) {
+      return withHeaders({ status: 404, body: JSON.stringify({ error: 'Itinerary not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    }
+    if (err?.statusCode === 401) {
+      return withHeaders({ status: 401, body: JSON.stringify({ error: 'Authentication required' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    }
     logError(ctx, 'saveItineraryHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
@@ -211,14 +238,14 @@ export async function updateItineraryHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
-  if (req.method !== 'PATCH') return withCors({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
+  if (req.method !== 'PATCH') return withHeaders({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
 
   const rateLimitOwnerId = req.headers?.get('X-Owner-Id') ?? 'unknown'
   const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, rateLimitOwnerId, ctx)
   if (!rateLimitResult.allowed) {
     const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
-    return withCors(
+    return withHeaders(
       {
         status: 429,
         headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
@@ -230,21 +257,21 @@ export async function updateItineraryHandler(
 
   try {
     const id = req.params.id
-    if (!id) return withCors({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    if (!id) return withHeaders({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
 
     let rawBody: unknown
     try {
       rawBody = await req.json()
-    } catch (err) {
+    } catch (err: any) {
       logError(ctx, 'updateItineraryHandler: invalid JSON body', err)
-      return withCors({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 400, body: JSON.stringify({ error: 'Invalid JSON body' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     const parseResult = ItineraryPatchBodySchema.safeParse(rawBody)
     if (!parseResult.success) {
       const errors = parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.code}`).join('; ')
       logError(ctx, `updateItineraryHandler: validation failed - ${errors}`, parseResult.error)
-      return withCors({
+      return withHeaders({
         status: 400,
         body: JSON.stringify({ error: 'Invalid request body', details: errors }),
         headers: { 'Content-Type': 'application/json' }
@@ -289,11 +316,16 @@ export async function updateItineraryHandler(
     // The merged `itinerary` object above is exactly what we persisted, so
     // return it directly instead of trying to re-read a non-existent body
     // (which would throw on JSON.parse(undefined) → 500).
-    return withCors({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...itinerary, hasPreviousVersion: true }) }, origin)
+    emitEvent(ctx, 'trip_edited', {
+      id,
+      fieldsChanged: Object.keys(patch).join(','),
+    })
+    return withHeaders({ status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...itinerary, hasPreviousVersion: true }) }, origin)
   } catch (err: any) {
-    if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    if (err?.statusCode === 404) return withHeaders({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    if (err?.statusCode === 412 || err?.code === 'UpdateConditionNotSatisfied') return withHeaders({ status: 409, body: JSON.stringify({ error: 'Conflict: itinerary was modified concurrently' }), headers: { 'Content-Type': 'application/json' } }, origin)
     logError(ctx, 'updateItineraryHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
 
@@ -313,14 +345,14 @@ export async function undoItineraryHandler(
   ctx: InvocationContext,
 ): Promise<HttpResponseInit> {
   const origin = req.headers.get('origin') ?? undefined
-  if (req.method === 'OPTIONS') return corsPreflightResponse(origin)
-  if (req.method !== 'POST') return withCors({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
+  if (req.method !== 'POST') return withHeaders({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
 
   const rateLimitOwnerId = req.headers?.get('X-Owner-Id') ?? 'unknown'
   const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, rateLimitOwnerId, ctx)
   if (!rateLimitResult.allowed) {
     const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
-    return withCors(
+    return withHeaders(
       {
         status: 429,
         headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
@@ -332,14 +364,14 @@ export async function undoItineraryHandler(
 
   try {
     const id = req.params.id
-    if (!id) return withCors({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    if (!id) return withHeaders({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
 
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
 
     const previousStateJson = entity.previousStateJson as string | undefined
     if (!previousStateJson) {
-      return withCors({ status: 409, body: JSON.stringify({ error: 'No previous version available to undo' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      return withHeaders({ status: 409, body: JSON.stringify({ error: 'No previous version available to undo' }), headers: { 'Content-Type': 'application/json' } }, origin)
     }
 
     const previousState = JSON.parse(previousStateJson) as PreviousItineraryState
@@ -361,7 +393,7 @@ export async function undoItineraryHandler(
     })
 
     const restoredItinerary = JSON.parse(previousState.itineraryJson) as Record<string, unknown>
-    return withCors(
+    return withHeaders(
       {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -370,13 +402,11 @@ export async function undoItineraryHandler(
       origin,
     )
   } catch (err: any) {
-    if (err?.statusCode === 404) return withCors({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    if (err?.statusCode === 404) return withHeaders({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
     logError(ctx, 'undoItineraryHandler: internal error', err)
-    return withCors({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
-
-
 app.http('itineraries', {
   methods: ['GET', 'POST', 'OPTIONS'],
   authLevel: 'anonymous',

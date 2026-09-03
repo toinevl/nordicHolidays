@@ -1,5 +1,5 @@
-import type { Locale } from '../types'
 import { LOCALE_STORAGE_KEY } from '../i18n/index'
+import type { Locale } from '../types'
 
 /**
  * Locale detection for SEO landing-page entry points (#85).

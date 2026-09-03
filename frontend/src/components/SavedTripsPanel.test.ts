@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { t } from '../i18n'
 import type { SavedItinerarySummary } from '../types'
 import { SavedTripsPanel } from './SavedTripsPanel'
-import { t } from '../i18n'
 
 // Mock store and API
 const mockStore = {

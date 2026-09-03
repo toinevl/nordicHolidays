@@ -1,6 +1,6 @@
 import { t } from '../i18n/index'
+import { getConsent, onConsentChange, resetConsent, setConsent } from '../lib/consent'
 import { legalPageLocale } from '../lib/legalPages'
-import { getConsent, setConsent, resetConsent, onConsentChange } from '../lib/consent'
 
 /**
  * Cookie consent banner (#137) — fixed bottom bar.

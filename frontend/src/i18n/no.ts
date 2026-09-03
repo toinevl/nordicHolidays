@@ -149,6 +149,7 @@ export const no: LocaleStrings = {
     itineraryLabel: 'Dag for dag',
     itineraryTitle: 'Hele ruten',
     itineraryDesc: '21 dager fra Malmö til Höga Kusten og tilbake — middelalderbyer, skogssjøer, vikingarv og uventede perler.',
+    itineraryDescDynamic: '{totalDays}-dagers reise fra {startCity} til {endCity} — en kurert nordisk vegtur med stopp i {stopCount} byer.',
     culinaryLabel: 'Spis & drikk',
     culinaryTitle: 'Kulinariske høydepunkter',
     culinaryDesc: 'Seks ulike matkulturer — skalldyr fra Göteborg, vilt fra Dalarna, røykt fisk fra Höga Kusten og Stockholms nye nordiske kjøkken.',
@@ -273,7 +274,9 @@ export const no: LocaleStrings = {
     selectStartCity: 'Velg en startby',
     selectFinishCity: 'Velg en sluttby',
     minDuration: 'Minimum reiselengde er 7 dager',
-    generationFailed: 'Generering mislyktes',
+    generationFailed: 'Reisegenerering mislyktes — prøv en annen rute eller færre stopp.',
+    rateLimit: 'For mange forespørsler. Vent et øyeblikk og prøv igjen.',
+    authFailed: 'Innlogging kreves for å lagre turer.',
   },
   culinary: {
     mustTry: 'Må prøves',
@@ -288,5 +291,24 @@ export const no: LocaleStrings = {
   },
   aria: {
     routeFilters: 'Filtrer reisen din',
+    removeTag: 'Fjern {city}',
+    stopMarker: '{city}, stopp {n}',
+    dayTripMarker: 'Dagstur nær {base}',
+    mapLegend: 'Kartforklaring',
+    mapLabel: 'Nordisk roadtrip-kart',
+    map3dLabel: '3D-kart av nordisk roadtrip',
+    localeDropdown: 'Velg språk',
+  },
+  gallery: {
+    title: 'Felleskapsturer',
+    loadTrip: 'Last inn tur: {title}',
+  },
+  creator: {
+    title: '{name} — Skaperprofil',
+    anonymous: 'Anonym skaper',
+    created: 'Opprettet',
+    updated: 'Oppdatert',
+    notFound: 'Profilen ble ikke funnet.',
+    loadError: 'Kunne ikke laste profilen.',
   },
 }

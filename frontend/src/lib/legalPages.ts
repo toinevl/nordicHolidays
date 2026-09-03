@@ -1,5 +1,5 @@
-import type { Locale } from '../types'
 import { getLocale } from '../i18n/index'
+import type { Locale } from '../types'
 
 /**
  * Map the active UI locale to the locale suffix used by the static legal

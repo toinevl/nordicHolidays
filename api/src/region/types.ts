@@ -34,4 +34,15 @@ export interface ApiRegionConfig {
   borderConstraint: string
   /** Prompt construction logic for this region */
   promptTemplate: PromptTemplate
+  /** City catalogue for coordinate correction during generation (#176). */
+  cities: Array<{
+    id: string
+    name: string
+    countryCode: string
+    countryName: string
+    region?: string
+    lat?: number
+    lng?: number
+    aliases?: string[]
+  }>
 }

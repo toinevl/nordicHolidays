@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { buildBaseRouteCoords, buildExcursionLines, markerClassFor } from './mapGeometry'
+import { describe, expect, it } from 'vitest'
+
 import type { Stop } from '../types'
+import { buildBaseRouteCoords, buildExcursionLines, markerClassFor } from './mapGeometry'
 
 const s = (id: number, dest: string, nights: number, coords: [number, number]): Stop => ({
   id, dest, nights, coords, days: '', dates: '', region: 'Skåne', tags: [],

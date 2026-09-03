@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { getRouteSegments, formatDriveTime, driveTimeString, _resetForTest, type RouteSegment } from './routing'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { Coordinate } from './geo'
+import { type RouteSegment,_resetForTest, driveTimeString, formatDriveTime, getRouteSegments } from './routing'
 
 // Non-ASCII Nordic fixtures per project convention (CLAUDE.md) — test data
 // must include real city names with ä/ö/å, though the routing module itself

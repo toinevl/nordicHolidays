@@ -1,5 +1,3 @@
-import { describe, it, expect } from 'vitest'
-
 /**
  * i18n audit test — prevents hardcoded English UI strings in component .ts files.
  *
@@ -13,11 +11,11 @@ import { describe, it, expect } from 'vitest'
  *
  * See CLAUDE.md: "All user-facing strings MUST go through the i18n system"
  */
-
 // Use import.meta.url to resolve paths in ESM, works in vitest
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -210,7 +208,6 @@ describe('region audit: no hardcoded country codes outside region config', () =>
   // or test fixtures that test region config)
   const ALLOWED_FILES = new Set([
     'src/region/nordic.ts',
-    'src/region/us.ts',
     'src/region/types.ts',
   ])
 

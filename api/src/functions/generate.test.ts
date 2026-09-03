@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { Itinerary } from '../types'
 
 vi.mock('../lib/llmClient', () => ({
@@ -25,16 +26,16 @@ vi.mock('../lib/partners', () => ({
   getPartner: vi.fn().mockResolvedValue(null),
 }))
 
-import { generateHandler } from './generate'
+import { authErrorResponse, resolveOwnerId } from '../lib/identity'
+import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
 import { getLlmClient } from '../lib/llmClient'
-import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import { getPartner } from '../lib/partners'
 import {
   checkAndIncrementRateLimit,
   checkGlobalDailyGenerateCap,
   checkPartnerDailyGenerateCap,
 } from '../lib/rateLimit'
-import { getPartner } from '../lib/partners'
-import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { generateHandler } from './generate'
 
 function makeItinerary(): Itinerary {
   return {
@@ -43,7 +44,7 @@ function makeItinerary(): Itinerary {
     startCity: 'Amsterdam',
     endCity: 'Amsterdam',
     stops: [
-      { day: 1, city: 'Malmö', region: 'Skåne', lat: 55.6, lng: 13.0, nights: 1, highlights: ['Old Town'], accommodation: 'Boutique Hotel', culinaryNotes: 'Try kanelbullar' },
+      { day: 1, city: 'Amsterdam', region: 'Noord-Holland', lat: 52.3676, lng: 4.9041, nights: 1, highlights: ['Old Town'], accommodation: 'Boutique Hotel', culinaryNotes: 'Try stroopwafels' },
     ],
     generatedAt: '2026-06-01T00:00:00.000Z',
   }
@@ -79,7 +80,8 @@ describe('POST /api/generate', () => {
     expect(result.status).toBe(200)
     expect(body.title).toBe('Test Trip')
     expect(body.stops).toHaveLength(1)
-    expect(body.stops[0].city).toBe('Malmö')
+    expect(body.stops[0].city).toBe('Amsterdam')
+    expect(body.startCity).toBe('Amsterdam')
   })
 
   it('returns 400 for invalid request body', async () => {
@@ -653,5 +655,69 @@ describe('POST /api/generate', () => {
     expect(result.status).toBe(200)
     expect(body.title).toBe('7-Day Norway Road Trip')
     expect(body.totalDays).toBe(7) // matches the requested tripDays, not the model's inconsistent 21
+  })
+
+  it('#175: overrides a mismatched first-stop city with the requested startCity', async () => {
+    const itin = {
+      title: 'Grisslehamn to Uppsala Trip',
+      totalDays: 7,
+      startCity: 'Grisslehamn',
+      endCity: 'Uppsala',
+      stops: [
+        { day: 1, city: 'Malmö', region: 'Skåne', lat: 55.6, lng: 13.0, nights: 1, highlights: ['Old Town'], accommodation: 'Hotel', culinaryNotes: 'Food' },
+        { day: 2, city: 'Grisslehamn', region: 'Uppland', lat: 60.5, lng: 18.5, nights: 1, highlights: ['Harbor'], accommodation: 'Inn', culinaryNotes: 'Seafood' },
+        { day: 3, city: 'Uppsala', region: 'Uppland', lat: 59.8586, lng: 17.6389, nights: 1, highlights: ['Cathedral'], accommodation: 'Hotel', culinaryNotes: 'Local' },
+      ],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Grisslehamn', endCity: 'Uppsala', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+    const body = JSON.parse(result.body as string) as Itinerary
+
+    expect(result.status).toBe(200)
+    expect(body.stops[0].city).toBe('Grisslehamn')
+    expect(body.stops[1].city).toBe('Grisslehamn')
+    expect(body.stops[2].city).toBe('Uppsala')
+    // #176: coordinate correction must accompany the city-name override —
+    // the 3D map renders from stop.coords, not the city label.
+    expect(body.stops[0].lat).toBeCloseTo(60.35, 2)
+    expect(body.stops[0].lng).toBeCloseTo(18.37, 2)
+  })
+
+  it('#176: overrides mismatched last-stop coords when the city already matches endCity', async () => {
+    const itin = {
+      title: 'Grisslehamn to Uppsala Trip',
+      totalDays: 7,
+      startCity: 'Grisslehamn',
+      endCity: 'Uppsala',
+      stops: [
+        { day: 1, city: 'Grisslehamn', region: 'Uppland', lat: 60.35, lng: 18.37, nights: 1, highlights: ['Harbor'], accommodation: 'Inn', culinaryNotes: 'Seafood' },
+        { day: 2, city: 'Mora', region: 'Dalarna', lat: 61.0074, lng: 14.543, nights: 1, highlights: ['Lake'], accommodation: 'Cabin', culinaryNotes: 'Local' },
+        { day: 3, city: 'Uppsala', region: 'Uppland', lat: 61.0074, lng: 14.543, nights: 1, highlights: ['Cathedral'], accommodation: 'Hotel', culinaryNotes: 'Local' },
+      ],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Grisslehamn', endCity: 'Uppsala', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+    const body = JSON.parse(result.body as string) as Itinerary
+
+    expect(result.status).toBe(200)
+    expect(body.stops[2].city).toBe('Uppsala')
+    expect(body.stops[2].lat).toBeCloseTo(59.8586, 4)
+    expect(body.stops[2].lng).toBeCloseTo(17.6389, 4)
   })
 })

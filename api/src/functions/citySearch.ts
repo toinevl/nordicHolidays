@@ -1,13 +1,39 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import type { CitySuggestion } from '../types'
-import { withCors, corsPreflightResponse } from '../lib/cors'
+import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
+
+import { corsPreflightResponse, withCors } from '../lib/cors'
+import { authErrorResponse, resolveOwnerId } from '../lib/identity'
 import { logError } from '../lib/schemas'
-import { resolveOwnerId, authErrorResponse } from '../lib/identity'
+import type { CitySuggestion } from '../types'
+// WR-07 / H7: ensure every response carries Cache-Control and Content-Type
+// in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
+// injects. withCors is aliased so the wrapper can call it without recursion.
+const _withCors = withCors
+
+function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseInit {
+  return _withCors({
+    ...response,
+    headers: {
+      ...(response.status !== 204 ? { 'Content-Type': 'application/json' } : {}),
+      'Cache-Control': 'no-store',
+      ...((response.headers as Record<string, string>) ?? {}),
+    },
+  }, origin)
+}
+
+const FETCH_TIMEOUT_MS = 5000
+const MAX_LIMIT = 100
+const DEFAULT_LIMIT = 8
 
 type ProviderRecord = Record<string, unknown>
 
+// Clamp the consumer-supplied limit into the safe [1, MAX_LIMIT] range,
+// falling back to DEFAULT_LIMIT when absent / non-numeric.
+function clampLimit(limit: unknown): number {
+  return Math.min(Math.max(asNumber(limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)
+}
+
 function jsonResponse(suggestions: CitySuggestion[], origin?: string): HttpResponseInit {
-  return withCors({
+  return withHeaders({
     status: 200,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(suggestions),
@@ -124,24 +150,31 @@ export async function citySearchHandler(
   ctx?: InvocationContext
 ): Promise<HttpResponseInit> {
   const origin = req?.headers.get('origin') ?? undefined
-  if (req?.method === 'OPTIONS') return corsPreflightResponse(origin)
+  if (req?.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
 
   if (req) {
     try {
       await resolveOwnerId(req, ctx)
     } catch (err) {
-      return authErrorResponse(err, origin)
+      return withHeaders(authErrorResponse(err, origin), origin)
     }
   }
 
   const q = getQuery(req)
   if (q.length < 2) return jsonResponse([], origin)
 
+  // WR-02 / H2: enforce a safe limit range server-side so a caller cannot
+  // request an unbounded (or absurdly large) result set.
+  const limit = clampLimit(req?.query?.get('limit'))
+
   const endpoint = process.env.CITY_SEARCH_ENDPOINT?.trim() ?? 'https://nominatim.openstreetmap.org/search'
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
   try {
     const separator = endpoint.includes('?') ? '&' : '?'
-    const response = await fetch(`${endpoint}${separator}q=${encodeURIComponent(q)}`)
+    const response = await fetch(`${endpoint}${separator}q=${encodeURIComponent(q)}&limit=${limit}`, { signal: controller.signal })
     if (!response.ok) {
       logError(ctx, `citySearchHandler: provider returned ${response.status}`)
       return jsonResponse([], origin)
@@ -150,8 +183,14 @@ export async function citySearchHandler(
     const payload = await response.json()
     return jsonResponse(normalizeProviderResponse(payload), origin)
   } catch (err) {
-    logError(ctx, 'citySearchHandler: request failed', err)
+    if (err instanceof Error && err.name === 'AbortError') {
+      logError(ctx, 'citySearchHandler: request timed out', err)
+    } else {
+      logError(ctx, 'citySearchHandler: request failed', err)
+    }
     return jsonResponse([], origin)
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
