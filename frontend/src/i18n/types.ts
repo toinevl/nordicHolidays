@@ -228,6 +228,24 @@ export interface LocaleStrings {
     decline: string
     readMore: string
   }
+  notes: {
+    label: string
+    add: string
+    anonymous: string
+    alreadyExists: string
+    deleteConfirm: string
+    deleted: string
+    deleteFailed: string
+    nameLabel: string
+    placeholder: string
+    empty: string
+    save: string
+    saving: string
+    posted: string
+    postFailed: string
+    loadFailed: string
+    cancel: string
+  }
   loading: {
     generating: string
   }
@@ -291,6 +309,7 @@ export type LocaleKey =
   | `b2b.${keyof LocaleStrings['b2b']}`
   | `footer.${keyof LocaleStrings['footer']}`
   | `consent.${keyof LocaleStrings['consent']}`
+  | `notes.${keyof LocaleStrings['notes']}`
   | `loading.${keyof LocaleStrings['loading']}`
   | `widget.${keyof LocaleStrings['widget']}`
   | `overview.${keyof LocaleStrings['overview']}`

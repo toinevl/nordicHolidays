@@ -111,7 +111,6 @@ export class ItineraryView {
   private onStopSelect: StopSelectCallback
   private onReorderStop: ReorderStopCallback
   private onRemoveStop: RemoveStopCallback
-  private onSaveNoteCallback?: (stop: ItineraryStop, note: string) => Promise<void>
   private onUndoCallback?: () => void
   private onAddStopCallback?: AddStopCallback
   private onOpenGeneratorCallback?: OpenGeneratorCallback
@@ -121,7 +120,6 @@ export class ItineraryView {
     onStopSelect: StopSelectCallback,
     onReorderStop: ReorderStopCallback,
     onRemoveStop: RemoveStopCallback,
-    onSaveNote?: (stop: ItineraryStop, note: string) => Promise<void>,
     onUndo?: () => void,
     onAddStop?: AddStopCallback,
     onOpenGenerator?: OpenGeneratorCallback,
@@ -130,7 +128,6 @@ export class ItineraryView {
     this.onStopSelect = onStopSelect
     this.onReorderStop = onReorderStop
     this.onRemoveStop = onRemoveStop
-    this.onSaveNoteCallback = onSaveNote
     this.onUndoCallback = onUndo
     this.onAddStopCallback = onAddStop
     this.onOpenGeneratorCallback = onOpenGenerator
@@ -261,9 +258,6 @@ export class ItineraryView {
         zoom: 12,
         pitch: 45,
         bearing: 0,
-        // #134: carry the persisted per-stop note through the mapping so the
-        // timeline textarea shows it after loading a saved trip.
-        userNotes: typeof s.userNotes === 'string' ? s.userNotes : undefined,
       }
     })
     this.stops = stops
@@ -430,6 +424,7 @@ export class ItineraryView {
       totalDays: stops.length,
       startCity: stops[0]?.dest ?? '',
       endCity: stops[stops.length - 1]?.dest ?? '',
+      id: "default",
       stops: stops.map((s) => ({
         day: parseInt(s.days, 10) || s.id,
         city: s.dest,
@@ -499,16 +494,7 @@ export class ItineraryView {
               ${isDayTrip(s)
                 ? `<a class="card-activity-link" data-affiliate="activity" data-city="${encodeURIComponent(s.dest)}" href="${escapeHtml(activityUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🎟 ${tpl('itinerary.findActivities', { city: s.dest })}</a>`
                 : `<a class="card-lodging-link" data-affiliate="lodging" data-city="${encodeURIComponent(s.dest)}" href="${escapeHtml(lodgingUrl(s.dest, affiliateConfig))}" target="_blank" rel="noopener nofollow sponsored">🛏 ${tpl('itinerary.findHotels', { city: s.dest })}</a>`}
-              ${(() => {
-                const note = s.userNotes
-                const noteText = typeof note === 'string' ? escapeHtml(note) : ''
-                return `
-                <div class="stop-notes" data-stop-id="${s.id}">
-                  <label class="stop-notes-label" for="note-${s.id}">${t('itinerary.notes')}</label>
-                  <textarea id="note-${s.id}" class="form-input stop-notes-input" maxlength="2000" placeholder="${t('itinerary.notesPlaceholder')}">${noteText}</textarea>
-                  <button class="btn btn--secondary btn--small btn-save-note" data-id="${s.id}">${t('itinerary.saveNote')}</button>
-                </div>`
-              })()}
+              <div class="notes-mount" data-stop-id="${s.id}"></div>
               ${(() => {
                 const info = getSeasonInfo(s.region)
                 return info
@@ -604,17 +590,6 @@ export class ItineraryView {
         const stopId = Number(button.getAttribute('data-id'))
         if (!Number.isFinite(stopId)) return
         this.onReorderStop(stopId, 'down')
-      })
-    })
-
-    tl.querySelectorAll<HTMLElement>('.btn-save-note').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation()
-        const stopId = Number(button.getAttribute('data-id'))
-        if (!Number.isFinite(stopId)) return
-        const noteInput = document.getElementById(`note-${stopId}`) as HTMLTextAreaElement | null
-        const note = noteInput?.value ?? ''
-        this.onSaveNoteCallback?.({ day: stopId, note } as any, note)
       })
     })
 

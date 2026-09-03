@@ -396,7 +396,7 @@ describe('ItineraryView undo-last-edit button (#51)', () => {
   })
 
   it('is hidden until the loaded itinerary has a previous version, then calls the undo callback on click', () => {
-    const view = new ItineraryView(vi.fn(), vi.fn(), vi.fn(), vi.fn(), undefined, onUndo)
+    const view = new ItineraryView(vi.fn(), vi.fn(), vi.fn(), vi.fn(), onUndo)
     view.render(baselineStops, [], [])
 
     const undoBtn = document.getElementById('btn-undo-last-edit') as HTMLButtonElement
@@ -411,7 +411,7 @@ describe('ItineraryView undo-last-edit button (#51)', () => {
   })
 
   it('hides again once hasPreviousVersion is false (e.g. after an undo)', () => {
-    const view = new ItineraryView(vi.fn(), vi.fn(), vi.fn(), vi.fn(), undefined, onUndo)
+    const view = new ItineraryView(vi.fn(), vi.fn(), vi.fn(), vi.fn(), onUndo)
     view.render(baselineStops, [], [])
     view.renderFromItinerary(aValidItinerary({ hasPreviousVersion: true }))
 
@@ -956,18 +956,19 @@ describe('ItineraryView stop-notes round-trip (#134)', () => {
     `
   })
 
-  it('renders a persisted userNotes value in the stop-notes textarea after loading a saved trip', () => {
+  it('renders a notes-mount per stop instead of a textarea — #173/#174', () => {
     const view = new ItineraryView(vi.fn(), vi.fn())
     view.renderFromItinerary({
-      title: 'T', totalDays: 3, startCity: 'Malmö', endCity: 'Göteborg', generatedAt: '',
+      id: 't-1', title: 'T', totalDays: 3, startCity: 'Malmö', endCity: 'Göteborg', generatedAt: '',
       stops: [
-        { day: 1, city: 'Malmö', region: 'Skåne', lat: 55.6, lng: 13.0, nights: 2, highlights: ['a'], accommodation: 'x', culinaryNotes: 'y', userNotes: 'Braucht ein Café-Day' },
+        { day: 1, city: 'Malmö', region: 'Skåne', lat: 55.6, lng: 13.0, nights: 2, highlights: ['a'], accommodation: 'x', culinaryNotes: 'y' },
         { day: 2, city: 'Göteborg', region: 'Västra Götaland', lat: 57.7, lng: 11.97, nights: 1, highlights: ['b'], accommodation: 'x', culinaryNotes: 'y' },
       ],
     })
-    const tas = Array.from(document.querySelectorAll('.stop-notes textarea')) as HTMLTextAreaElement[]
-    expect(tas).toHaveLength(2)
-    expect(tas[0].value).toBe('Braucht ein Café-Day')
-    expect(tas[1].value).toBe('')
+    const mounts = Array.from(document.querySelectorAll('.notes-mount'))
+    expect(mounts.map(m => m.getAttribute('data-stop-id')).sort()).toEqual(['1', '2'])
+    // Old textarea must be gone
+    expect(document.querySelector('.stop-notes')).toBeNull()
+    expect(document.querySelector('.btn-save-note')).toBeNull()
   })
 })

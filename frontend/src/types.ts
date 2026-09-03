@@ -17,8 +17,6 @@ export type Stop = {
   zoom: number
   pitch: number
   bearing: number
-  /** Per-stop user note (#51/#134) — carried through renderFromItinerary so saved notes re-appear after reload. */
-  userNotes?: string
 }
 
 export type CulinaryRegion = {
@@ -61,7 +59,6 @@ export type ItineraryStop = {
   accommodation: string
   culinaryNotes: string
   tags?: string[]
-  userNotes?: string
   /** Real driving distance from previous stop (km), from Azure Maps (#89). Absent on pre-#89 itineraries. */
   km?: number
   /** Real driving time from previous stop (min), from Azure Maps (#89). Absent on pre-#89 itineraries. */
@@ -69,6 +66,7 @@ export type ItineraryStop = {
 }
 
 export type Itinerary = {
+  id?: string
   title: string
   totalDays: number
   startCity: string
@@ -110,4 +108,14 @@ export type AppState = {
   selectedStopId: number
   currentFilter: string
   locale: Locale
+}
+
+/** #173: append-only stop note (prikbord) — separate entity, never part of the itinerary PATCH. */
+export type StopNote = {
+  id: string
+  stopId: string
+  ownerUuid: string
+  displayName?: string
+  text: string
+  createdAt: string
 }
