@@ -61,8 +61,9 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.FJORDVIA_DEV_DEPLOY_TOKEN }}
           action: 'upload'
-          app_location: 'frontend'
-          output_location: 'dist'
+          # skip_app_build + app_location op de gebouwde dist-map: alleen dist uploaden
+          # (app_location 'frontend' pakte de hele workspace incl. node_modules → >250MB BadRequest)
+          app_location: 'frontend/dist'
           skip_app_build: 'true'
 
       - name: Preview URL
