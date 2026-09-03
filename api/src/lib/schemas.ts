@@ -35,7 +35,6 @@ export const ItineraryStopSchema = z.object({
   highlights: z.array(z.string().max(500)).max(50),
   accommodation: z.string().max(500),
   culinaryNotes: z.string().max(500),
-  userNotes: z.string().max(2000).optional(),
   /**
    * Category chips (e.g. "city", "historic", "nature", "offbeat") used by the
    * frontend's itinerary filter chips. Present on the default/region itinerary
@@ -154,6 +153,19 @@ export const ProfilePutBodySchema = z.object({
   extensions: z.record(
     z.union([z.string().max(500), z.number(), z.boolean()])
   ).refine(obj => Object.keys(obj).length <= 20, 'Too many extension fields').optional(),
+}).strict()
+
+/**
+ * Schema for per-stop notes on the shared trip board (#173).
+ * Notes are append-only guestbook entries keyed by (tripId, stopId): a short
+ * free-text message, an optional display name, and an opaque owner uuid the
+ * frontend keeps in localStorage (X-Owner-Id header). `.strict()` rejects
+ * anything else so the endpoint can't be used as a data sink.
+ */
+export const NoteBodySchema = z.object({
+  stopId: z.string().min(1).max(100),
+  text: z.string().min(1).max(500),
+  displayName: z.string().max(30).optional(),
 }).strict()
 
 /**
