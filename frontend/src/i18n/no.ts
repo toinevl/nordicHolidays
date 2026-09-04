@@ -235,6 +235,8 @@ export const no: LocaleStrings = {
     legendExcursion: 'Dagsutflukt',
     loadFailedTitle: 'Kartet kunne ikke lastes',
     loadFailedBody: 'Nettleseren din (eller enheten) støtter kanskje ikke WebGL. Rutemarkørene fungerer likevel — bla ned for hele reiseplanen.',
+    timelineTitle: 'Rutestopp',
+    closeTimeline: 'Lukk stopplisten',
   },
   b2b: {
     kicker: 'For bedrifter',
