@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach,describe, expect, it, vi } from 'vitest'
 
 vi.mock('../lib/tableClient', () => {
   const getTableClient = vi.fn(() => ({
@@ -17,9 +17,9 @@ vi.mock('../lib/rateLimit', () => ({
 }))
 vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-id-123') }))
 
-import { listNotesHandler, createNoteHandler, deleteNoteHandler } from './notes'
-import { getTableClient } from '../lib/tableClient'
 import { checkAndIncrementNoteRateLimit } from '../lib/rateLimit'
+import { getTableClient } from '../lib/tableClient'
+import { createNoteHandler, deleteNoteHandler,listNotesHandler } from './notes'
 
 function makeClient(overrides: Record<string, unknown> = {}) {
   const base = {

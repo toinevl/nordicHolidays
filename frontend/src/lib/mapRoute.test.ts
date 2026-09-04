@@ -1,6 +1,7 @@
-import { parseMapPageHash } from './mapRoute'
-import type { MapPageRoute } from './mapRoute'
 import { describe, expect, it } from 'vitest'
+
+import type { MapPageRoute } from './mapRoute'
+import { parseMapPageHash } from './mapRoute'
 
 describe('parseMapPageHash', () => {
   it('accepts the bare #map-page hash (backwards compat) with no stop', () => {

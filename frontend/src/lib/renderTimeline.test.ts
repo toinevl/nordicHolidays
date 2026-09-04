@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { renderTimelineList, timelineStopsFromItinerary } from './renderTimeline'
 import type { Itinerary } from '../types'
+import { renderTimelineList, timelineStopsFromItinerary } from './renderTimeline'
 
 // Project rule: fixtures use real Nordic place names, never ASCII placeholders.
 const nordicItinerary: Itinerary = {

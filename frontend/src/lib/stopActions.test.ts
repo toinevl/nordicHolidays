@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
+
+import type { ItineraryStop } from '../types'
 import {
-  reorderStopByIndex,
   removeStopByIndex,
+  reorderStopByIndex,
   replaceStopNoteByIndex,
 } from './stopActions'
-import type { ItineraryStop } from '../types'
 
 // #171: `day` is de echte reisdag en loopt niet synchroon met de positie in
 // de stops-array (de generator moedigt 2+-nachten stops actief aan, dus

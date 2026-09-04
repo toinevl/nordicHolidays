@@ -4,8 +4,8 @@ import { nanoid } from 'nanoid'
 import { corsPreflightResponse, withCors } from '../lib/cors'
 import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
 import { ItineraryPatchBodySchema, SaveItineraryBodySchema, logError } from '../lib/schemas'
-import { emitEvent } from '../lib/telemetry'
 import { ensureTable, getTableClient } from '../lib/tableClient'
+import { emitEvent } from '../lib/telemetry'
 import type { Itinerary, SavedItinerarySummary } from '../types'
 // WR-07 / H7: ensure every response carries Cache-Control and Content-Type
 // in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
