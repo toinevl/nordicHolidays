@@ -236,6 +236,8 @@ export const no: LocaleStrings = {
     loadFailedTitle: 'Kartet kunne ikke lastes',
     loadFailedBody: 'Nettleseren din (eller enheten) støtter kanskje ikke WebGL. Rutemarkørene fungerer likevel — bla ned for hele reiseplanen.',
     previewCta: 'Vis hele ruten i 3D',
+    timelineTitle: 'Rutestopp',
+    closeTimeline: 'Lukk stopplisten',
   },
   b2b: {
     kicker: 'For bedrifter',

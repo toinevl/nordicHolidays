@@ -236,6 +236,8 @@ export const da: LocaleStrings = {
     loadFailedTitle: 'Kortet kunne ikke indlæses',
     loadFailedBody: 'Din browser (eller enhed) understøtter måske ikke WebGL. Rutemarkørerne virker stadig — scroll ned for hele rejseplanen.',
     previewCta: 'Se hele ruten i 3D',
+    timelineTitle: 'Rutestop',
+    closeTimeline: 'Luk stoplisten',
   },
   b2b: {
     kicker: 'Til virksomheder',

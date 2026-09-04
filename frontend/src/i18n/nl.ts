@@ -236,6 +236,8 @@ export const nl: LocaleStrings = {
     loadFailedTitle: 'Kaart kan niet laden',
     loadFailedBody: 'Je browser (of apparaat) ondersteunt mogelijk geen WebGL. Routemarkeringen werken nog — scrol naar beneden voor de volledige reisroute.',
     previewCta: 'Bekijk de hele route in 3D',
+    timelineTitle: 'Routestops',
+    closeTimeline: 'Stoplijst sluiten',
   },
   b2b: {
     kicker: 'Voor Bedrijven',

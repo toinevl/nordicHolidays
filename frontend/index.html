@@ -65,7 +65,6 @@
         <li><a href="#itinerary">Itinerary</a></li>
         <li><a href="#culinary-section">Food</a></li>
         <li><a href="#accom-section">Stay</a></li>
-        <li><a href="#map-page">3D Map</a></li>
       </ul>
     </nav>
     <div class="header-actions">
@@ -185,6 +184,15 @@
   <div id="map-3d" role="region" aria-label="3D map of Nordic road trip"></div>
   <button id="btn-close-map" class="map-close" aria-label="Close 3D map">✕</button>
   <div class="map-hint">3D map — drag to rotate · scroll to zoom</div>
+  <!-- #24 (part 2): focus overlay — slim stop timeline. Populated by
+       renderTimelinePanel() from the same stops sync3DMap feeds the map;
+       day number + place name per stop, click = flyTo + highlight. -->
+  <aside id="focus-timeline" class="focus-timeline" aria-label="Route stops">
+    <div class="focus-timeline-head">
+      <span class="focus-timeline-title">Route stops</span>
+    </div>
+    <ul id="focus-timeline-list" class="focus-timeline-list"></ul>
+  </aside>
 </section>
 
 <footer>

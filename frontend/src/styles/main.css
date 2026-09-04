@@ -551,6 +551,63 @@ tbody td:first-child { font-weight: 600; color: var(--ink); }
   pointer-events: none;
 }
 
+/* FOCUS TIMELINE (#24 part 2) — slim stop list inside #map-page.
+   Desktop: right-side rail. Click an entry (day + place) to fly the 3D map
+   there and highlight it; Escape or ✕ closes the whole overlay. */
+.focus-timeline {
+  position: absolute; top: 1rem; right: 4rem; bottom: 1rem; z-index: 95;
+  width: 230px; display: flex; flex-direction: column;
+  padding: 0.9rem; border-radius: var(--r);
+  background: rgba(21,17,14,0.82); border: 1px solid var(--night-border);
+  backdrop-filter: blur(10px);
+  max-height: calc(100vh - 2rem);
+}
+.focus-timeline-head { margin-bottom: 0.6rem; }
+.focus-timeline-title {
+  font-family: var(--font-mono); font-size: 0.62rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-on-night-muted);
+}
+.focus-timeline-list {
+  list-style: none; margin: 0; padding: 0;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 0.25rem;
+}
+.focus-timeline-item {
+  display: flex; align-items: baseline; gap: 0.55rem; width: 100%;
+  padding: 0.45rem 0.6rem; border-radius: var(--r);
+  background: transparent; border: 1px solid transparent;
+  color: var(--text-on-night); cursor: pointer; text-align: left;
+  font: inherit; transition: background 0.15s, border-color 0.15s;
+}
+.focus-timeline-item:hover { background: rgba(232,152,32,0.14); }
+.focus-timeline-item.active {
+  background: rgba(232,152,32,0.22); border-color: var(--accent-2);
+}
+.focus-timeline-day {
+  flex: none; font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-on-night-muted); min-width: 3.4rem;
+}
+.focus-timeline-city { font-size: 0.85rem; line-height: 1.3; }
+
+/* Mobile: the timeline becomes a horizontal strip under the map area;
+   the compressed viewport is exactly where absolutely-positioned overlay
+   chrome would collide (see CLAUDE.md UI rule), so it stacks in normal
+   flow instead of floating over the map. */
+@media (max-width: 768px) {
+  .focus-timeline {
+    top: auto; right: 0; bottom: 0; left: 0; width: auto; max-height: 34vh;
+    border-radius: var(--r) var(--r) 0 0;
+  }
+  .focus-timeline-list {
+    flex-direction: row; overflow-x: auto; overflow-y: hidden;
+    padding-bottom: 0.4rem;
+  }
+  .focus-timeline-list li { flex: none; }
+  .focus-timeline-item { flex-direction: column; gap: 0.15rem; width: auto; }
+  .map-hint { display: none; }
+}
+
 /* B2B PAGE (#110) — full-screen overlay, same pattern as .map-page but scrollable */
 .b2b-page { position: fixed; inset: 0; z-index: 90; background: var(--bg-subtle); overflow-y: auto; }
 .b2b-page.hidden { display: none; }

@@ -102,6 +102,10 @@ export interface LocaleStrings {
     loadFailedBody: string
     /** #24: CTA button under the trip preview — opens the #map-page 3D overlay */
     previewCta: string
+    /** Static: "Route stops" — heading of the stop timeline inside the #map-page overlay */
+    timelineTitle: string
+    /** Static: "Close stop list" — aria-label on the timeline close button */
+    closeTimeline: string
   }
   b2b: {
     kicker: string

@@ -1,11 +1,26 @@
-import 'maplibre-gl/dist/maplibre-gl.css'
-
-import maplibregl from 'maplibre-gl'
-
 import { t, tpl } from '../i18n/index'
 import { isDayTrip } from '../lib/dayTrips'
 import type { Stop } from '../types'
 import { buildBaseRouteCoords, buildExcursionLines, markerClassFor } from './mapGeometry'
+
+// #24 (part 2): maplibre-gl is the heaviest dependency in the bundle (~800 kB
+// minified) and only one of the two MapView instances ever mounts per visit
+// (either the hero map OR the #map-page overlay). Importing it statically kept
+// the whole library in the critical path of the entry graph; it now loads via
+// `await import()` the first time a MapView actually needs to draw. Types stay
+// compile-time only (`import type`) so this file remains statically checkable
+// without pulling the runtime module into the entry chunk. Vite splits both
+// the JS and the CSS side-effect import into a separate lazy chunk.
+type MaplibreModule = typeof import('maplibre-gl')
+let maplibrePromise: Promise<MaplibreModule> | null = null
+
+function loadMaplibre(): Promise<MaplibreModule> {
+  maplibrePromise ??= Promise.all([
+    import('maplibre-gl'),
+    import('maplibre-gl/dist/maplibre-gl.css'),
+  ]).then(([mod]) => mod)
+  return maplibrePromise
+}
 
 export type StopSelectCallback = (stop: Stop, options?: { scroll?: boolean }) => void
 
@@ -35,12 +50,18 @@ function isWebGLAvailable(): boolean {
 
 export class MapView {
   private map: maplibregl.Map | null = null
+  /** The dynamically imported maplibre-gl module — set once _init() has it. */
+  private maplibregl: MaplibreModule | null = null
   private markerEls = new Map<number, HTMLElement>()
   private onStopSelect: StopSelectCallback
   private _animRafId = 0
   private stops: Stop[] = []
   private _styleReady = false
   private _container: HTMLElement | null = null
+  private _styleTimeout: ReturnType<typeof setTimeout> | null = null
+  private readyPromise: Promise<boolean>
+  /** Set by teardown(): an in-flight _init() must not revive the map. */
+  private _tornDown = false
 
   constructor(containerId: string, onStopSelect: StopSelectCallback, options?: MapViewOptions) {
     this.onStopSelect = onStopSelect
@@ -48,17 +69,52 @@ export class MapView {
     if (!container) throw new Error(`Map container #${containerId} not found`)
     this._container = container
 
+    // maplibre-gl loads asynchronously (dynamic import, #24) — construction
+    // stays synchronous for callers; the map appears when the chunk lands.
+    // whenReady() lets callers (deep-link flyTo) wait for that.
+    this.readyPromise = this._init(containerId, options)
+  }
+
+  /**
+   * Resolves once the async init finished: `true` when the MapLibre instance
+   * exists (markers can be placed, flyTo works), `false` when the view fell
+   * back (no WebGL / chunk load failure). Never rejects.
+   */
+  whenReady(): Promise<boolean> {
+    return this.readyPromise
+  }
+
+  private async _init(containerId: string, options?: MapViewOptions): Promise<boolean> {
     // 1. Feature-detect WebGL. On some mobile browsers (notably Android Firefox)
     //    WebGL can be disabled, blocklisted, or fail at context creation — the
     //    map canvas stays blank while DOM markers still render. Detect this
     //    up-front and show a user-visible fallback instead of a silent grey void.
     if (!isWebGLAvailable()) {
       this.showFallback()
-      return
+      return false
     }
 
+    // 2. Load maplibre-gl (+ its CSS) via dynamic import. A chunk-load failure
+    //    (offline, CDN blocked) degrades to the same visible fallback as a
+    //    missing WebGL context instead of an unhandled rejection.
+    //    Interop: the shipped bundle is UMD (module.exports = maplibregl), so
+    //    under Vite the namespace exposes it as `.default`, while a future ESM
+    //    build would expose the named exports directly. `mod.default ?? mod`
+    //    handles both; the types come from the package's own d.ts either way.
+    let maplibregl: MaplibreModule
     try {
-      this.map = new maplibregl.Map({
+      const mod = await loadMaplibre()
+      maplibregl = (mod as MaplibreModule & { default?: MaplibreModule }).default ?? mod
+    } catch (err) {
+      console.warn('[MapView] maplibre-gl chunk failed to load:', err)
+      this.showFallback()
+      return false
+    }
+
+    let map: maplibregl.Map
+    try {
+      this.maplibregl = maplibregl
+      map = new maplibregl.Map({
         container: containerId,
         style: 'https://tiles.openfreemap.org/styles/liberty',
         center: options?.center ?? [15, 62],
@@ -70,14 +126,15 @@ export class MapView {
     } catch {
       // MapLibre can throw during construction if the WebGL context can't be
       // acquired even though the feature-detect passed (e.g. too many contexts).
-      this.map = null
       this.showFallback()
-      return
+      return false
     }
+    if (this._tornDown) return false
+    this.map = map
 
-    // 2. Listen for runtime WebGL context loss (common on mobile, especially
+    // 3. Listen for runtime WebGL context loss (common on mobile, especially
     //    when the GPU runs out of memory or the browser evicts the context).
-    this.map.getCanvas().addEventListener('webglcontextlost', (e) => {
+    map.getCanvas().addEventListener('webglcontextlost', (e) => {
       e.preventDefault() // allow MapLibre to attempt auto-restore
       // Give MapLibre a chance to restore; if it doesn't within 5s, show fallback
       setTimeout(() => {
@@ -90,18 +147,18 @@ export class MapView {
       }, 5000)
     })
 
-    // 3. Listen for map errors (style load failure, source fetch error, etc.)
-    this.map.on('error', (e) => {
+    // 4. Listen for map errors (style load failure, source fetch error, etc.)
+    map.on('error', (e) => {
       // MapLibre fires 'error' for non-fatal things like a failed tile fetch;
       // log it but don't tear down the map for transient tile errors.
       console.warn('[MapView] maplibre error:', e.error ?? e)
     })
 
-    // 4. Track style readiness and apply a timeout fallback. If the style
+    // 5. Track style readiness and apply a timeout fallback. If the style
     //    doesn't load within 15s (e.g. CDN blocked, network failure on
     //    mobile), the map is unusable — show the fallback.
-    this.map.on('load', () => { this._styleReady = true })
-    setTimeout(() => {
+    map.on('load', () => { this._styleReady = true })
+    this._styleTimeout = setTimeout(() => {
       if (!this._styleReady && this.map) {
         console.warn('[MapView] style did not load within 15s — showing fallback')
         this.map = null
@@ -110,6 +167,44 @@ export class MapView {
     }, 15000)
 
     this._addLegend()
+
+    if (this._tornDown) {
+      map.remove()
+      this.maplibregl = null
+      return false
+    }
+
+    // Replay stops that arrived while the chunk was downloading (replaceStops/
+    // addStops store the data and bail when the map doesn't exist yet).
+    if (this.stops.length > 0) {
+      this._addMarkers(this.stops)
+      this._addRouteLayersWhenReady(this.stops)
+    }
+    return true
+  }
+
+  /**
+   * Fully tear the map down: cancel pending timers/animations, destroy the
+   * MapLibre instance (releases its WebGL context) and drop the DOM markers.
+   * Used when the #map-page overlay closes so a background 3D map no longer
+   * holds GPU memory or fires tile/style requests.
+   */
+  teardown(): void {
+    this._tornDown = true
+    if (this._styleTimeout !== null) {
+      clearTimeout(this._styleTimeout)
+      this._styleTimeout = null
+    }
+    cancelAnimationFrame(this._animRafId)
+    this._animRafId = 0
+    this._styleReady = false
+    this.stops = []
+    this.markerEls.forEach(el => el.remove())
+    this.markerEls.clear()
+    if (this.map) {
+      this.map.remove()
+      this.map = null
+    }
   }
 
   /**
@@ -239,14 +334,34 @@ export class MapView {
     this.stops = stops
     if (!this.map) return
     this._addMarkers(stops)
+    this._addRouteLayersWhenReady(stops)
+  }
 
-    this.map.on('load', () => {
+  /**
+   * Register the route-layer build so it runs once the style is ready.
+   * Extracted from addStops/replaceStops so the post-dynamic-import replay
+   * in _init() uses the exact same readiness logic.
+   */
+  private _addRouteLayersWhenReady(stops: Stop[]): void {
+    if (!this.map) return
+    // replaceStops can run before the style has loaded: a shared-link (?id=)
+    // itinerary fetch against a warm API resolves in ~100ms, racing the map's
+    // style download. On an unloaded map even getLayer/isStyleLoaded throw
+    // (map.style is still null), which used to strip every marker and surface
+    // a load-failure toast. Track readiness ourselves and defer the route
+    // layers; _addRouteLayers is idempotent, so it also supersedes the layers
+    // addStops' own 'load' handler may add first. Markers are DOM overlays
+    // and safe either way.
+    if (this._styleReady) {
       this._addRouteLayers(stops)
-    })
+    } else {
+      this.map.once('load', () => this._addRouteLayers(stops))
+    }
   }
 
   private _addMarkers(stops: Stop[]): void {
-    if (!this.map) return
+    if (!this.map || !this.maplibregl) return
+    const maplibregl = this.maplibregl
     stops.forEach(stop => {
       const el = document.createElement('div')
       el.className = markerClassFor(stop)
@@ -352,20 +467,7 @@ export class MapView {
     if (!this.map) return
 
     this._addMarkers(stops)
-
-    // replaceStops can run before the style has loaded: a shared-link (?id=)
-    // itinerary fetch against a warm API resolves in ~100ms, racing the map's
-    // style download. On an unloaded map even getLayer/isStyleLoaded throw
-    // (map.style is still null), which used to strip every marker and surface
-    // a load-failure toast. Track readiness ourselves and defer the route
-    // layers; _addRouteLayers is idempotent, so it also supersedes the layers
-    // addStops' own 'load' handler may add first. Markers are DOM overlays
-    // and safe either way.
-    if (this._styleReady) {
-      this._addRouteLayers(stops)
-    } else {
-      this.map.once('load', () => this._addRouteLayers(stops))
-    }
+    this._addRouteLayersWhenReady(stops)
 
     if (stops[0]) this.flyTo(stops[0])
   }
