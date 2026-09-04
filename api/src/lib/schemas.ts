@@ -200,7 +200,10 @@ export const TripNoteSchema = z.object({
 }).strict()
 
 export const LeadBodySchema = z.object({
-  partnerId: z.string().min(1),
+  // #33: partnerId becomes the Leads-table partitionKey, so it is constrained
+  // to the same charset the Partners table uses for slugs ([a-z0-9-], length
+  // capped at 100 — well under the 1KB Azure Table key limit).
+  partnerId: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/i),
   email: z.string().email(),
   itineraryId: z.string().optional(),
   consent: z.literal(true),
