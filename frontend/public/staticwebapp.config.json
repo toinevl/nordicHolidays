@@ -1,0 +1,13 @@
+{
+  "globalHeaders": {
+    "content-security-policy": "default-src 'self'; script-src 'self' 'sha256-8392a1e7b1099d00593a34ca8b0d1a2a5a06eb0023d0517cf11167df1e2544f8' 'sha256-4810da2b3701d0d8cce1049892c23099f97720c2828956873acf5f56311f8444'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.azurewebsites.net https://atlas.microsoft.com https://api.travelpayouts.com https://tpembars.com; frame-src 'self' https://www.getyourguide.com https://www.discovercars.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+    "referrer-policy": "same-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "permissions-policy": "geolocation=(), camera=(), microphone=()"
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/icons/*", "*.{css,js,png,jpg,svg,ico,webmanifest,xml,txt,webp}"]
+  }
+}
