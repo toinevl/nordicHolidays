@@ -165,9 +165,9 @@ function changeLocale(lang: Locale): void {
   applyStaticI18n()
   const { currentItinerary } = store.getState()
   if (currentItinerary) {
-    itineraryView.renderFromItinerary(currentItinerary)
-    mountNotesBoards(currentItinerary.id ?? "default")
-    updateItineraryDesc(currentItinerary)
+    // #27: applyItinerary is the single fan-out — it re-renders the timeline,
+    // both maps, the status bar, the desc AND remounts the notes boards.
+    applyItinerary(currentItinerary)
   }
   // #86: B2B section is rendered once at boot with t(); re-render it so the
   // new locale's strings take effect immediately instead of on next page load.
@@ -207,7 +207,9 @@ function onReorderStopForMain(stopId: number, direction: 'up' | 'down'): void {
   if (stops === itinerary.stops) return
   const next = { ...itinerary, stops }
   store.setState({ currentItinerary: next, unsaved: true })
-  itineraryView.renderFromItinerary(next)
+  // #27: single fan-out — was renderFromItinerary only, which left the map
+  // showing the old route after a reorder.
+  applyItinerary(next)
   if (state.activeTripId) {
     apiClient
       .updateItinerary(state.activeTripId, { stops })
@@ -225,7 +227,8 @@ function onRemoveStopForMain(stopId: number): void {
   if (stops === itinerary.stops) return
   const next = { ...itinerary, stops }
   store.setState({ currentItinerary: next, unsaved: true })
-  itineraryView.renderFromItinerary(next)
+  // #27: single fan-out (see onReorderStopForMain).
+  applyItinerary(next)
   if (state.activeTripId) {
     apiClient
       .updateItinerary(state.activeTripId, { stops })
@@ -255,8 +258,8 @@ function onAddStopForMain(stop: { city: string; region: string; lat: number; lng
   const stops = [...itinerary.stops, newStop]
   const next = { ...itinerary, stops }
   store.setState({ currentItinerary: next, unsaved: true })
-  itineraryView.renderFromItinerary(next)
-  mapView.replaceStops(toMapStops(next))
+  // #27: single fan-out (mapView.replaceStops moved into applyItinerary).
+  applyItinerary(next)
   if (state.activeTripId) {
     apiClient
       .updateItinerary(state.activeTripId, { stops })
@@ -580,6 +583,10 @@ function applyItinerary(itinerary: Itinerary): void {
   syncTimelineFromStore()
   statusBar.syncFromStore(store)
   updateItineraryDesc(itinerary)
+  // #27: the timeline rebuild above recreates every .notes-mount placeholder —
+  // mount the boards right here so notes survive generate/load/undo/?id-load,
+  // not only locale switches. Idempotent via the data-mounted guard.
+  mountNotesBoards(itinerary.id ?? 'default')
 }
 
 const savedPanel = new SavedTripsPanel(store, (itinerary: Itinerary, name: string, id: string) => {
@@ -639,6 +646,10 @@ mapView.addStops(STOPS)
 // #24: the boot itinerary landed in the store AFTER handleMapPage() ran —
 // populate the focus timeline now (no-op when the overlay never opened).
 renderTimelinePanel()
+
+// #27: boot-time notes mount — the static render() above creates .notes-mount
+// placeholders that were previously only mounted on a locale switch.
+mountNotesBoards('default')
 
 const urlId = new URLSearchParams(window.location.search).get('id')
 if (urlId) {
