@@ -21,6 +21,9 @@ The templates in this directory are a **reference implementation** of the existi
 - **Storage Account** (`nordicholidays`)
   - Table Storage with tables: Itineraries, Preferences, Profiles, RateLimits
   - Blob Storage (for Function App deployment packages)
+  - Private `backups` blob container — daily JSONL table exports (#153,
+    `api/src/functions/exportBackup.ts`), 30-day export retention, 14-day
+    blob soft-delete on the account
 - **Key Vault** (`kv-nordicholidays`, RBAC-enabled)
 - **Function App** (`nordic-holidays-api`, Flex Consumption, Node 22)
   - System-assigned managed identity

@@ -1,4 +1,5 @@
 import './functions/cleanup'
+import './functions/exportBackup'
 import './functions/citySearch'
 import './functions/generate'
 import './functions/health'

@@ -97,6 +97,21 @@ resource itinerariesTable 'Microsoft.Storage/storageAccounts/tableServices/table
   name: 'Itineraries'
 }
 
+resource leadsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableServices
+  name: 'Leads'
+}
+
+resource partnersTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableServices
+  name: 'Partners'
+}
+
+resource notesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableServices
+  name: 'Notes'
+}
+
 resource preferencesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
   parent: tableServices
   name: 'Preferences'
@@ -116,7 +131,26 @@ resource rateLimitsTable 'Microsoft.Storage/storageAccounts/tableServices/tables
 resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
   parent: storageAccount
   name: 'default'
-  properties: {}
+  properties: {
+    // #153: undo window for automated deletes — daily JSONL table exports
+    // (api/src/functions/exportBackup.ts) land in the private `backups`
+    // container below. Soft-deleted blobs stay recoverable for 14 days.
+    deleteRetentionPolicy: {
+      enabled: true
+      days: 14
+    }
+  }
+}
+
+// #153: private container for the daily JSONL table exports. The
+// exportBackup timer writes backups/<date>/<table>.jsonl here; pruning and
+// access control never expose this container publicly.
+resource backupsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobServices
+  name: 'backups'
+  properties: {
+    publicAccess: 'None'
+  }
 }
 
 // Key Vault
