@@ -100,6 +100,8 @@ export interface LocaleStrings {
     legendExcursion: string
     loadFailedTitle: string
     loadFailedBody: string
+    /** #24: CTA button under the trip preview — opens the #map-page 3D overlay */
+    previewCta: string
   }
   b2b: {
     kicker: string

@@ -235,6 +235,7 @@ export const da: LocaleStrings = {
     legendExcursion: 'Dagsudflugt',
     loadFailedTitle: 'Kortet kunne ikke indlæses',
     loadFailedBody: 'Din browser (eller enhed) understøtter måske ikke WebGL. Rutemarkørerne virker stadig — scroll ned for hele rejseplanen.',
+    previewCta: 'Se hele ruten i 3D',
   },
   b2b: {
     kicker: 'Til virksomheder',

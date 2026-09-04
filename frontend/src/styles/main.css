@@ -298,6 +298,41 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
   display: grid; grid-template-columns: minmax(0,1fr) 300px;
   gap: 1.5rem; align-items: start; margin-bottom: 3rem;
 }
+/* Trip preview (#24): whole-route SVG minimap + 3D CTA at the top of #itinerary */
+.trip-preview {
+  background: var(--bg-alt); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem 1.25rem 1.25rem;
+  margin-bottom: 2rem; box-shadow: 0 1px 6px rgba(28,24,20,0.06);
+}
+.trip-preview-map { width: 100%; }
+.trip-preview-map .mini-map { width: 100%; height: auto; display: block; }
+.trip-preview-cta {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  margin-top: 0.85rem; text-decoration: none;
+}
+/* Stop-card minimap (#24): slim strip between the photo header and card content */
+.mini-map {
+  display: block; width: 100%; height: 80px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+}
+.mini-map-route {
+  stroke: var(--primary); stroke-width: 1.5;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+.mini-map-excursion {
+  stroke: var(--primary); stroke-width: 1;
+  stroke-dasharray: 3 3; opacity: 0.7;
+}
+.mini-map-dot { fill: var(--accent-2); stroke: var(--bg-alt); stroke-width: 1; }
+.mini-map-dot--start { fill: var(--primary); }
+.mini-map-dot--active { stroke: var(--ink); stroke-width: 1.5; }
+.mini-map-dot--daytrip { fill: none; stroke: var(--accent-2); stroke-width: 1.5; }
+/* Trip-preview variant: taller, chrome-less strip inside its own card */
+.trip-preview-map .mini-map { height: 120px; background: transparent; border-bottom: none; }
+@media print {
+  .mini-map { display: none; }
+}
 .route-summary { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.85rem; }
 .summary-tile {
   background: var(--bg-alt); border: 1px solid var(--border);
