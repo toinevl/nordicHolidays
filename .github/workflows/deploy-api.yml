@@ -46,7 +46,8 @@ jobs:
               GENERATE_DAILY_CAP="${GENERATE_DAILY_CAP:-500}" \
               RETENTION_ITINERARY_DAYS="${RETENTION_ITINERARY_DAYS:-365}" \
               RETENTION_LEADS_DAYS="${RETENTION_LEADS_DAYS:-730}" \
-              RETENTION_DRY_RUN="${RETENTION_DRY_RUN:-1}"
+              RETENTION_DRY_RUN="${RETENTION_DRY_RUN:-1}" \
+              BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
         env:
           ENTRA_ISSUER_HOST: ${{ secrets.ENTRA_ISSUER_HOST || 'login.microsoftonline.com' }}
           ENTRA_API_AUDIENCE: ${{ secrets.ENTRA_API_AUDIENCE }}
@@ -66,6 +67,12 @@ jobs:
           RETENTION_ITINERARY_DAYS: ${{ vars.NORDIC_HOLIDAYS_RETENTION_ITINERARY_DAYS || '365' }}
           RETENTION_LEADS_DAYS: ${{ vars.NORDIC_HOLIDAYS_RETENTION_LEADS_DAYS || '730' }}
           RETENTION_DRY_RUN: ${{ vars.NORDIC_HOLIDAYS_RETENTION_DRY_RUN || '1' }}
+          # #153 daily table-export (api/src/functions/exportBackup.ts): prune
+          # backups/<date>/<table>.jsonl blobs older than this many days.
+          # Blob soft-delete (14d) is the undo window; live blob deletes are
+          # NOT gated behind a dry-run flag (soft-delete + pattern-scoped
+          # pruning are the safeguards) — see infra/RECOVERY.md.
+          BACKUP_RETENTION_DAYS: ${{ vars.NORDIC_HOLIDAYS_BACKUP_RETENTION_DAYS || '30' }}
 
       - name: Install dependencies
         working-directory: api

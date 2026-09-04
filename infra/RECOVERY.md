@@ -306,3 +306,104 @@ either a data source lookup Bicep doesn't support, or hardcoding the
 principal ID, which reintroduces exactly the kind of manual-tracking risk
 this doc exists to avoid. Manual recreation via the steps above remains the
 supported path.
+
+---
+
+# Restore: daily table backups (#153)
+
+`api/src/functions/exportBackup.ts` (daily timer, 04:00 UTC) dumps the six
+business tables (`Itineraries`, `Leads`, `Partners`, `Preferences`,
+`Profiles`, `Notes`) to the private `backups` blob container as JSONL —
+one JSON object per line:
+
+```
+backups/<YYYY-MM-DD>/<Table>.jsonl
+```
+
+- Export blobs older than `BACKUP_RETENTION_DAYS` (default 30) are pruned
+  by the same timer — automated deletes only ever touch blobs matching the
+  `<YYYY-MM-DD>/<name>.jsonl` pattern the timer produces; anything else in
+  the container (e.g. manual wipe snapshots such as
+  `itineraries-wipe-20260829-092716.jsonl`) is never pruned.
+- Blob soft-delete is enabled on the storage account (14 days) — a pruned
+  or accidentally deleted backup stays recoverable within that window.
+- Container access is private (`publicAccess: none`); the Function App
+  writes via its existing `STORAGE_CONNECTION_STRING` app setting.
+
+## Restore a table from a backup
+
+Credentials: a storage account key (Contributor on the RG can list keys via
+`az storage account keys list`), or a data-plane role such as `Storage Blob
+Data Contributor` with `--auth-mode login`.
+
+```bash
+KEY=$(az storage account keys list \
+  --account-name nordicholidays --resource-group rgNordicHolidays \
+  --query "[0].value" -o tsv)
+
+# 1. Pick the date to restore from.
+az storage blob list -c backups --account-name nordicholidays \
+  --account-key "$KEY" -o table
+
+# 2. Download the export you want (example: Itineraries from 2026-09-03).
+az storage blob download -c backups -n 2026-09-03/Itineraries.jsonl \
+  -f /tmp/Itineraries.jsonl --account-name nordicholidays \
+  --account-key "$KEY"
+
+# 3. Dry-run: count the entities and spot-check a line before touching data.
+wc -l /tmp/Itineraries.jsonl
+head -1 /tmp/Itineraries.jsonl | python3 -m json.tool
+
+# 4. Upsert back into the table. Entities carry their original
+#    partitionKey/rowKey; upsert(mode="replace") overwrites existing rows —
+#    only run this against a table you intend to change.
+python3 - <<'PY'
+import json, os
+from azure.data.tables import TableClient
+conn = os.environ["STORAGE_CONNECTION_STRING"]
+table = TableClient.from_connection_string(conn, "Itineraries")
+restored = skipped = 0
+with open("/tmp/Itineraries.jsonl") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        e = json.loads(line)
+        if "partitionKey" not in e or "rowKey" not in e:
+            skipped += 1
+            continue
+        e.pop("timestamp", None)  # server-managed
+        table.upsert_entity(entity=e, mode="replace")
+        restored += 1
+print(f"restored={restored} skipped={skipped}")
+PY
+
+# 5. Verify: count rows and spot-check one entity via listEntities.
+
+# Full table revert instead? Delete the table first
+# (`az storage table delete`) and let ensureTable recreate it on first
+# write, then run step 4 — the only way to drop rows created after the
+# backup date.
+```
+
+## Recover a deleted backup (within the soft-delete window)
+
+```bash
+az storage blob list -c backups --account-name nordicholidays \
+  --account-key "$KEY" --include-deleted -o table
+az storage blob undelete -c backups -n <name> \
+  --account-name nordicholidays --account-key "$KEY"
+```
+
+## Re-creating the container / policy from scratch
+
+Both are declared in `infra/main.bicep` (`backupsContainer` and
+`blobServices.properties.deleteRetentionPolicy`). Recreate live with:
+
+```bash
+az storage container create --account-name nordicholidays --name backups \
+  --public-access off
+az storage blob service-properties delete-policy update \
+  --account-name nordicholidays --enable true --days-retained 14
+```
+
