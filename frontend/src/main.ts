@@ -18,6 +18,8 @@ import { handleRedirect, initialize } from './lib/auth'
 import { onConsentChange, resetConsent } from './lib/consent'
 import { legalPageLocale } from './lib/legalPages'
 import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
+import { MapPageOverlay } from './lib/mapOverlay'
+import { renderTimelineList, timelineStopsFromItinerary } from './lib/renderTimeline'
 import { isNavScrolled } from './lib/scrollNav'
 import { affiliateClickPayload, trackAffiliateClickGated } from './lib/tracking'
 import { removeStopByIndex, reorderStopByIndex } from './lib/stopActions'
@@ -68,7 +70,6 @@ function applyStaticI18n(): void {
   setText('#header [href="#itinerary"]', t('nav.itinerary'))
   setText('#header [href="#culinary-section"]', t('nav.food'))
   setText('#header [href="#accom-section"]', t('nav.stay'))
-  setText('#header [href="#map-page"]', t('nav.map3d'))
   // Hero buttons
   setText('#btn-fly', t('hero.flyRoute'))
   setText('.hero-actions [href="#itinerary"]', t('hero.viewItinerary'))
@@ -113,6 +114,9 @@ function applyStaticI18n(): void {
   })
   // 3D map hint
   setText('.map-hint', t('map3d.hint'))
+  // Focus timeline inside #map-page (#24)
+  setText('.focus-timeline-title', t('map.timelineTitle'))
+  setAttr('#focus-timeline', 'aria-label', t('map.timelineTitle'))
   // Map containers — role is in index.html, label is i18n
   setAttr('#map', 'aria-label', t('aria.mapLabel'))
   setAttr('#map-3d', 'aria-label', t('aria.map3dLabel'))
@@ -174,6 +178,8 @@ function changeLocale(lang: Locale): void {
   widgetFooter?.render()
   mapView.updateFallbackMessage()
   map3DView?.updateFallbackMessage()
+  // #24: focus-timeline entries carry t('itinerary.dayPrefix') at render time.
+  renderTimelinePanel()
 }
 
 // #87: held at module scope so changeLocale() can re-render it after a
@@ -325,20 +331,91 @@ function sync3DMap(): void {
   if (!map3DView) {
     map3DView = new MapView('map-3d', (stop) => {
       store.setState({ selectedStopId: stop.id })
+      highlightTimelineStop(stop.id)
       mapView.setActiveMarker(stop.id)
       mapView.flyTo(stop)
       if (map3DView) map3DView.flyTo(stop)
     }, { pitch: 0, zoom: regionConfig.mapDefaults.zoom, dragRotate: false, center: regionConfig.mapDefaults.center })
+    // With the dynamic import (#24) the MapLibre instance arrives a beat after
+    // construction; feed the stops to it as soon as init has settled.
+    void map3DView.whenReady().then((ok) => {
+      if (ok && map3DView) map3DView.replaceStops(toMapStops({ ...(store.getState().currentItinerary ?? STOPS) } as Itinerary))
+    })
+    return
   }
   map3DView.replaceStops(toMapStops({ ...(itinerary ?? STOPS) } as Itinerary))
 }
 
+function syncTimelineFromStore(): void {
+  renderTimelinePanel()
+}
+
+function renderTimelinePanel(): void {
+  const list = document.getElementById('focus-timeline-list')
+  if (!list) return
+  list.replaceWith(renderTimelineList(timelineStopsFromItinerary(store.getState().currentItinerary)))
+  if (lastSelectedStopId !== null) highlightTimelineStop(lastSelectedStopId)
+}
+
+/**
+ * Fly the 3D overlay map to a stop and highlight it everywhere (markers +
+ * focus timeline). Shared by the ?stop=<n> deep link and timeline clicks.
+ * The 2D hero map stays untouched — it sits behind the overlay.
+ */
+function flyFocusStop(stopId: number): void {
+  if (!map3DView) return
+  const target = toMapStops({ ...(store.getState().currentItinerary ?? STOPS) } as Itinerary).find(s => s.id === stopId)
+  if (!target) return
+  store.setState({ selectedStopId: target.id })
+  itineraryView.setSelectedStop(target.id, false)
+  highlightTimelineStop(target.id)
+  map3DView.setActiveMarker(target.id)
+  map3DView.flyTo(target)
+}
+
+/** Highlight the active stop entry in the focus timeline (and clear the rest). */
+function highlightTimelineStop(stopId: number): void {
+  lastSelectedStopId = stopId
+  document.querySelectorAll('.focus-timeline-item').forEach((el) => {
+    el.classList.toggle('active', (el as HTMLElement).dataset.stopId === String(stopId))
+  })
+}
+
+let lastSelectedStopId: number | null = null
+
+// #24 (part 2): focus/scroll controller for the #map-page overlay. All routing
+// decisions come from parseMapPageHash — the overlay element is only toggled
+// by MapPageOverlay.handleHash, never directly.
+let mapPageOverlay: MapPageOverlay | null = null
+
 function handleMapPage(): void {
   const mapPage = document.getElementById('map-page')
   if (!mapPage) return
-  const isMapPage = window.location.hash === '#map-page'
-  mapPage.classList.toggle('hidden', !isMapPage)
-  if (isMapPage) sync3DMap()
+  mapPageOverlay ??= new MapPageOverlay(mapPage, {
+    onOpen: (route, firstOpen) => {
+      if (firstOpen) {
+        renderTimelinePanel()
+        mapPage.classList.add('map-page--timeline-open')
+      }
+      sync3DMap()
+      if (route.stopId === null) return
+      // Deep link (?stop=N): fly once the async map init has finished. If the
+      // id doesn't exist (stale link after a regeneration) the overlay stays
+      // usable on the default view.
+      map3DView?.whenReady().then((ok) => {
+        if (ok) flyFocusStop(route.stopId as number)
+      })
+    },
+    onClose: () => {
+      mapPage.classList.remove('map-page--timeline-open')
+      // Release the WebGL context + tile/style network activity of the
+      // background 3D map while the overlay is closed. sync3DMap rebuilds it
+      // on the next open.
+      map3DView?.teardown()
+      map3DView = null
+    },
+  })
+  mapPageOverlay.handleHash(window.location.hash)
 }
 
 // B2B page (#110): same hash-routed overlay pattern as #map-page.
@@ -399,7 +476,6 @@ mobileMenu.innerHTML = `
     <li><a href="#itinerary">${t('nav.itinerary')}</a></li>
     <li><a href="#culinary-section">${t('nav.food')}</a></li>
     <li><a href="#accom-section">${t('nav.stay')}</a></li>
-    <li><a href="#map-page">${t('nav.map3d')}</a></li>
   </ul>
 `
 document.body.appendChild(mobileMenu)
@@ -418,8 +494,23 @@ mobileMenu.querySelectorAll('a').forEach(a => {
   })
 })
 
+// Wire the ✕ button (and every future close affordance) to the SAME close
+// flow as Escape: hash → #itinerary, then scroll-restore + focus-return run
+// in the MapPageOverlay close path.
 document.getElementById('btn-close-map')?.addEventListener('click', () => {
-  window.location.hash = '#hero'
+  mapPageOverlay?.close()
+})
+
+// Focus timeline clicks (#24): event delegation on the aside so the handler
+// survives renderTimelinePanel() replacing the <ul> on every itinerary change.
+// Timeline entries use the 1-based stop id — the same id space as the map
+// markers and the ?stop=<n> deep link.
+document.getElementById('focus-timeline')?.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('.focus-timeline-item') as HTMLElement | null
+  if (!btn) return
+  const stopId = Number(btn.dataset.stopId)
+  if (!Number.isInteger(stopId)) return
+  flyFocusStop(stopId)
 })
 
 document.getElementById('btn-close-b2b')?.addEventListener('click', () => {
@@ -483,9 +574,10 @@ function updateItineraryDesc(itinerary: Itinerary): void {
 function applyItinerary(itinerary: Itinerary): void {
   itineraryView.renderFromItinerary(itinerary)
   mapView.replaceStops(toMapStops(itinerary))
-  if (map3DView && window.location.hash === '#map-page') {
-    map3DView.replaceStops(toMapStops(itinerary))
+  if (window.location.hash.startsWith('#map-page')) {
+    map3DView?.replaceStops(toMapStops(itinerary))
   }
+  syncTimelineFromStore()
   statusBar.syncFromStore(store)
   updateItineraryDesc(itinerary)
 }
@@ -543,6 +635,10 @@ store.setState({
   },
 })
 mapView.addStops(STOPS)
+
+// #24: the boot itinerary landed in the store AFTER handleMapPage() ran —
+// populate the focus timeline now (no-op when the overlay never opened).
+renderTimelinePanel()
 
 const urlId = new URLSearchParams(window.location.search).get('id')
 if (urlId) {

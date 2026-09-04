@@ -235,6 +235,9 @@ export const sv: LocaleStrings = {
     legendExcursion: 'Utflyktsrutt',
     loadFailedTitle: 'Kartan kunde inte laddas',
     loadFailedBody: 'Din webbläsare (eller enhet) stöder kanske inte WebGL. Ruttmarkörerna fungerar ändå — scrolla ner för hela resplanen.',
+    previewCta: 'Visa hela rutten i 3D',
+    timelineTitle: 'Ruttstopp',
+    closeTimeline: 'Stäng stopplistan',
   },
   b2b: {
     kicker: 'För företag',

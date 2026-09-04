@@ -8,6 +8,7 @@ import { formatDriveTime, haversineKm } from '../lib/distance'
 import { escapeHtml } from '../lib/escape'
 import { downloadFile, itineraryToGPX, itineraryToGoogleMapsUrl, itineraryToICS, itineraryToWazeUrl } from '../lib/export'
 import { formatStopDateRange, formatTripStart } from '../lib/travelDates'
+import { buildStopMiniMapSvg } from '../lib/stopMiniMap'
 import type { Accommodation, CulinaryRegion, Itinerary, ItineraryStop, Stop } from '../types'
 import { AddStopForm } from './AddStopForm'
 import { renderOverview } from './TripOverview'
@@ -141,6 +142,7 @@ export class ItineraryView {
     this.renderRouteTools()
     this.renderTimeline()
     this.renderTripIndex()
+    this.renderTripPreview()
     this.renderOverviewFromStops(stops)
     this.renderCulinary()
     this.renderAccommodations()
@@ -266,6 +268,7 @@ export class ItineraryView {
     this.renderRouteTools()
     this.renderTimeline()
     this.renderTripIndex()
+    this.renderTripPreview()
     this.renderOverviewTable()
     this.renderCulinary()
     this.renderAccommodations()
@@ -406,6 +409,27 @@ export class ItineraryView {
     })
   }
 
+  /**
+   * Trip-preview banner at the top of #itinerary (#24 deel 1): the whole route
+   * as one wide SVG minimap plus a CTA linking to the #map-page 3D overlay.
+   * The overlay itself and its hash-routing live in main.ts — this only
+   * renders the link. Re-rendered by BOTH render paths (project rule).
+   */
+  private renderTripPreview(): void {
+    const el = document.getElementById('trip-preview')
+    if (!el || this.stops.length === 0) return
+
+    el.innerHTML = `
+      <div class="trip-preview-map">${buildStopMiniMapSvg(this.stops, { aspectRatio: 8 })}</div>
+      <a class="btn btn--primary trip-preview-cta" href="#map-page">${t('map.previewCta')}</a>`
+
+    el.querySelectorAll<HTMLAnchorElement>('.trip-preview-cta').forEach((cta) => {
+      cta.addEventListener('click', () => {
+        this.onStopSelect(this.stops[0]!, { fly: true })
+      })
+    })
+  }
+
   private renderOverviewTable(): void {
     const el = document.getElementById('overview-table')
     if (!el || !this.currentItinerary) return
@@ -483,6 +507,7 @@ export class ItineraryView {
               <div class="card-photo" id="photo-${s.id}">
                 <div class="card-photo-placeholder">${escapeHtml(s.dest)}</div>
               </div>
+              ${buildStopMiniMapSvg(this.stops, { activeIndex: idx })}
               <div class="card-content">
               <div class="card-head">
                 <div><div class="card-dest">${escapeHtml(s.dest)}</div><div class="card-region region--${regionColorKey(s.region)}">${escapeHtml(s.region)}</div></div>
