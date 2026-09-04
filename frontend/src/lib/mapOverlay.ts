@@ -1,5 +1,5 @@
-import { parseMapPageHash } from './mapRoute'
 import type { MapPageRoute } from './mapRoute'
+import { parseMapPageHash } from './mapRoute'
 
 /**
  * Focus/scroll controller for the #map-page overlay (#24, part 2).

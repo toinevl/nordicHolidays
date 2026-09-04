@@ -1,8 +1,8 @@
+import { ApiError,apiClient } from '../api/client'
 import { t } from '../i18n/index'
-import { getOwnerId } from '../lib/identity'
-import { apiClient, ApiError } from '../api/client'
-import type { StopNote } from '../types'
 import { escapeHtml } from '../lib/escape'
+import { getOwnerId } from '../lib/identity'
+import type { StopNote } from '../types'
 
 /**
  * Stop-notes prikbord (#173/#174).

@@ -462,7 +462,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   properties: {
     serverFarmId: serverFarm.id
     enabled: true
-    httpsOnly: false
+    httpsOnly: true // #31: force HTTPS (live clients + smoke tests all use https)
     publicNetworkAccess: 'Enabled'
     clientAffinityEnabled: false
     siteConfig: {

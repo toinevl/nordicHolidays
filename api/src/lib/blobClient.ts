@@ -1,5 +1,5 @@
-import { BlobServiceClient, ContainerClient } from '@azure/storage-blob'
 import { DefaultAzureCredential } from '@azure/identity'
+import { BlobServiceClient, ContainerClient } from '@azure/storage-blob'
 
 // Cache the service client at module level to avoid recreating it per call
 // (mirrors tableClient.ts).

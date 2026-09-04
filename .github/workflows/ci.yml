@@ -19,11 +19,17 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Lint frontend (#28)
+        run: cd frontend && npx eslint "src/**/*.ts"
+
       - name: Install & build frontend
         run: cd frontend && npm ci && npm run build
 
       - name: Run frontend tests
         run: cd frontend && npm test
+
+      - name: Lint API (#28)
+        run: cd api && npx eslint "src/**/*.ts"
 
       - name: Install & build API
         run: cd api && npm ci && npx tsc --noEmit
