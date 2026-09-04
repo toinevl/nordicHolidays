@@ -5,6 +5,7 @@ vi.mock('./tableClient', () => ({
 }))
 
 import {
+  RATE_LIMIT_BREAKER_WINDOW_MS,
   RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR,
   RATE_LIMIT_ITINERARY_WRITE_PER_OWNER_PER_HOUR,
   RATE_LIMIT_PER_IP_PER_HOUR,
@@ -16,8 +17,13 @@ import {
   checkAndIncrementTrackRateLimit,
   checkGlobalDailyGenerateCap,
   checkPartnerDailyGenerateCap,
+  resetRateLimitCircuitBreakerForTests,
 } from './rateLimit'
 import { getTableClient } from './tableClient'
+
+// The availability-limit circuit breaker is module-global state; reset it
+// before EVERY test in this file so tests are order-independent.
+beforeEach(() => resetRateLimitCircuitBreakerForTests())
 
 function makeRequest(ip?: string): any {
   return {
@@ -449,7 +455,7 @@ describe('checkGlobalDailyGenerateCap (#149)', () => {
     expect(result.allowed).toBe(false)
   })
 
-  it('fails open on table client errors', async () => {
+  it('fails CLOSED on table client errors (#32): a storage outage must not silently disable the daily spend cap', async () => {
     const client = makeClient({
       getEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
       createEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
@@ -459,7 +465,23 @@ describe('checkGlobalDailyGenerateCap (#149)', () => {
     const mockLogger = { log: { error: vi.fn() } }
     const result = await checkGlobalDailyGenerateCap(mockLogger as any)
 
-    expect(result.allowed).toBe(true)
+    expect(result.allowed).toBe(false)
+    expect(result.retryAfterSeconds).toBeGreaterThan(0)
+    expect(result.retryAfterSeconds).toBeLessThanOrEqual(86400)
+    expect(mockLogger.log.error).toHaveBeenCalled()
+  })
+
+  it('fails CLOSED when the inner create-on-404 path throws a storage error (#32)', async () => {
+    const client = makeClient({
+      getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }),
+      createEntity: vi.fn().mockRejectedValue(new Error('Table storage error')),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const mockLogger = { log: { error: vi.fn() } }
+    const result = await checkGlobalDailyGenerateCap(mockLogger as any)
+
+    expect(result.allowed).toBe(false)
     expect(mockLogger.log.error).toHaveBeenCalled()
   })
 
@@ -475,6 +497,83 @@ describe('checkGlobalDailyGenerateCap (#149)', () => {
     expect(pk).toBe('gen-global')
     expect(pk.startsWith('owner:')).toBe(false)
     expect(pk.startsWith('ip:')).toBe(false)
+  })
+})
+
+describe('per-owner/IP limiter circuit breaker (#32)', () => {
+  // These tests use vi.setSystemTime to age the breaker past its window;
+  // restore real time after each so other suites are unaffected.
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  function failingClient() {
+    return makeClient({
+      getEntity: vi.fn().mockRejectedValue(new Error('Table storage outage')),
+      createEntity: vi.fn().mockRejectedValue(new Error('Table storage outage')),
+    })
+  }
+
+  it('stays fail-open on a storage error but logs it (availability preserved, #32)', async () => {
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(failingClient())
+
+    const mockLogger = { log: { error: vi.fn() } }
+    const result = await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+
+    expect(result.allowed).toBe(true)
+    expect(mockLogger.log.error).toHaveBeenCalled()
+  })
+
+  it('after the first storage error, requests within the open-state window skip the table check and the transition is logged once', async () => {
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(failingClient())
+
+    const mockLogger = { log: { error: vi.fn() } }
+    // First call probes Table Storage, fails, and arms the breaker.
+    await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+    const callsAfterProbe = (getTableClient as ReturnType<typeof vi.fn>).mock.calls.length
+    const errorsAfterProbe = mockLogger.log.error.mock.calls.length
+    expect(errorsAfterProbe).toBeGreaterThan(0)
+
+    // While open, no further Table Storage attempts and no further error logs.
+    const second = await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+    expect(second.allowed).toBe(true)
+    expect((getTableClient as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsAfterProbe)
+
+    await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+    expect(mockLogger.log.error.mock.calls.length).toBe(errorsAfterProbe)
+  })
+
+  it('after the open-state window expires the next request probes Table Storage again and a healthy check closes the breaker', async () => {
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(failingClient())
+    const mockLogger = { log: { error: vi.fn() } }
+    await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+
+    // Age the breaker past its open-state window.
+    vi.setSystemTime(Date.now() + RATE_LIMIT_BREAKER_WINDOW_MS + 1000)
+
+    const healthy = makeClient({ getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }) })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(healthy)
+
+    const result = await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+    expect(result.allowed).toBe(true)
+    expect(healthy.createEntity).toHaveBeenCalledTimes(2) // owner + IP buckets recreated
+
+    // Breaker fully closed again: the next request goes back to storage too.
+    await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+    expect(healthy.createEntity).toHaveBeenCalledTimes(4)
+  })
+
+  it('a storage error after the window expires re-arms the breaker and re-logs the transition', async () => {
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(failingClient())
+    const mockLogger = { log: { error: vi.fn() } }
+    await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+    const errorsAfterFirstTrip = mockLogger.log.error.mock.calls.length
+    expect(errorsAfterFirstTrip).toBeGreaterThan(0)
+
+    vi.setSystemTime(Date.now() + RATE_LIMIT_BREAKER_WINDOW_MS + 1000)
+    await checkAndIncrementRateLimit(makeRequest('198.51.100.17'), 'owner-åke', mockLogger as any)
+    expect(mockLogger.log.error.mock.calls.length).toBeGreaterThan(errorsAfterFirstTrip)
   })
 })
 
