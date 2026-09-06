@@ -16,9 +16,19 @@ vi.mock('../lib/identity', () => ({
   authErrorResponse: vi.fn((err, origin) => ({ status: 401, body: JSON.stringify({ error: (err as Error).message }), headers: {}, } as any)),
 }))
 
-import { getProfileHandler, putProfileHandler } from '../functions/profile'
+import { getProfileHandler, getPublicProfileHandler, putProfileHandler } from '../functions/profile'
 import { resolveOwnerId } from '../lib/identity'
 import { getTableClient } from '../lib/tableClient'
+
+vi.mock('../lib/rateLimit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/rateLimit')>()
+  return {
+    ...actual,
+    checkAndIncrementProfilePublicRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
+  }
+})
+
+import { checkAndIncrementProfilePublicRateLimit } from '../lib/rateLimit'
 
 const mockResolveOwnerId = resolveOwnerId as ReturnType<typeof vi.fn>
 const mockGetTableClient = getTableClient as ReturnType<typeof vi.fn>
@@ -267,5 +277,59 @@ describe('PUT /api/profile', () => {
     const body = JSON.parse(result.body as string)
     // The upserted entity should have ownerA's ID as partition key
     expect(body.ownerId).toBe('entra-sub-1')
+  })
+})
+
+// #45: /api/profile/public is the only endpoint without a rate limiter, while
+// creator ids are publicly echoed by GET /api/itineraries/:id — so display
+// names could be enumerated without bound. The public handler must consult
+// the same per-IP limiter the partners-lookup uses before touching Profiles.
+describe('GET /api/profile/public (#45)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(checkAndIncrementProfilePublicRateLimit as ReturnType<typeof vi.fn>).mockResolvedValue({ allowed: true })
+  })
+
+  it('consults the per-IP limiter before reading the profile', async () => {
+    mockGetTableClient.mockReturnValue({
+      getEntity: vi.fn().mockResolvedValue(profileA),
+      upsertEntity: vi.fn(),
+    })
+    const req = {
+      method: 'GET',
+      headers: new Map([['origin', 'http://localhost']]),
+      query: new Map([['ownerId', 'entra-sub-1']]),
+    } as any
+    const result = await getPublicProfileHandler(req, makeContext())
+    expect(result.status).toBe(200)
+    expect(checkAndIncrementProfilePublicRateLimit).toHaveBeenCalledOnce()
+  })
+
+  it('returns 429 with Retry-After when the limiter blocks the request', async () => {
+    ;(checkAndIncrementProfilePublicRateLimit as ReturnType<typeof vi.fn>).mockResolvedValue({ allowed: false, retryAfterSeconds: 3600 })
+    const req = {
+      method: 'GET',
+      headers: new Map([['origin', 'http://localhost']]),
+      query: new Map([['ownerId', 'entra-sub-1']]),
+    } as any
+    const result = await getPublicProfileHandler(req, makeContext())
+    expect(result.status).toBe(429)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toMatch(/too many requests/i)
+    expect(body.retryAfterSeconds).toBe(3600)
+    expect((result.headers as Record<string, string>)['Retry-After']).toBe('3600')
+  })
+
+  it('does not touch Profiles when the limiter blocks (429 short-circuits)', async () => {
+    ;(checkAndIncrementProfilePublicRateLimit as ReturnType<typeof vi.fn>).mockResolvedValue({ allowed: false, retryAfterSeconds: 1200 })
+    const getEntityMock = vi.fn()
+    mockGetTableClient.mockReturnValue({ getEntity: getEntityMock, upsertEntity: vi.fn() })
+    const req = {
+      method: 'GET',
+      headers: new Map([['origin', 'http://localhost']]),
+      query: new Map([['ownerId', 'entra-sub-1']]),
+    } as any
+    await getPublicProfileHandler(req, makeContext())
+    expect(getEntityMock).not.toHaveBeenCalled()
   })
 })

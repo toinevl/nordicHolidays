@@ -16,10 +16,12 @@ vi.mock('../lib/tableClient', () => {
 })
 vi.mock('../lib/rateLimit', () => ({
   checkAndIncrementItineraryWriteRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
+  // #35a: the handler reads this real constant to set the truncation header
+  limitReachedHeader: 'X-Limit-Reached',
 }))
 vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-id-123') }))
 
-import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
+import { checkAndIncrementItineraryWriteRateLimit, limitReachedHeader } from '../lib/rateLimit'
 import { getTableClient } from '../lib/tableClient'
 import {
   getItineraryHandler,
@@ -75,6 +77,56 @@ describe('GET /api/itineraries', () => {
     expect(body).toHaveLength(1)
     expect(body[0].id).toBe('id1')
     expect(body[0]).not.toHaveProperty('itineraryJson')
+  })
+
+  // #35a: the shared Itineraries partition is fully scanned on every
+  // Saved-trips-open. Without a cap the response (and the scan itself) grows
+  // unbounded with the table. The list endpoint must return at most
+  // LIST_MAX_RESULTS summaries and flag when the cap cut entries off.
+  it('caps the listing at 50 summaries and sets limitReached when more entities exist (#35a)', async () => {
+    const client = makeClient({
+      listEntities: vi.fn(async function* () {
+        for (let i = 0; i < 60; i++) {
+          yield {
+            partitionKey: 'shared',
+            rowKey: `id-${i}`,
+            name: `Trip Malmö ${i}`,
+            createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+            startCity: 'Malmö',
+            endCity: 'Västra Götaland',
+          }
+        }
+      }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const result = await listItinerariesHandler({ method: 'GET', headers: new Map() } as any, makeContext())
+    const body = JSON.parse(result.body as string) as SavedItinerarySummary[]
+    expect(result.status).toBe(200)
+    expect(body).toHaveLength(50)
+    expect((result.headers as Record<string, string>)[limitReachedHeader]).toBe('true')
+  })
+
+  it('keeps limitReached unset when the table holds fewer than the cap (#35a)', async () => {
+    const client = makeClient({
+      listEntities: vi.fn(async function* () {
+        for (let i = 0; i < 3; i++) {
+          yield {
+            partitionKey: 'shared',
+            rowKey: `id-${i}`,
+            name: `Trip Kiruna ${i}`,
+            createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+            startCity: 'Kiruna',
+            endCity: 'Abisko',
+          }
+        }
+      }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const result = await listItinerariesHandler({ method: 'GET', headers: new Map() } as any, makeContext())
+    const body = JSON.parse(result.body as string) as SavedItinerarySummary[]
+    expect(result.status).toBe(200)
+    expect(body).toHaveLength(3)
+    expect((result.headers as Record<string, string>)[limitReachedHeader]).toBeUndefined()
   })
 })
 

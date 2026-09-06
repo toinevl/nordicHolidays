@@ -14,10 +14,12 @@ vi.mock('../lib/tableClient', () => {
 })
 vi.mock('../lib/rateLimit', () => ({
   checkAndIncrementNoteRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
+  // #35b: the handler reads this real constant to set the truncation header
+  limitReachedHeader: 'X-Limit-Reached',
 }))
 vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-id-123') }))
 
-import { checkAndIncrementNoteRateLimit } from '../lib/rateLimit'
+import { checkAndIncrementNoteRateLimit, limitReachedHeader } from '../lib/rateLimit'
 import { getTableClient } from '../lib/tableClient'
 import { createNoteHandler, deleteNoteHandler,listNotesHandler } from './notes'
 
@@ -206,6 +208,52 @@ describe('GET /api/itineraries/:id/notes', () => {
     const body = JSON.parse(result.body as string)
     expect(result.status).toBe(200)
     expect(body.notes).toEqual([])
+  })
+
+  // #35b: notes are publicly POSTable (30/hour/IP), so a trip partition can
+  // grow without bound. The list endpoint must cap how many notes it scans
+  // and returns per request — the NEWEST 100 survive (oldest are cut) while
+  // the board's existing chronological (ascending) read order stays intact.
+  it('caps the listing at the newest 100 notes and sets X-Limit-Reached when more exist (#35b)', async () => {
+    const client = makeClient({
+      listEntities: vi.fn(async function* () {
+        for (let i = 0; i < 130; i++) {
+          yield {
+            partitionKey: 'trip-1',
+            rowKey: `stop-malmo:${String(i).padStart(3, '0')}`,
+            stopId: 'stop-malmo',
+            ownerUuid: i % 2 === 0 ? OWNER_A : OWNER_B,
+            text: `Notitie bij Malmö ${i}`,
+            createdAt: new Date(Date.UTC(2026, 7, 28, 0, i)).toISOString(),
+          }
+        }
+      }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const req = { params: { id: 'trip-1' }, method: 'GET', headers: makeHeaders() } as any
+    const result = await listNotesHandler(req, makeContext())
+    const body = JSON.parse(result.body as string) as { notes: Array<{ id: string; createdAt: string }> }
+    expect(result.status).toBe(200)
+    expect(body.notes).toHaveLength(100)
+    // chronological order preserved: oldest KEPT note first (notes 0-29 were
+    // cut, the newest 100 survive), newest note last
+    expect(body.notes[0].createdAt).toBe(new Date(Date.UTC(2026, 7, 28, 0, 30)).toISOString())
+    expect(body.notes[99].createdAt).toBe(new Date(Date.UTC(2026, 7, 28, 0, 129)).toISOString())
+    expect((result.headers as Record<string, string>)[limitReachedHeader]).toBe('true')
+  })
+
+  it('keeps X-Limit-Reached unset for a trip with fewer than 100 notes (#35b)', async () => {
+    const entities = [
+      { partitionKey: 'trip-1', rowKey: 'stop-malmo:a', stopId: 'stop-malmo', ownerUuid: OWNER_A, text: 'Fika i Malmö', createdAt: '2026-08-28T09:00:00.000Z' },
+    ]
+    const client = makeClient({ listEntities: vi.fn(async function* () { yield entities[0] }) })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const req = { params: { id: 'trip-1' }, method: 'GET', headers: makeHeaders() } as any
+    const result = await listNotesHandler(req, makeContext())
+    const body = JSON.parse(result.body as string)
+    expect(result.status).toBe(200)
+    expect(body.notes).toHaveLength(1)
+    expect((result.headers as Record<string, string>)[limitReachedHeader]).toBeUndefined()
   })
 
   it('sets no non-ASCII response headers (Azure Functions host rejects those with a 500)', async () => {

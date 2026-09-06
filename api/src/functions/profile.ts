@@ -2,6 +2,7 @@ import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/fu
 
 import { corsPreflightResponse, withCors } from '../lib/cors'
 import { authErrorResponse, resolveOwnerId } from '../lib/identity'
+import { checkAndIncrementProfilePublicRateLimit } from '../lib/rateLimit'
 import { ProfilePutBodySchema, logError } from '../lib/schemas'
 import { ensureTable, getTableClient } from '../lib/tableClient'
 import type { Profile } from '../types'
@@ -189,6 +190,23 @@ export async function getPublicProfileHandler(
   const ownerId = req.query.get('ownerId') ?? ''
   if (!ownerId) {
     return withHeaders({ status: 400, body: JSON.stringify({ error: 'Missing ownerId' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  }
+
+  // #45: this endpoint is anonymous and creator ids are publicly echoed by
+  // GET /api/itineraries/:id, so without a limiter display names could be
+  // enumerated without bound. Same per-IP limiter pattern as the
+  // partner-lookup endpoint.
+  const rateLimitResult = await checkAndIncrementProfilePublicRateLimit(req, ctx)
+  if (!rateLimitResult.allowed) {
+    const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
+    return withHeaders(
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+        body: JSON.stringify({ error: 'Too many requests', retryAfterSeconds: retryAfter }),
+      },
+      origin,
+    )
   }
 
   try {

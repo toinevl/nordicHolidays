@@ -27,9 +27,13 @@ vi.mock('../lib/partners', () => ({
 }))
 
 import { authErrorResponse, resolveOwnerId } from '../lib/identity'
-import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { ITINERARY_FUNCTION } from '../lib/itinerarySchema'
 import { getLlmClient } from '../lib/llmClient'
 import { getPartner } from '../lib/partners'
+// #38: the system prompt is regionalised — assert against the active region
+// pack (the new source of truth) instead of the old lib/itinerarySchema export.
+import { regionConfig } from '../region'
+const SYSTEM_PROMPT = regionConfig.promptTemplate.systemPrompt
 import {
   checkAndIncrementRateLimit,
   checkGlobalDailyGenerateCap,
@@ -484,10 +488,31 @@ describe('POST /api/generate', () => {
     expect(SYSTEM_PROMPT).toMatch(/nights.*0|0.*nights/i)
   })
 
+  // #38: the system prompt must come from the active region pack, not from a
+  // hardcoded lib export — a new region (e.g. US) would otherwise silently
+  // inherit Nordic geography in its system message.
+  it('sends the region pack systemPrompt as the LLM system message (#38)', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Kiruna', tripDays: 7, country: 'SE' }),
+    } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const systemMessage = callArgs.messages.find((m: { role: string }) => m.role === 'system').content as string
+    expect(systemMessage).toBe(regionConfig.promptTemplate.systemPrompt)
+    expect(systemMessage).toMatch(/Nordic road trip planner/)
+  })
+
   it('SYSTEM_PROMPT requires day trips to carry the excursion destination name and coordinates', () => {
     expect(SYSTEM_PROMPT).toMatch(/destination's own lat\/lng/i)
     expect(SYSTEM_PROMPT).toMatch(/never repeat the base/i)
-    const stopsItems = ITINERARY_FUNCTION.function.parameters.properties.stops.items as any
+    const stopsItems = (ITINERARY_FUNCTION.function.parameters as any).properties.stops.items as any
     expect(stopsItems.properties.lat.description).toMatch(/not the base/i)
     expect(stopsItems.properties.city.description).toMatch(/never a repeat of the base/i)
   })
@@ -499,7 +524,7 @@ describe('POST /api/generate', () => {
   })
 
   it('ITINERARY_FUNCTION nights property description explains 0 = day trip', () => {
-    const stopsItems = ITINERARY_FUNCTION.function.parameters.properties.stops.items as any
+    const stopsItems = (ITINERARY_FUNCTION.function.parameters as any).properties.stops.items as any
     const nightsProperty = stopsItems.properties.nights
     expect(nightsProperty.description).toMatch(/day trip/i)
     expect(nightsProperty.description).toMatch(/0/)
