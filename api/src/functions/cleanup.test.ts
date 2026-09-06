@@ -122,6 +122,32 @@ describe('sweepTable', () => {
     expect(result.scanned).toBe(2)
     expect(result.deleted).toBe(0)
   })
+
+  it('sweeps ItineraryHistory rows with the same cutoff age as Itineraries', async () => {
+    // History version of a "Malmö weekend" trip, recorded 2 years ago — stale
+    // under the same 1-year cutoff the trip itself would be swept with.
+    const client = makeClient([
+      { partitionKey: 'trip-123', rowKey: '000735332280999-vabc123', stateJson: '{}', timestamp: new Date(NOW - 2 * YEAR_MS).toISOString() },
+    ])
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await sweepTable('ItineraryHistory', NOW - YEAR_MS, false, makeContext())
+
+    expect(client.deleteEntity).toHaveBeenCalledWith('trip-123', '000735332280999-vabc123')
+    expect(result).toEqual({ scanned: 1, deleted: 1 })
+  })
+
+  it('keeps fresh ItineraryHistory rows (recently edited trip)', async () => {
+    const client = makeClient([
+      { partitionKey: 'trip-123', rowKey: '000735332280999-vabc123', stateJson: '{}', timestamp: new Date(NOW - 10 * 24 * 60 * 60 * 1000).toISOString() },
+    ])
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+
+    const result = await sweepTable('ItineraryHistory', NOW - YEAR_MS, false, makeContext())
+
+    expect(client.deleteEntity).not.toHaveBeenCalled()
+    expect(result).toEqual({ scanned: 1, deleted: 0 })
+  })
 })
 
 describe('retentionCleanupHandler (timer)', () => {
@@ -132,7 +158,7 @@ describe('retentionCleanupHandler (timer)', () => {
     delete process.env.RETENTION_DRY_RUN
   })
 
-  it('sweeps both Itineraries and Leads and never throws', async () => {
+  it('sweeps Itineraries, ItineraryHistory and Leads and never throws', async () => {
     const client = makeClient([])
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
     const ctx = makeContext()
@@ -141,6 +167,7 @@ describe('retentionCleanupHandler (timer)', () => {
 
     const swept = (getTableClient as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
     expect(swept).toContain('Itineraries')
+    expect(swept).toContain('ItineraryHistory')
     expect(swept).toContain('Leads')
   })
 

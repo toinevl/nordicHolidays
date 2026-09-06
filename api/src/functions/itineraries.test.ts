@@ -24,6 +24,7 @@ import { getTableClient } from '../lib/tableClient'
 import {
   getItineraryHandler,
   listItinerariesHandler,
+  restoreItineraryHistoryHandler,
   saveItineraryHandler,
   undoItineraryHandler,
   updateItineraryHandler,
@@ -377,6 +378,129 @@ describe('PATCH /api/itineraries/:id — undo snapshot (#51)', () => {
   })
 })
 
+describe('#29 multi-level trip history — append on PATCH', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function historyAwareClients(entity: Record<string, unknown>, historyOverrides: Record<string, unknown> = {}) {
+    const itinClient = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
+    const historyClient = makeClient(historyOverrides)
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockImplementation((name: string) =>
+      name === 'ItineraryHistory' ? historyClient : itinClient,
+    )
+    return { itinClient, historyClient }
+  }
+
+  function patchRequest(id = 'id1') {
+    return { method: 'PATCH', params: { id }, json: async () => ({ title: 'Renamed till Helsingborg' }), headers: new Map() } as any
+  }
+
+  function baseEntity(itinTitle = 'Roadtrip till Malmö'): Record<string, unknown> {
+    const itin = { title: itinTitle, totalDays: 5, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }
+    return {
+      partitionKey: 'shared',
+      rowKey: 'id1',
+      etag: 'etag-1',
+      name: 'Resa till Gärdet',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Malmö',
+      endCity: 'Västra Götaland',
+      itineraryJson: JSON.stringify(itin),
+      thumbnail: undefined,
+    }
+  }
+
+  it('appends the pre-patch entity state to ItineraryHistory on every successful PATCH (#29)', async () => {
+    const { itinClient, historyClient } = historyAwareClients(baseEntity())
+
+    const result = await updateItineraryHandler(patchRequest(), makeContext())
+
+    expect(result.status).toBe(200)
+    expect(historyClient.createEntity).toHaveBeenCalledOnce()
+    const row = (historyClient.createEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(row.partitionKey).toBe('id1')
+    // Reverse-tick rowKey: 16-digit zero-padded tick + nanoid suffix, so the
+    // newest version sorts lexicographically first.
+    expect(row.rowKey).toMatch(/^[0-9]{16}-[A-Za-z0-9_-]+$/)
+    expect(row.createdAt).toBeTypeOf('string')
+    const state = JSON.parse(row.stateJson)
+    expect(state.name).toBe('Resa till Gärdet')
+    expect(state.startCity).toBe('Malmö')
+    expect(JSON.parse(state.itineraryJson).title).toBe('Roadtrip till Malmö')
+    // The itineraries table itself must not gain rows from history logic.
+    expect(itinClient.createEntity).not.toHaveBeenCalled()
+  })
+
+  it('caps history at 10 versions per trip, deleting the oldest on overshoot (#29)', async () => {
+    // Seed 10 existing versions. Reverse-tick rowKeys: lexicographically
+    // largest = oldest = seed[9] (ticks descending as i grows).
+    const seedTick = Date.UTC(2026, 5, 1)
+    const seed = Array.from({ length: 10 }, (_, i) => ({
+      partitionKey: 'id1',
+      rowKey: `${String(Number.MAX_SAFE_INTEGER - seedTick - i).padStart(16, '0')}-v${i}`,
+      stateJson: JSON.stringify({ name: `Version ${i} (Malmö)`, createdAt: '2026-06-01T00:00:00.000Z', startCity: 'Malmö', endCity: 'Västra Götaland', itineraryJson: '{}' }),
+      createdAt: '2026-06-01T00:00:00.000Z',
+    }))
+    const { historyClient } = historyAwareClients(baseEntity(), {
+      listEntities: vi.fn(async function* () { for (const s of seed) yield s }),
+    })
+
+    const result = await updateItineraryHandler(patchRequest(), makeContext())
+
+    expect(result.status).toBe(200)
+    expect(historyClient.createEntity).toHaveBeenCalledOnce()
+    expect(historyClient.deleteEntity).toHaveBeenCalledOnce()
+    // Reverse-tick rowKeys sort newest-first; the lexicographically largest
+    // rowKey is the OLDEST version (seed[0], largest tick distance).
+    expect(historyClient.deleteEntity).toHaveBeenCalledWith('id1', seed[0].rowKey)
+  })
+
+  it('does not cap (no deletes) when history is still under the limit', async () => {
+    const seedTick = Date.UTC(2026, 5, 1)
+    const seed = Array.from({ length: 3 }, (_, i) => ({
+      partitionKey: 'id1',
+      rowKey: `${String(Number.MAX_SAFE_INTEGER - seedTick - i).padStart(16, '0')}-v${i}`,
+      stateJson: '{}',
+      createdAt: '2026-06-01T00:00:00.000Z',
+    }))
+    const { historyClient } = historyAwareClients(baseEntity(), {
+      listEntities: vi.fn(async function* () { for (const s of seed) yield s }),
+    })
+
+    const result = await updateItineraryHandler(patchRequest(), makeContext())
+
+    expect(result.status).toBe(200)
+    expect(historyClient.deleteEntity).not.toHaveBeenCalled()
+  })
+
+  it('does not append history when the PATCH itself fails (404 unknown trip)', async () => {
+    const itinClient = makeClient({ getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }) })
+    const historyClient = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockImplementation((name: string) =>
+      name === 'ItineraryHistory' ? historyClient : itinClient,
+    )
+
+    const result = await updateItineraryHandler(patchRequest('nope'), makeContext())
+
+    expect(result.status).toBe(404)
+    expect(historyClient.createEntity).not.toHaveBeenCalled()
+  })
+
+  it('still returns 200 when the history append fails — best-effort, primary mutation already landed', async () => {
+    const { itinClient, historyClient } = historyAwareClients(baseEntity(), {
+      createEntity: vi.fn().mockRejectedValue(new Error('storage down')),
+    })
+
+    const result = await updateItineraryHandler(patchRequest(), makeContext())
+
+    expect(result.status).toBe(200)
+    const body = JSON.parse(result.body as string)
+    expect(body.title).toBe('Renamed till Helsingborg')
+    // Backward-compat: the #51 single-level column is still written on the entity itself.
+    const call = (itinClient.updateEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call.previousStateJson).toBeTypeOf('string')
+  })
+})
+
 describe('POST /api/itineraries/:id/undo (#51)', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -452,6 +576,85 @@ describe('POST /api/itineraries/:id/undo (#51)', () => {
     expect(result.status).toBe(404)
   })
 
+  it('falls back to the newest ItineraryHistory version when previousStateJson is empty (#29)', async () => {
+    // Post-undo entity: snapshot column cleared by the earlier undo.
+    const currentItin = { title: 'Renamed till Helsingborg', totalDays: 5, startCity: 'Malmö', endCity: 'Helsingborg', stops: [] }
+    const entity = {
+      partitionKey: 'shared',
+      rowKey: 'id1',
+      etag: 'etag-3',
+      name: 'Renamed trip',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Malmö',
+      endCity: 'Helsingborg',
+      itineraryJson: JSON.stringify(currentItin),
+      previousStateJson: '',
+    }
+    const historyState = {
+      name: 'Resa till Gärdet',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Stockholm (Gärdet)',
+      endCity: 'Västra Götaland',
+      itineraryJson: JSON.stringify({ title: 'Roadtrip till Malmö', totalDays: 5, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }),
+    }
+    // Two history versions; lexicographically SMALLEST reverse-tick rowKey = newest.
+    const historyVersions = [
+      { partitionKey: 'id1', rowKey: '000735332280999-vnewest', stateJson: JSON.stringify(historyState), createdAt: '2026-06-02T00:00:00.000Z' },
+      { partitionKey: 'id1', rowKey: '000735332280999-volder__', stateJson: JSON.stringify({ ...historyState, name: 'Oudste Malmö-versie' }), createdAt: '2026-06-01T00:00:00.000Z' },
+    ]
+    const itinClient = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
+    const historyClient = makeClient({
+      listEntities: vi.fn(async function* () { yield historyVersions[0]; yield historyVersions[1] }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockImplementation((name: string) =>
+      name === 'ItineraryHistory' ? historyClient : itinClient,
+    )
+
+    const req = { method: 'POST', params: { id: 'id1' }, headers: new Map() } as any
+    const result = await undoItineraryHandler(req, makeContext())
+
+    expect(result.status).toBe(200)
+    const body = JSON.parse(result.body as string)
+    expect(body.title).toBe('Roadtrip till Malmö')
+    // An older version remains in history, so more undo is still available.
+    expect(body.hasPreviousVersion).toBe(true)
+
+    // The trip entity was restored from the NEWEST history version.
+    const call = (itinClient.updateEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call.name).toBe('Resa till Gärdet')
+    expect(call.startCity).toBe('Stockholm (Gärdet)')
+    expect(JSON.parse(call.itineraryJson).title).toBe('Roadtrip till Malmö')
+    // Pop semantics: the consumed version is deleted so successive undos walk
+    // backwards through history and eventually end in the same 409 as before.
+    expect(call.previousStateJson).toBe('')
+    expect(historyClient.deleteEntity).toHaveBeenCalledWith('id1', '000735332280999-vnewest')
+  })
+
+  it('keeps working after a fallback undo is exhausted: 409 when history is fully consumed', async () => {
+    const itin = { title: 'Roadtrip till Malmö', totalDays: 5, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }
+    const entity = {
+      partitionKey: 'shared',
+      rowKey: 'id1',
+      etag: 'etag-1',
+      name: 'Resa till Gärdet',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Malmö',
+      endCity: 'Västra Götaland',
+      itineraryJson: JSON.stringify(itin),
+    }
+    const itinClient = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
+    const historyClient = makeClient() // empty history partition
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockImplementation((name: string) =>
+      name === 'ItineraryHistory' ? historyClient : itinClient,
+    )
+
+    const req = { method: 'POST', params: { id: 'id1' }, headers: new Map() } as any
+    const result = await undoItineraryHandler(req, makeContext())
+
+    expect(result.status).toBe(409)
+    expect(itinClient.updateEntity).not.toHaveBeenCalled()
+  })
+
   it('returns 429 with Retry-After when itinerary-write rate limit is exceeded', async () => {
     const client = makeClient()
     ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
@@ -466,6 +669,148 @@ describe('POST /api/itineraries/:id/undo (#51)', () => {
     const body = JSON.parse(result.body as string)
     expect(body.error).toBe('Rate limit exceeded')
     expect(client.getEntity).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/itineraries/:id/history/restore/:rowKey (#29)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function restoreSetup(entity: Record<string, unknown>, historyVersions: Record<string, unknown>[]) {
+    const itinClient = makeClient({ getEntity: vi.fn().mockResolvedValue(entity) })
+    // History mock mimics @azure/data-tables semantics: getEntity resolves the
+    // matching version or rejects with statusCode 404.
+    const historyClient = makeClient({
+      getEntity: vi.fn(async (pk: string, rk: string) => {
+        const found = historyVersions.find((v) => v.partitionKey === pk && v.rowKey === rk)
+        if (!found) {
+          const err: Error & { statusCode?: number } = new Error('Not Found')
+          err.statusCode = 404
+          throw err
+        }
+        return found
+      }),
+      listEntities: vi.fn(async function* () { for (const v of historyVersions) yield v }),
+    })
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockImplementation((name: string) =>
+      name === 'ItineraryHistory' ? historyClient : itinClient,
+    )
+    return { itinClient, historyClient }
+  }
+
+  function currentEntity(): Record<string, unknown> {
+    const currentItin = { title: 'Renamed till Helsingborg', totalDays: 5, startCity: 'Malmö', endCity: 'Helsingborg', stops: [] }
+    return {
+      partitionKey: 'shared',
+      rowKey: 'id1',
+      etag: 'etag-3',
+      name: 'Renamed trip',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Malmö',
+      endCity: 'Helsingborg',
+      itineraryJson: JSON.stringify(currentItin),
+      previousStateJson: '',
+    }
+  }
+
+  function makeRestoreRequest(rowKey = '000735332280999-vabc123') {
+    return { method: 'POST', params: { id: 'id1', rowKey }, headers: new Map() } as any
+  }
+
+  const OLDER = {
+    partitionKey: 'id1',
+    rowKey: '000735332280999-volder__',
+    stateJson: JSON.stringify({
+      name: 'Resa till Gärdet',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Stockholm (Gärdet)',
+      endCity: 'Västra Götaland',
+      itineraryJson: JSON.stringify({ title: 'Roadtrip till Malmö', totalDays: 5, startCity: 'Malmö', endCity: 'Västra Götaland', stops: [] }),
+    }),
+    createdAt: '2026-06-01T00:00:00.000Z',
+  }
+  const NEWER = {
+    partitionKey: 'id1',
+    rowKey: '000735332280998-vnewest',
+    stateJson: JSON.stringify({
+      name: 'Renamed trip (Kiruna)',
+      createdAt: '2026-06-01T00:00:00.000Z',
+      startCity: 'Kiruna',
+      endCity: 'Helsingborg',
+      itineraryJson: JSON.stringify({ title: 'Renamed till Helsingborg', totalDays: 5, startCity: 'Kiruna', endCity: 'Helsingborg', stops: [] }),
+    }),
+    createdAt: '2026-06-02T00:00:00.000Z',
+  }
+
+  it('restores the specific requested version and appends the pre-restore state to history', async () => {
+    const { itinClient, historyClient } = restoreSetup(currentEntity(), [NEWER, OLDER])
+
+    const result = await restoreItineraryHistoryHandler(makeRestoreRequest(OLDER.rowKey), makeContext())
+
+    expect(result.status).toBe(200)
+    const body = JSON.parse(result.body as string)
+    expect(body.title).toBe('Roadtrip till Malmö')
+    expect(body.startCity).toBe('Malmö')
+    expect(body.restoredFrom).toBe(OLDER.rowKey)
+    expect(body.hasPreviousVersion).toBe(true)
+
+    // Trip entity replaced with the saved state, same partition/rowKey.
+    const call = (itinClient.updateEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(call.partitionKey).toBe('shared')
+    expect(call.rowKey).toBe('id1')
+    expect(call.name).toBe('Resa till Gärdet')
+    expect(call.startCity).toBe('Stockholm (Gärdet)')
+    expect(call.endCity).toBe('Västra Götaland')
+    expect(JSON.parse(call.itineraryJson).title).toBe('Roadtrip till Malmö')
+    // Single-level column now holds the pre-restore state, so plain undo keeps working.
+    expect(JSON.parse(call.previousStateJson).itineraryJson).toBe(currentEntity().itineraryJson)
+
+    // Pre-restore state was appended to history (no data loss on restore).
+    const appended = (historyClient.createEntity as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+    expect(appended.partitionKey).toBe('id1')
+    expect(appended.rowKey).toMatch(/^[0-9]{16}-[A-Za-z0-9_-]+$/)
+    expect(JSON.parse(appended.stateJson).name).toBe('Renamed trip')
+  })
+
+  it('returns 404 with a clean error when the rowKey does not exist for this trip', async () => {
+    const { itinClient } = restoreSetup(currentEntity(), [NEWER, OLDER])
+
+    const result = await restoreItineraryHistoryHandler(makeRestoreRequest('000735332280999-vonbestaat'), makeContext())
+
+    expect(result.status).toBe(404)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('History version not found')
+    expect(itinClient.updateEntity).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 when the trip itself does not exist', async () => {
+    const itinClient = makeClient({ getEntity: vi.fn().mockRejectedValue({ statusCode: 404 }) })
+    const historyClient = makeClient()
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockImplementation((name: string) =>
+      name === 'ItineraryHistory' ? historyClient : itinClient,
+    )
+
+    const result = await restoreItineraryHistoryHandler(makeRestoreRequest(), makeContext())
+
+    expect(result.status).toBe(404)
+    expect(historyClient.createEntity).not.toHaveBeenCalled()
+  })
+
+  it('returns 405 for non-POST methods', async () => {
+    const result = await restoreItineraryHistoryHandler({ method: 'GET', params: { id: 'id1', rowKey: 'x' }, headers: new Map() } as any, makeContext())
+    expect(result.status).toBe(405)
+  })
+
+  it('returns 429 with Retry-After when itinerary-write rate limit is exceeded', async () => {
+    restoreSetup(currentEntity(), [NEWER, OLDER])
+    ;(checkAndIncrementItineraryWriteRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 60,
+    })
+    const result = await restoreItineraryHistoryHandler(makeRestoreRequest(), makeContext())
+    expect(result.status).toBe(429)
+    expect(result.headers).toHaveProperty('Retry-After', '60')
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('Rate limit exceeded')
   })
 })
 
