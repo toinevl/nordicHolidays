@@ -34,6 +34,13 @@ export class NotesBoard {
   private loading = false
   private adding = false
   private error: string | null = null
+  /**
+   * The mounted host this board last rendered into. Async transitions (notes
+   * loaded, note added/deleted) must re-render into THIS node — a bare
+   * this.render() builds a detached tree the visitor never sees (the board
+   * would stay on its previous state, e.g. "Loading…", forever).
+   */
+  private host: HTMLElement | null = null
 
   constructor(
     private readonly itineraryId: string,
@@ -55,7 +62,7 @@ export class NotesBoard {
       return
     }
     this.loading = true
-    this.render()
+    this.rerender()
     try {
       const { notes } = await apiClient.getNotes(this.itineraryId)
       notesCache.set(this.itineraryId, { notes, loadedAt: Date.now() })
@@ -64,7 +71,7 @@ export class NotesBoard {
       this.error = t('notes.loadFailed')
     } finally {
       this.loading = false
-      this.render()
+      this.rerender()
     }
   }
 
@@ -100,7 +107,7 @@ export class NotesBoard {
       }
     } finally {
       this.adding = false
-      this.render()
+      this.rerender()
     }
   }
 
@@ -108,7 +115,7 @@ export class NotesBoard {
     if (!window.confirm(t('notes.deleteConfirm'))) return
     const prev = this.notes
     this.notes = (this.notes ?? []).filter(n => n.id !== noteId) // optimistic
-    this.render()
+    this.rerender()
     try {
       await apiClient.deleteNote(this.itineraryId, noteId)
       const cached = notesCache.get(this.itineraryId)
@@ -120,7 +127,7 @@ export class NotesBoard {
     } catch {
       this.notes = prev // rollback
       this.onToast(t('notes.deleteFailed'), 'error')
-      this.render()
+      this.rerender()
     }
   }
 
@@ -128,6 +135,7 @@ export class NotesBoard {
     const host = document.createElement('div')
     host.className = 'notes-board'
     host.dataset.stopId = this.stopId
+    this.host = host
 
     const count = this.notes?.length ?? this.cachedCount
     const toggle = document.createElement('button')
@@ -145,6 +153,23 @@ export class NotesBoard {
 
     if (this.expanded) this.renderInto(host)
     return host
+  }
+
+  /**
+   * Re-render the whole board (toggle + panel) INTO its live mounted host.
+   * Every async transition (loading → loaded/error, note added/deleted) goes
+   * through here: rendering into a detached replacement silently discards the
+   * update — the mounted board keeps showing the pre-async state forever.
+   * NB: capture the current host FIRST — this.render() reassigns this.host as
+   * a side effect, and replaceWith on that fresh (detached) node would be a
+   * silent self-swap that freezes the visible board.
+   */
+  private rerender(): void {
+    const current = this.host
+    if (!current || !current.isConnected) return
+    const replacement = this.render()
+    current.replaceWith(replacement)
+    this.host = replacement
   }
 
   /** Re-render the expanded panel inside an existing host (keeps the toggle). */
