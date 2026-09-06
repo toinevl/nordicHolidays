@@ -4,8 +4,13 @@ import type { Preferences } from '../types'
  * Describes the shape of the prompt-building logic for a region.
  * The buildUserMessage function constructs the user-facing LLM prompt
  * from travel preferences, seasonal context, and region-specific phrasing.
+ * The systemPrompt carries the region-specific system message (#38) so a
+ * new region pack (e.g. US) cannot inherit another region's hardcoded
+ * geography — previously the Nordic system prompt leaked into every region.
  */
 export interface PromptTemplate {
+  /** Region-specific LLM system prompt (e.g. Nordic geography expertise). */
+  systemPrompt: string
   buildUserMessage: (
     prefs: Preferences,
     lang: 'en' | 'nl' | 'de',

@@ -11,10 +11,19 @@ export const RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR = 60
 export const RATE_LIMIT_TRACK_PER_IP_PER_HOUR = 120
 export const RATE_LIMIT_PARTNER_LOOKUP_PER_IP_PER_HOUR = 60
+export const RATE_LIMIT_PROFILE_PUBLIC_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_LEADS_PER_IP_PER_HOUR = 5
 export const RATE_LIMIT_NOTES_PER_OWNER_PER_HOUR = 20
 export const RATE_LIMIT_NOTES_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_TABLE_NAME = 'RateLimits'
+
+/**
+ * #35: ASCII-only response header signalling that a list endpoint hit its
+ * result cap and older entries were cut from the response. Header (not body)
+ * so existing clients reading the plain array/object shape keep working;
+ * ASCII-safe per the Azure Functions host's non-ASCII header rejection.
+ */
+export const limitReachedHeader = 'X-Limit-Reached'
 
 /**
  * #32: how long the shared availability-limiter circuit breaker stays open
@@ -684,6 +693,69 @@ export async function checkAndIncrementLeadRateLimit(
     return { allowed: true }
   } catch (err) {
     noteLimiterStorageFailure(logger, 'Leads rate limit check failed', err)
+    return { allowed: true }
+  }
+}
+
+/**
+ * Check and increment rate limit for public profile lookups (#45).
+ * /api/profile/public is anonymous and echoes display names by ownerId, and
+ * creator ids are publicly visible on shared itineraries — without a limiter
+ * display names could be enumerated without bound. Same per-IP-only pattern
+ * as the partner-lookup limiter; uses the `profile-public-ip:` partition
+ * prefix so counters never share a bucket with the other limiters.
+ */
+export async function checkAndIncrementProfilePublicRateLimit(
+  req: HttpRequest,
+  logger?: any
+): Promise<RateLimitResult> {
+  // #32: while the shared breaker is open (recent Table Storage failure),
+  // fail open WITHOUT touching storage — no per-request timeouts, no log flood.
+  if (isLimiterBreakerOpen(logger)) {
+    return { allowed: true }
+  }
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const hourWindow = getCurrentHourWindow()
+    const ip = extractIp(req)
+    const retryAfter = getSecondsUntilHourEnd()
+
+    const partitionKey = `profile-public-ip:${ip}`
+    try {
+      const entity = await client.getEntity(partitionKey, hourWindow)
+      const count = (entity.count as number) ?? 0
+      if (count >= RATE_LIMIT_PROFILE_PUBLIC_PER_IP_PER_HOUR) {
+        return { allowed: false, retryAfterSeconds: retryAfter }
+      }
+      await client.updateEntity(
+        {
+          partitionKey: entity.partitionKey as string,
+          rowKey: entity.rowKey as string,
+          ...entity,
+          count: count + 1,
+        },
+        'Merge'
+      )
+    } catch (err: any) {
+      if (err?.statusCode === 404) {
+        await client.createEntity({
+          partitionKey,
+          rowKey: hourWindow,
+          count: 1,
+          timestamp: now.toISOString(),
+        })
+      } else {
+        noteLimiterStorageFailure(logger, `Profile-public rate limit check failed for IP ${ip}`, err)
+        return { allowed: true }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    noteLimiterStorageFailure(logger, 'Profile-public rate limit check failed', err)
     return { allowed: true }
   }
 }

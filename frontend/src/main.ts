@@ -19,6 +19,7 @@ import { onConsentChange, resetConsent } from './lib/consent'
 import { legalPageLocale } from './lib/legalPages'
 import { detectInitialLocaleFromBrowser } from './lib/localeDetection'
 import { MapPageOverlay } from './lib/mapOverlay'
+import { stopsToMapStops } from './lib/mapStops'
 import { renderTimelineList, timelineStopsFromItinerary } from './lib/renderTimeline'
 import { isNavScrolled } from './lib/scrollNav'
 import { removeStopByIndex, reorderStopByIndex } from './lib/stopActions'
@@ -344,11 +345,11 @@ function sync3DMap(): void {
     // With the dynamic import (#24) the MapLibre instance arrives a beat after
     // construction; feed the stops to it as soon as init has settled.
     void map3DView.whenReady().then((ok) => {
-      if (ok && map3DView) map3DView.replaceStops(toMapStops({ ...(store.getState().currentItinerary ?? STOPS) } as Itinerary))
+      if (ok && map3DView) map3DView.replaceStops(stopsToMapStops({ ...(store.getState().currentItinerary ?? STOPS) } as Itinerary))
     })
     return
   }
-  map3DView.replaceStops(toMapStops({ ...(itinerary ?? STOPS) } as Itinerary))
+  map3DView.replaceStops(stopsToMapStops({ ...(itinerary ?? STOPS) } as Itinerary))
 }
 
 function syncTimelineFromStore(): void {
@@ -369,7 +370,7 @@ function renderTimelinePanel(): void {
  */
 function flyFocusStop(stopId: number): void {
   if (!map3DView) return
-  const target = toMapStops({ ...(store.getState().currentItinerary ?? STOPS) } as Itinerary).find(s => s.id === stopId)
+  const target = stopsToMapStops({ ...(store.getState().currentItinerary ?? STOPS) } as Itinerary).find(s => s.id === stopId)
   if (!target) return
   store.setState({ selectedStopId: target.id })
   itineraryView.setSelectedStop(target.id, false)
@@ -540,26 +541,14 @@ const statusBar = new StatusBar(
   (lang: Locale) => changeLocale(lang),
 )
 
-function toMapStops(itinerary: Itinerary): typeof STOPS {
-  return itinerary.stops.map((s, i) => ({
-    id: i + 1,
-    days: String(s.day),
-    dates: '',
-    dest: s.city,
-    region: s.region,
-    coords: [s.lng, s.lat] as [number, number],
-    tags: [],
-    nights: s.nights,
-    desc: '',
-    highlights: s.highlights,
-    from: '',
-    km: 0,
-    time: '',
-    zoom: 12,
-    pitch: 45,
-    bearing: 0,
-  }))
-}
+// #36: the itinerary→Stop[] conversion now lives in lib/mapStops and produces
+// the RICH variant everywhere (previous-stop `from`, Azure Maps km with
+// haversine fallback, drive time, per-stop date ranges) — previously this
+// file's local toMapStops() produced a bare version (km: 0, from: '', time:
+// '') while ItineraryView computed the rich one. All call sites below
+// (applyItinerary fan-out, sync3DMap, flyFocusStop) keep calling toMapStops;
+// this thin alias keeps the diff minimal.
+const toMapStops = stopsToMapStops
 
 // #20: "The Full Route" description was a static i18n string ("21 days from Malmö
 // to the High Coast...") that never reflected the actual itinerary's length.

@@ -3,7 +3,7 @@ import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/fu
 import { corsPreflightResponse, withCors } from '../lib/cors'
 import { haversineKm } from '../lib/geo'
 import { authErrorResponse, resolveOwnerId } from '../lib/identity'
-import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { ITINERARY_FUNCTION } from '../lib/itinerarySchema'
 import { getLlmClient, getModel } from '../lib/llmClient'
 import { getPartner } from '../lib/partners'
 import { checkAndIncrementRateLimit, checkGlobalDailyGenerateCap, checkPartnerDailyGenerateCap } from '../lib/rateLimit'
@@ -219,7 +219,9 @@ export async function generateHandler(
       model: getModel(),
       max_completion_tokens: maxTokens,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        // #38: the system prompt is region-specific (promptTemplate.systemPrompt)
+        // so a new region pack cannot inherit Nordic geography by accident.
+        { role: 'system', content: regionConfig.promptTemplate.systemPrompt },
         { role: 'user', content: buildUserMessage(prefs, lang, body.existingStops) },
       ],
       tools: [ITINERARY_FUNCTION],

@@ -2,7 +2,7 @@ import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/fu
 import { nanoid } from 'nanoid'
 
 import { corsPreflightResponse, withCors } from '../lib/cors'
-import { checkAndIncrementItineraryWriteRateLimit } from '../lib/rateLimit'
+import { checkAndIncrementItineraryWriteRateLimit, limitReachedHeader } from '../lib/rateLimit'
 import { ItineraryPatchBodySchema, SaveItineraryBodySchema, logError } from '../lib/schemas'
 import { ensureTable, getTableClient } from '../lib/tableClient'
 import { emitEvent } from '../lib/telemetry'
@@ -27,6 +27,15 @@ const SHARED_PARTITION_KEY = 'shared'
 const HISTORY_TABLE = 'ItineraryHistory'
 /** #29: maximum number of history versions kept per trip (oldest is dropped beyond this). */
 const HISTORY_MAX_VERSIONS_PER_TRIP = 10
+/**
+ * #35a: hard cap on how many entities the shared-partition listing scans and
+ * returns per request. The installed @azure/data-tables listEntities() exposes
+ * no server-side `top` option, so the cap is applied while iterating; this
+ * bounds both the response size and the scan itself. The newest
+ * LIST_MAX_RESULTS entries win (sort happens in memory after the capped scan)
+ * and `X-Limit-Reached` signals when entries were cut.
+ */
+const LIST_MAX_RESULTS = 50
 
 /**
  * Snapshot of an itinerary entity's pre-patch state, stored as a JSON blob in
@@ -203,11 +212,24 @@ export async function listItinerariesHandler(
   try {
     const client = getTableClient('Itineraries')
     const summaries: SavedItinerarySummary[] = []
+    // #35a: stop iterating at the cap so the scan cannot grow with the table.
+    let limitReached = false
     for await (const entity of client.listEntities({ queryOptions: { select: ['rowKey', 'name', 'createdAt', 'startCity', 'endCity'] } })) {
+      if (summaries.length >= LIST_MAX_RESULTS) {
+        limitReached = true
+        break
+      }
       summaries.push(entityToSummary(entity as Record<string, unknown>, false))
     }
     summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    return successResponse(origin, summaries)
+    const response = successResponse(origin, summaries)
+    // Signal truncation via an ASCII-only header — the body must stay a plain
+    // array because the frontend reads it as SavedItinerarySummary[], and the
+    // Azure Functions host rejects non-ASCII header values (see CLAUDE.md).
+    if (limitReached) {
+      ;(response.headers as Record<string, string>)[limitReachedHeader] = 'true'
+    }
+    return response
   } catch (err: any) {
     // Table doesn't exist yet (fresh deployment / first use) → no itineraries saved
     if (err?.statusCode === 404 || err?.errorCode === 'TableNotFound') {
