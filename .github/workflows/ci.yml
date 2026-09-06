@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -47,3 +51,27 @@ jobs:
         run: |
           az bicep build --file infra/main.bicep --outfile /tmp/main.json
           node infra/scripts/verify-cors.mjs /tmp/main.json
+
+      # #45: non-blocking Bicep drift check against the live resource group.
+      # OIDC login + secrets mirror deploy-api.yml; the what-if command mirrors
+      # docs/deployment-runbook.md §7. continue-on-error keeps PR CI green (a
+      # what-if needs Azure access and can legitimately show drift caused by
+      # out-of-band console changes) — the point is VISIBILITY: drift shows up
+      # as a yellow step in every main-branch run instead of going unnoticed.
+      - name: Bicep what-if drift check (non-blocking, #45)
+        continue-on-error: true
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run what-if against rgNordicHolidays
+        continue-on-error: true
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          az deployment group what-if \
+            --resource-group rgNordicHolidays \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam

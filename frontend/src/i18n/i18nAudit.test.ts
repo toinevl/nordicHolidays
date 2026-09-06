@@ -224,6 +224,22 @@ describe('region audit: no hardcoded country codes outside region config', () =>
     .map(f => f.replace(join(__dirname, '..') + '/', ''))
     .filter(f => !ALLOWED_FILES.has(f))
 
+  // #39: region packs live as one file per region in src/region/ and are
+  // selected by VITE_REGION at build time. A pack file without a matching
+  // REGIONS registration can never be selected (silently ignored at runtime),
+  // and a REGIONS key without a pack file crashes the import. This audit keeps
+  // the env-var surface and the registration map in lock-step; the behavioural
+  // side (unknown key → loud nordic fallback) is covered by regionAudit.test.ts.
+  const regionIndexSrc = readFileSync(join(__dirname, '..', 'region', 'index.ts'), 'utf-8')
+  const packFiles = [...regionIndexSrc.matchAll(/import\s*\{[^}]*\}\s*from\s*'\.\/([a-z]+)'/g)].map(m => m[1])
+  const registeredKeys = [...regionIndexSrc.matchAll(/^\s{2}([a-z]+):\s*\w+,?\s*$/gm)].map(m => m[1])
+
+  it('every VITE_REGION region pack in src/region/ is registered in REGIONS (#39)', () => {
+    expect(packFiles.length).toBeGreaterThan(0)
+    expect(new Set(registeredKeys)).toEqual(new Set(packFiles))
+    expect(registeredKeys).toContain('nordic')
+  })
+
   // Add store.ts and any other non-component source files
   const extraFiles = [
     join(__dirname, '..', 'store.ts'),

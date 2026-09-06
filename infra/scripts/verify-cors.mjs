@@ -14,10 +14,12 @@
 // infra/RECOVERY.md "fjordvia.com domain binding".
 //
 // Usage: node infra/scripts/verify-cors.mjs [path/to/main.json]
+// (No-arg default is /tmp/main.json — the CI build output path, #45. The
+// compiled template is deliberately NOT stored in the repo anymore: it is a
+// stale-prone build artifact. Always build it fresh with `az bicep build`.)
 import fs from 'node:fs'
-import { fileURLToPath } from 'node:url'
 
-const file = process.argv[2] ?? fileURLToPath(new URL('../main.json', import.meta.url))
+const file = process.argv[2] ?? '/tmp/main.json'
 const PROD_ORIGINS = ['https://sweden.van-vliet.eu', 'https://fjordvia.com']
 
 let arm
