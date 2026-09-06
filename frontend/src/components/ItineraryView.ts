@@ -4,11 +4,11 @@ import { getLocale, t, tpl } from '../i18n/index'
 import { activityUrl, carRentalUrl, lodgingUrl } from '../lib/affiliate'
 import { preloadCityPhotos } from '../lib/cityPhoto'
 import { baseFor, isDayTrip } from '../lib/dayTrips'
-import { formatDriveTime, haversineKm } from '../lib/distance'
 import { escapeHtml } from '../lib/escape'
 import { downloadFile, itineraryToGPX, itineraryToGoogleMapsUrl, itineraryToICS, itineraryToWazeUrl } from '../lib/export'
+import { stopsToMapStops } from '../lib/mapStops'
 import { buildStopMiniMapSvg } from '../lib/stopMiniMap'
-import { formatStopDateRange, formatTripStart } from '../lib/travelDates'
+import { formatTripStart } from '../lib/travelDates'
 import type { Accommodation, CulinaryRegion, Itinerary, ItineraryStop, Stop } from '../types'
 import { AddStopForm } from './AddStopForm'
 import { renderOverview } from './TripOverview'
@@ -235,33 +235,10 @@ export class ItineraryView {
     this.currentItinerary = itinerary
     const locale = getLocale()
     const sd = itinerary.startDate
-    const stops: Stop[] = itinerary.stops.map((s, i) => {
-      const prev = itinerary.stops[i - 1]
-      const from = prev ? prev.city : ''
-      const apiKm = typeof s.km === 'number' ? s.km : (prev ? haversineKm([prev.lng, prev.lat], [s.lng, s.lat]) : 0)
-      const apiTimeMin = typeof s.driveTimeMin === 'number' ? s.driveTimeMin : (apiKm > 0 ? Math.round((apiKm / 80) * 60) : 0)
-      const km = i === 0 ? 0 : apiKm
-      const time = km > 0 ? formatDriveTime(i === 0 ? 0 : apiTimeMin) : ''
-      const stopDate = sd ? formatStopDateRange(sd, s.day, s.nights, locale) : ''
-      return {
-        id: i + 1,
-        days: String(s.day),
-        dates: stopDate,
-        dest: s.city,
-        region: s.region,
-        coords: [s.lng, s.lat] as [number, number],
-        tags: (s as Record<string, unknown>).tags as string[] ?? [],
-        nights: s.nights,
-        desc: '',
-        highlights: s.highlights,
-        from,
-        km,
-        time,
-        zoom: 12,
-        pitch: 45,
-        bearing: 0,
-      }
-    })
+    // #36: the itinerary→Stop[] mapping (previous-stop `from`, Azure Maps km
+    // with haversine fallback, drive time, per-stop date ranges) lives in
+    // lib/mapStops so main.ts's map fan-out shares the exact same conversion.
+    const stops: Stop[] = stopsToMapStops(itinerary)
     this.stops = stops
     this.selectedStopId = 1
     this.currentFilter = 'all'

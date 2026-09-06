@@ -11,6 +11,27 @@ export type GenerateCallback = (itinerary: Itinerary) => void
 export type GenerateErrorCallback = (message: string) => void
 type CityField = 'startCity' | 'endCity'
 
+/**
+ * Differences between the four city combobox instances (#41). Everything not
+ * expressed here is shared behaviour rendered by bindCityCombobox().
+ */
+type CityComboboxConfig = {
+  inputId: string
+  resultsId: string
+  /** Optional "custom city" hint element (only the start/end fields have one). */
+  hintId?: string
+  /** Write the picked suggestion into the input (city fields) — tag inputs clear it in addTagValue instead. */
+  applySelectedValue: boolean
+  /** Persist the typed value as a preference on every input (city fields only). */
+  updatePreferenceOnInput?: boolean
+  /** Which preference updatePreferenceOnInput writes; required when it is true. */
+  field?: CityField
+  /** A suggestion was picked (keyboard or click). */
+  onCommit: (value: string) => void
+  /** Enter pressed with typed text but no active suggestion (tag inputs add it; city fields ignore). */
+  onFreeText?: (value: string) => void
+}
+
 const ALLOWED_COUNTRIES = regionConfig.countries.map(country => ({
   code: country.code,
   label: t(country.labelKey as LocaleKey),
@@ -169,30 +190,32 @@ export class GeneratorPanel {
     this.panel.querySelector('#btn-regenerate')?.addEventListener('click', () => this.handleGenerate())
   }
 
-  private bindTagCityLookup(
-    inputId: string,
-    tagsId: string,
-    resultsId: string,
-    field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>,
-  ): void {
-    const input = this.panel.querySelector<HTMLInputElement>(`#${inputId}`)
+  /**
+   * One combobox binding for all four city inputs (#41). The previous
+   * bindTagCityLookup/bindCityLookup pair duplicated ~55 lines of
+   * render/setActive/search/keydown wiring; everything that differs between
+   * the tag inputs (must-visit/avoid) and the city fields (start/end) is
+   * expressed by the config:
+   * - hintId: only the start/end fields have the "custom city" hint element.
+   * - updatePreferenceOnInput: city fields save the typed value as the
+   *   startCity/endCity preference on every input; tag inputs only act on
+   *   commit.
+   * - onCommit: a picked suggestion (input value applied when
+   *   applySelectedValue is true — tag inputs instead add the tag with the
+   *   raw suggestion name and clear the input in addTagValue).
+   * - onFreeText: Enter with no active suggestion (tag inputs add the typed
+   *   text as a tag; city fields do nothing — pre-existing behaviour).
+   */
+  private bindCityCombobox(config: CityComboboxConfig): void {
+    const input = this.panel.querySelector<HTMLInputElement>(`#${config.inputId}`)
+    const resultsId = config.resultsId
     const resultsEl = this.panel.querySelector<HTMLElement>(`#${resultsId}`)
+    const hintEl = config.hintId ? this.panel.querySelector<HTMLElement>(`#${config.hintId}`) : null
     if (!input || !resultsEl) return
 
     let activeIndex = -1
     let suggestions: CitySuggestion[] = []
     let timer = 0
-
-    const addTag = (val: string) => {
-      const trimmed = val.trim()
-      if (!trimmed) return
-      const current = this.store.getState().preferences[field]
-      if (!current.includes(trimmed)) {
-        this.store.setState({ preferences: { ...this.store.getState().preferences, [field]: [...current, trimmed] } })
-        this.renderTags(tagsId, field)
-      }
-      input.value = ''
-    }
 
     const close = () => {
       resultsEl.classList.add('hidden')
@@ -227,7 +250,9 @@ export class GeneratorPanel {
         btn.addEventListener('click', () => {
           const city = suggestions[Number(btn.dataset.index)]
           if (city) {
-            addTag(city.name)
+            if (config.applySelectedValue) input.value = city.name
+            config.onCommit(city.name)
+            hintEl?.classList.add('hidden')
             close()
           }
         })
@@ -246,9 +271,11 @@ export class GeneratorPanel {
 
     const search = async () => {
       const query = input.value.trim()
+      if (config.updatePreferenceOnInput) this.updateCityPreference(config.field as CityField, query)
       window.clearTimeout(timer)
 
       if (query.length < 2) {
+        hintEl?.classList.add('hidden')
         render([])
         return
       }
@@ -256,6 +283,7 @@ export class GeneratorPanel {
       const countryCode = this.store.getState().preferences.country
       const localResults = searchLocalCities(query, countryCode)
       render(localResults)
+      if (hintEl) hintEl.classList.toggle('hidden', localResults.some(city => city.name.toLowerCase() === query.toLowerCase()))
 
       if (localResults.length >= 5) return
       const requestId = ++this.cityLookupRequest
@@ -286,136 +314,68 @@ export class GeneratorPanel {
         event.preventDefault()
         setActive(activeIndex - 1)
       } else if (event.key === 'Enter') {
-        event.preventDefault()
         if (activeIndex >= 0 && suggestions[activeIndex]) {
-          addTag(suggestions[activeIndex].name)
-        } else if (input.value.trim()) {
-          addTag(input.value.trim())
+          event.preventDefault()
+          const city = suggestions[activeIndex]
+          if (config.applySelectedValue) input.value = city.name
+          config.onCommit(city.name)
+          hintEl?.classList.add('hidden')
+          close()
+        } else if (input.value.trim() && config.onFreeText) {
+          event.preventDefault()
+          config.onFreeText(input.value.trim())
+          close()
         }
-        close()
       } else if (event.key === 'Escape') {
         close()
       }
     })
   }
 
-  private bindCityLookup(inputId: string, resultsId: string, hintId: string, field: CityField): void {
-    const input = this.panel.querySelector<HTMLInputElement>(`#${inputId}`)
-    const resultsEl = this.panel.querySelector<HTMLElement>(`#${resultsId}`)
-    const hintEl = this.panel.querySelector<HTMLElement>(`#${hintId}`)
-    if (!input || !resultsEl || !hintEl) return
-
-    let activeIndex = -1
-    let suggestions: CitySuggestion[] = []
-    let timer = 0
-
-    const close = () => {
-      resultsEl.classList.add('hidden')
-      resultsEl.setAttribute('aria-hidden', 'true')
-      input.setAttribute('aria-expanded', 'false')
-      input.setAttribute('aria-activedescendant', '')
-      activeIndex = -1
-    }
-
-    const render = (items: CitySuggestion[]) => {
-      suggestions = items
-      activeIndex = items.length ? 0 : -1
-      const hasItems = items.length > 0
-      input.setAttribute('aria-expanded', String(hasItems))
-      resultsEl.classList.toggle('hidden', !hasItems)
-      resultsEl.setAttribute('aria-hidden', String(!hasItems))
-      if (hasItems) input.setAttribute('aria-activedescendant', `${resultsId}-option-${activeIndex}`)
-      else input.setAttribute('aria-activedescendant', '')
-      resultsEl.innerHTML = items.map((city, index) => {
-        const region = city.region ? `${city.region}, ` : ''
-        const meta = `${region}${city.countryName}`
-        return `
-          <button id="${resultsId}-option-${index}" class="city-option ${index === activeIndex ? 'active' : ''}" type="button" role="option" data-index="${index}" aria-selected="${index === activeIndex}">
-            <span class="city-option__name">${escapeHtml(city.name)}</span>
-            <span class="city-option__meta">${escapeHtml(meta)}</span>
-          </button>
-        `
-      }).join('')
-
-      resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach(btn => {
-        btn.addEventListener('mousedown', event => event.preventDefault())
-        btn.addEventListener('click', () => {
-          const city = suggestions[Number(btn.dataset.index)]
-          if (city) {
-            input.value = city.name
-            this.updateCityPreference(field, city.name)
-            hintEl.classList.add('hidden')
-            close()
-          }
-        })
-      })
-    }
-
-    const setActive = (nextIndex: number) => {
-      if (!suggestions.length) return
-      activeIndex = (nextIndex + suggestions.length) % suggestions.length
-      input.setAttribute('aria-activedescendant', `${resultsId}-option-${activeIndex}`)
-      resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach((btn, index) => {
-        btn.classList.toggle('active', index === activeIndex)
-        btn.setAttribute('aria-selected', String(index === activeIndex))
-      })
-    }
-
-    const search = async () => {
-      const query = input.value.trim()
-      this.updateCityPreference(field, query)
-      window.clearTimeout(timer)
-
-      if (query.length < 2) {
-        hintEl.classList.add('hidden')
-        render([])
-        return
-      }
-
-      const countryCode = this.store.getState().preferences.country
-      const localResults = searchLocalCities(query, countryCode)
-      render(localResults)
-      hintEl.classList.toggle('hidden', localResults.some(city => city.name.toLowerCase() === query.toLowerCase()))
-
-      if (localResults.length >= 5) return
-      const requestId = ++this.cityLookupRequest
-      timer = window.setTimeout(async () => {
-        try {
-          const remoteResults = await searchNominatim(query, countryCode)
-          if (requestId !== this.cityLookupRequest) return
-          const seen = new Set(localResults.flatMap(city => [city.id, cityKey(city)]))
-          render([
-            ...localResults,
-            ...remoteResults.filter((city: CitySuggestion) => !seen.has(city.id) && !seen.has(cityKey(city))),
-          ].slice(0, 8))
-        } catch (err: any) {
-          // Local suggestions are the primary path; remote lookup is optional.
-          if (err instanceof Error) console.error('[cityLookup:searchNominatim]', err)
-        }
-      }, 250)
-    }
-
-    input.addEventListener('input', () => { void search() })
-    input.addEventListener('focus', () => { void search() })
-    input.addEventListener('blur', () => window.setTimeout(close, 120))
-    input.addEventListener('keydown', event => {
-      if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        setActive(activeIndex + 1)
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        setActive(activeIndex - 1)
-      } else if (event.key === 'Enter' && activeIndex >= 0 && suggestions[activeIndex]) {
-        event.preventDefault()
-        const city = suggestions[activeIndex]
-        input.value = city.name
-        this.updateCityPreference(field, city.name)
-        hintEl.classList.add('hidden')
-        close()
-      } else if (event.key === 'Escape') {
-        close()
-      }
+  /** Tag-input variant of the combobox (#41): picked/typed values become tags. */
+  private bindTagCityLookup(
+    inputId: string,
+    tagsId: string,
+    resultsId: string,
+    field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>,
+  ): void {
+    this.bindCityCombobox({
+      inputId,
+      resultsId,
+      applySelectedValue: false,
+      onCommit: value => this.addTagValue(tagsId, field, value),
+      onFreeText: value => this.addTagValue(tagsId, field, value),
     })
+  }
+
+  /** City-field variant of the combobox (#41): the value IS the preference. */
+  private bindCityLookup(inputId: string, resultsId: string, hintId: string, field: CityField): void {
+    this.bindCityCombobox({
+      inputId,
+      resultsId,
+      hintId,
+      applySelectedValue: true,
+      updatePreferenceOnInput: true,
+      field,
+      onCommit: value => this.updateCityPreference(field, value),
+    })
+  }
+
+  /** Add a tag to the given preference list (deduped) and re-render the chips. */
+  private addTagValue(
+    tagsId: string,
+    field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>,
+    value: string,
+  ): void {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    const current = this.store.getState().preferences[field]
+    if (!current.includes(trimmed)) {
+      this.store.setState({ preferences: { ...this.store.getState().preferences, [field]: [...current, trimmed] } })
+      this.renderTags(tagsId, field)
+    }
+    const input = this.panel.querySelector<HTMLInputElement>(`#${tagsId.replace('-tags', '-input')}`)
+    if (input) input.value = ''
   }
 
   private updateCityPreference(field: CityField, value: string): void {
