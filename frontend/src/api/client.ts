@@ -7,6 +7,15 @@ import type { Itinerary, Locale, Preferences, SavedItinerarySummary, StopNote } 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net'
 const MAX_LIMIT = 100
 
+/**
+ * #43: the single source of the prod-API fallback. Everywhere else imports
+ * this — a region deploy only has to set VITE_API_BASE once and no code
+ * path can silently talk to the Nordic endpoint.
+ */
+export function getApiBase(): string {
+  return API_BASE
+}
+
 // #129: carries the HTTP status (and, if the API sends one, a structured error
 // code) separately from the human-readable `.message`. `.message` stays the raw
 // technical detail (status + server text) for logging only — it is NEVER shown
@@ -93,7 +102,7 @@ export const apiClient = {
     if (limit !== undefined && (typeof limit !== 'number' || limit > MAX_LIMIT || limit < 1)) {
       throw new ApiError(`limit must be between 1 and ${MAX_LIMIT}`, 400)
     }
-    const url = new URL('/api/city-search', import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net')
+    const url = new URL('/api/city-search', getApiBase())
     url.searchParams.set('q', query)
     if (typeof limit === 'number') url.searchParams.set('limit', String(limit))
     return request<CitySuggestion[]>(url.pathname + url.search)

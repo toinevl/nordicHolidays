@@ -24,11 +24,28 @@ function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseI
 
 const ROW_KEY = 'default'
 
-function entityToPreferences(entity: Record<string, unknown>): Preferences {
+/**
+ * #40: tolerant JSON parse for stored array columns. A single corrupt cell in
+ * the Preferences table used to throw on every read for that owner (a
+ * permanent 500). Now it degrades to the default and logs, so the row stays
+ * usable and the next save heals it.
+ */
+function parseStoredArray(value: unknown, field: string, ctx: { log: (msg: string) => void }): string[] {
+  if (!value) return []
+  try {
+    const parsed: unknown = JSON.parse(value as string)
+    return Array.isArray(parsed) ? (parsed as string[]) : []
+  } catch {
+    ctx.log(`preferences: corrupt JSON in column '${field}' — falling back to []`)
+    return []
+  }
+}
+
+function entityToPreferences(entity: Record<string, unknown>, ctx: { log: (msg: string) => void }): Preferences {
   const raw = entity as Record<string, unknown>
   return {
-    mustVisit: raw.mustVisit ? JSON.parse(raw.mustVisit as string) : [],
-    avoid: raw.avoid ? JSON.parse(raw.avoid as string) : [],
+    mustVisit: parseStoredArray(raw.mustVisit, 'mustVisit', ctx),
+    avoid: parseStoredArray(raw.avoid, 'avoid', ctx),
     startCity: (raw.startCity as string) || DEFAULT_PREFERENCES.startCity,
     endCity: (raw.endCity as string) || DEFAULT_PREFERENCES.endCity,
     tripDays: typeof raw.tripDays === 'number' ? (raw.tripDays as number) : DEFAULT_PREFERENCES.tripDays,
@@ -50,7 +67,7 @@ export async function getPreferencesHandler(
     return withHeaders({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entityToPreferences(entity as Record<string, unknown>)),
+      body: JSON.stringify(entityToPreferences(entity as Record<string, unknown>, ctx)),
     }, origin)
   } catch (err: any) {
     if (err instanceof Error && err.name === 'AuthError') {

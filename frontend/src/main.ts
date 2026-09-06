@@ -148,6 +148,8 @@ function applyStaticI18n(): void {
   setText('.spinner-label', t('loading.generating'))
   // Hero scroll cue
   setText('.scroll-cue-label', t('hero.scrollCue'))
+  // #43: the visible label was translated, but the aria-label stayed hardcoded
+  setAttr('.scroll-cue', 'aria-label', t('hero.scrollCue'))
   // Map legend labels (one legend per MapView instance — 2D and 3D map)
   const legendLabels: Array<[string, string]> = [
     ['.map-legend .legend-overnight', `● ${t('map.legendOvernight')}`],
