@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getLocale, setLocale, t } from '../i18n'
+import { formatDriveTime, haversineKm } from '../lib/distance'
+import { stopsToMapStops } from '../lib/mapStops'
 import type { Accommodation, CulinaryRegion, Itinerary, Stop } from '../types'
 import { ItineraryView } from './ItineraryView'
 
@@ -14,6 +16,11 @@ global.IntersectionObserver = class IntersectionObserver {
     return []
   }
 } as any
+
+// jsdom has no scrollIntoView; setSelectedStop(_, true) fires it from a
+// 500 ms setTimeout that can land after the test finished (unhandled-error
+// noise). Stub it like IntersectionObserver above.
+Element.prototype.scrollIntoView = (() => {}) as never
 
 describe('ItineraryView XSS Prevention', () => {
   let view: ItineraryView
@@ -974,6 +981,93 @@ describe('ItineraryView stop-notes round-trip (#134)', () => {
   })
 
 })
+
+// #36: renderFromItinerary must produce the rich stop mapping (per-stop date
+// ranges from startDate, previous-stop "from") via the shared lib helper.
+describe('ItineraryView renderFromItinerary rich stop mapping (#36)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="route-summary"></div>
+      <div id="filter-chips"></div>
+      <div id="selected-stop"></div>
+      <div id="timeline"></div>
+      <div id="trip-index"></div>
+      <div id="trip-preview"></div>
+      <div id="overview-table"></div>
+      <div id="cul-grid"></div>
+      <div id="accom-tbody"></div>
+      <div id="itinerary"></div>
+    `
+  })
+
+  function itineraryFixture(overrides: Partial<Itinerary> = {}): Itinerary {
+    return {
+      id: 't-rich',
+      title: 'Skåne route',
+      totalDays: 6,
+      startCity: 'Malmö',
+      endCity: 'Kristianstad',
+      generatedAt: '',
+      startDate: '2026-06-01',
+      stops: [
+        { day: 1, city: 'Malmö', region: 'Skåne', lat: 55.605, lng: 13.0038, nights: 2, highlights: ['Öresundbron'], accommodation: '', culinaryNotes: '' },
+        { day: 3, city: 'Ystad', region: 'Skåne', lat: 55.439, lng: 13.821, nights: 2, highlights: [], accommodation: '', culinaryNotes: '', km: 61, driveTimeMin: 55 },
+        { day: 5, city: 'Kristianstad', region: 'Skåne', lat: 56.029, lng: 14.157, nights: 2, highlights: [], accommodation: '', culinaryNotes: '' },
+      ],
+      ...overrides,
+    }
+  }
+
+  it('shows per-stop date ranges derived from startDate (timeline + selected-stop)', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.renderFromItinerary(itineraryFixture())
+
+    const dates = Array.from(document.querySelectorAll('#timeline .stop-date')).map(el => el.textContent ?? '')
+    expect(dates[0]).toContain('Jun 1–Jun 3')
+    expect(dates[1]).toContain('Jun 3–Jun 5')
+    expect(dates[2]).toContain('Jun 5–Jun 7')
+    expect(document.getElementById('selected-stop')?.textContent).toContain('Jun 1–Jun 3')
+  })
+
+  it('keeps relative day labels when the itinerary has no startDate (fallback intact)', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.renderFromItinerary(itineraryFixture({ startDate: undefined }))
+
+    const dates = Array.from(document.querySelectorAll('#timeline .stop-date')).map(el => el.textContent ?? '')
+    expect(dates[0]).not.toContain('Jun')
+    expect(dates[0]).toContain('1')
+  })
+
+  it('renders previous-stop origin and per-leg km/time on the timeline cards', () => {
+    const view = new ItineraryView(vi.fn(), vi.fn())
+    view.renderFromItinerary(itineraryFixture())
+
+    const drives = Array.from(document.querySelectorAll('#timeline .stop-drive')).map(el => el.textContent ?? '')
+    // First leg: no previous stop → not a driving leg.
+    expect(drives[0]).not.toContain('km')
+    // Azure Maps leg.
+    expect(drives[1]).toContain('from Malmö')
+    expect(drives[1]).toContain('61 km')
+    // Fallback leg (haversine): has km but not the Azure value.
+    expect(drives[2]).toContain('from Ystad')
+    expect(drives[2]).toMatch(/\d+ km/)
+    expect(drives[2]).not.toContain('61 km')
+    // Route summary total: 0 + 61 + haversine-fallback (≈130 km total).
+    expect(document.getElementById('route-summary')?.textContent).toContain('130')
+  })
+
+  it('marks the same stop data via stopsToMapStops (parity between lib helper and render)', () => {
+    const itinerary = itineraryFixture()
+    const mapped = stopsToMapStops(itinerary)
+    expect(mapped[1].from).toBe('Malmö')
+    expect(mapped[1].km).toBe(61)
+    expect(mapped[1].time).toBe(formatDriveTime(55))
+    expect(mapped[2].from).toBe('Ystad')
+    expect(mapped[2].km).toBe(haversineKm([13.821, 55.439], [14.157, 56.029]))
+    expect(mapped[0].dates).toBe('Jun 1–Jun 3')
+  })
+})
+
 
 // #24 deel 1: SVG-minimap previews — per stop card + whole-route trip preview.
 describe('ItineraryView SVG minimap previews (#24)', () => {
