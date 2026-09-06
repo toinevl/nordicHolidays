@@ -35,6 +35,11 @@ const LINE_ALLOW_PATTERNS: RegExp[] = [
 
 // Strings that are allowed to be hardcoded (brand names, technical identifiers,
 // single chars, CSS values, etc.)
+/**
+ * Technical WebGL extension names — these are API constants, not UI strings,
+ * and appear in test/mock files for Firefox WebGL fallback hardening.
+ */
+const WEBGL_EXTENSION_PATTERN = /^OES_texture_float/
 const STRING_ALLOW_PATTERNS: RegExp[] = [
   /^Fjordvia$/i,                 // brand name
   /^Fjord$/i,                    // brand fragment
@@ -57,6 +62,8 @@ const STRING_ALLOW_PATTERNS: RegExp[] = [
   /^(LineString|FeatureCollection|Feature|Point|Polygon|MultiPolygon|MultiLineString|GeometryCollection)$/,
   // MapLibre source/layer type identifiers
   /^(geojson|raster|vector|circle|line|fill|fill-extrusion|symbol)$/,
+  // WebGL extension names (API constants, not UI strings)
+  /^OES_texture_float(_linear)?$/,
 ]
 
 // Files to scan (all .ts in components/ + main.ts)

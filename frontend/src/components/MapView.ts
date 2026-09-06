@@ -37,12 +37,27 @@ export type MapViewOptions = {
  * canvas. Mirrors MapLibre's own internal check. Returns false when WebGL is
  * unavailable, disabled, or blocklisted — common on Android Firefox where the
  * GPU driver may be on the denylist. (#82)
+ *
+ * Enhancement: also checks for the `OES_texture_float` extension, which is
+ * required by MapLibre GL JS for terrain rendering and is commonly missing
+ * on Firefox when WebGL2 is used in a software-rendered context (e.g. on
+ * virtual machines, VMs, or systems with driver issues). A context that lacks
+ * this extension will silently render nothing — the canvas element exists but
+ * is blank. This catches that case so we show the fallback immediately instead
+ * of a blank grey void. (#53)
  */
 function isWebGLAvailable(): boolean {
   try {
     const canvas = document.createElement('canvas')
     const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
-    return !!gl
+    if (!gl) return false
+    // Check for the OES_texture_float extension — required by MapLibre GL.
+    // Firefox on systems with GPU driver issues may return a context but
+    // without this extension, which causes silent blank rendering.
+    const hasFloatTexture =
+      gl.getExtension('OES_texture_float') !== null ||
+      gl.getExtension('OES_texture_float_linear') !== null
+    return hasFloatTexture
   } catch {
     return false
   }

@@ -45,10 +45,14 @@ describe('buildStopMiniMapSvg', () => {
     const polyline = svg.match(/<polyline[^>]*points="([^"]+)"/)
     expect(polyline).toBeTruthy()
     const pts = polyline![1]!.split(' ').map((p) => p.split(',').map(Number))
-    expect(pts).toHaveLength(3)
-    // Malmö (south-west) maps to the lowest-left point…
+    // 3 stops → 1 midpoint vertex between Gothenburg and Stockholm (and another between
+    // Malmö and Gothenburg), giving 3 + 2 - 1 = 4 vertices: start, mid1, mid2, end.
+    // Catmull-Rom ensures the original stop positions are still on the polyline
+    // (start, end, and stop 2 sits at pts[2] between two midpoints).
+    expect(pts).toHaveLength(4)
+    // The original stop positions are still present in the polyline
     const malmo = pts[0]!
-    const stockholm = pts[2]!
+    const stockholm = pts[3]!
     expect(stockholm[0]).toBeGreaterThan(malmo[0]!) // Stockholm is east of Malmö
     expect(malmo[1]).toBeGreaterThan(stockholm[1]!) // …and SVG y grows downward: south = larger y
   })

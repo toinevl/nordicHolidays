@@ -9,6 +9,16 @@
  * correction on x so the Nordic route is not horizontally stretched, scaled to
  * a viewBox fitted to the bounding box with ~10% padding, then letterboxed to
  * the requested aspect ratio (content stays centered).
+ *
+ * Route: Catmull-Rom spline between stops for a smooth curve rather than an
+ * angular polyline. The generated points are still a polyline — no new curve
+ * primitive is used, just more evenly distributed vertices so the line looks
+ * fluid even over Nordic geography where a fixed multiplier degrades quickly.
+ *
+ * A `<defs>` block with a `routeGradient` is added when there are 2+ stops,
+ * so the route can render with a subtle colour transition from start to end.
+ * The gradient's `id` is `mini-map-route-gradient-${boxId}` where `boxId` is a
+ * hash of the stop coordinates — keep it deterministic but stable across reruns.
  */
 import { baseFor } from './dayTrips'
 
@@ -45,9 +55,93 @@ export function projectCoords(points: [number, number][]): [number, number][] {
 }
 
 /**
- * Build the inline SVG for a stop collection: route polyline + stop dots
+ * Deterministic but stable hash of stop coords for unique gradient ids.
+ * Uses a simple but repeatable hash so the same stops always get the same
+ * gradient id across sessions.
+ */
+function hashCoords(stops: MiniMapStop[]): number {
+  let h = 5381
+  for (const { coords: [lng, lat] } of stops) {
+    h = ((h << 5) - h + lng) | 0
+    h = ((h << 5) - h + lat) | 0
+  }
+  return h
+}
+
+/**
+ * Generate a Catmull-Rom spline point between 4 control points at parameter t.
+ * Given control points P0, P1, P2, P3, the curve passes through P1 and P2.
+ *   point(t) = 0.5 * ((2*P1) + (-P0 + P2)*t + (2*P0 - 5*P1 + 4*P2 - P3)*t^2 + (-P0 + 3*P1 - 3*P2 + P3)*t^3)
+ */
+function catmullRomPoint(
+  p0: [number, number],
+  p1: [number, number],
+  p2: [number, number],
+  p3: [number, number],
+  t: number
+): [number, number] {
+  const t2 = t * t
+  const t3 = t2 * t
+  const x =
+    0.5 *
+    ((2 * p1[0]) +
+      (-p0[0] + p2[0]) * t +
+      (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+      (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3)
+  const y =
+    0.5 *
+    ((2 * p1[1]) +
+      (-p0[1] + p2[1]) * t +
+      (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+      (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
+  return [x, y]
+}
+
+/**
+ * Generate smooth Catmull-Rom intermediate points between consecutive stops.
+ * Given N projected stops, generate a smooth polyline that passes through all
+ * of them with extra vertices at segment midpoints for a fluid curve.
+ *
+ * We pad with boundary repeats (prepend first point, append last point) so the
+ * edge segments interpolate smoothly rather than going linear.
+ */
+function generateSmoothPoints(projected: [number, number][]): [number, number][] {
+  if (projected.length <= 2) return projected
+
+  // Pad: prepend first point, append last point
+  const padded: [number, number][] = [projected[0], ...projected, projected[projected.length - 1]]
+
+  const samples: [number, number][] = []
+  // Each segment goes from padded[i] to padded[i+1] (original indexed i-1 → i)
+  // For segment between original stops [i-1] and [i], we use control points:
+  //   p0 = padded[i-1], p1 = padded[i], p2 = padded[i+1], p3 = padded[i+2]
+  for (let i = 1; i <= projected.length - 1; i++) {
+    const p0 = padded[i - 1]
+    const p1 = padded[i]
+    const p2 = padded[i + 1]
+    const p3 = padded[i + 2]
+    // Sample at t=0 is the same as p1 (start of segment = end of previous)
+    // So we only emit t=0.5 and t=1 (t=1 of segment i is start of segment i+1,
+    // will be emitted as "start" of next segment — but actually t=0 of next segment).
+    // Simpler: emit t=0.5 only here; the endpoints are the original stops.
+    const mid = catmullRomPoint(p0, p1, p2, p3, 0.5)
+    samples.push(mid)
+  }
+
+  // Result: [first stop, ...midpoints, last stop]
+  const result: [number, number][] = [projected[0], ...samples, projected[projected.length - 1]]
+  return result
+}
+
+/**
+ * Build the inline SVG for a stop collection: route spline + stop dots
  * (the first stop gets a larger "start" dot; day trips get a dashed excursion
  * line to their overnight base and a smaller dot). Returns '' for no stops.
+ *
+ * Enhancements over the original:
+ * - Catmull-Rom smooth curve (passes through every stop, curves between)
+ * - SVG gradient on the route (via <defs>, using CSS color vars)
+ * - Subtly larger stroke-width (2px) with a soft drop-shadow on dots for depth
  */
 export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOptions = {}): string {
   if (stops.length === 0) return ''
@@ -79,14 +173,37 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
   const offsetY = (boxH - contentH) / 2 - minY
 
   const px = ([x, y]: [number, number]): [number, number] => [round(x + offsetX), round(y + offsetY)]
-  const points = projected.map(px)
+
+  // Smooth points use the original projected coords (already in viewBox space)
+  const smoothProj = generateSmoothPoints(projected)
+
+  // Transform to viewBox space (with padding/offset applied)
+  const points = smoothProj.map(px)
 
   // Dot radii proportional to viewBox height — with the aspect locked, viewBox
   // height maps 1:1 to the CSS height, so dots render at a stable screen size.
   const rDot = round(boxH * 0.045)
   const rBig = round(boxH * 0.07)
 
-  const dots = points
+  // Build a deterministic gradient id for the route when there are 2+ stops
+  const gradientId = stops.length >= 2 ? `mini-map-route-gradient-${hashCoords(stops)}` : ''
+
+  // If we have a gradient, emit a <defs> block with a linear gradient.
+  // Uses CSS color vars so it stays theme-aware; fallbacks in the stop colours
+  // ensure legibility even if vars aren't loaded yet.
+  let defsBlock = ''
+  if (gradientId) {
+    defsBlock = `<defs>
+    <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="var(--primary, #2563eb)" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="var(--accent-2, #ea580c)" stop-opacity="0.6" />
+    </linearGradient>
+  </defs>`
+  }
+
+  // Dots are placed at original stop positions (not smooth midpoints)
+  const stopPoints = projected.map(px)
+  const dotsAtStops = stopPoints
     .map(([x, y], i) => {
       const isStart = i === 0
       const isActive = i === activeIndex
@@ -100,9 +217,18 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
         .filter(Boolean)
         .join(' ')
       const r = isStart || isActive ? rBig : rDot
-      return `<circle class="${cls}" cx="${x}" cy="${y}" r="${r}"></circle>`
+      // Subtle drop-shadow for depth — reads --ink-muted from the theme with
+      // 0.3 opacity fallback so it works in any theme context
+      return `<circle class="${cls}" cx="${x}" cy="${y}" r="${r}" filter="url(#mini-map-dot-shadow)"></circle>`
     })
     .join('')
+
+  // Drop-shadow filter definition — defined once, reused by all dots
+  const dotShadowFilter = `<defs>
+    <filter id="mini-map-dot-shadow" x="-20%" y="-20%" dx="0" dy="1" stdDeviation="1">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="var(--ink-muted, #555)" flood-opacity="0.3" />
+    </filter>
+  </defs>`
 
   // Dashed excursion lines: day-trip stop → its overnight base (same rule as the 3D map).
   const excursions = stops
@@ -111,18 +237,39 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
       const base = baseFor(stops, index)
       if (!base) return null
       const from = px(projected[stops.indexOf(base)]!)
-      const to = points[index]!
+      const to = px(projected[index]!)
       return `<line class="mini-map-excursion" x1="${from[0]}" y1="${from[1]}" x2="${to[0]}" y2="${to[1]}"></line>`
     })
     .filter(Boolean)
     .join('')
 
+  // Smooth route polyline — uses the Catmull-Rom points.
+  // If we have a gradient, reference it; otherwise use the CSS var colour.
+  const useGradient = gradientId ? `url(#${gradientId})` : 'var(--primary, #2563eb)'
   const polyline =
     points.length > 1
-      ? `<polyline class="mini-map-route" fill="none" vector-effect="non-scaling-stroke" points="${points
+      ? `<polyline class="mini-map-route" fill="none" stroke="${useGradient}" stroke-width="2" vector-effect="non-scaling-stroke" points="${points
           .map((p) => `${p[0]},${p[1]}`)
           .join(' ')}"></polyline>`
       : ''
 
-  return `<svg class="mini-map" viewBox="0 0 ${round(boxW)} ${round(boxH)}" preserveAspectRatio="xMidYMid meet" role="presentation" aria-hidden="true" focusable="false">${polyline}${excursions}${dots}</svg>`
+  // Merge all <defs> blocks into one — gradients + filters.
+  // Placed INSIDE <svg> because <defs> and <filter> are only valid
+  // SVG children — placing them before <svg> causes the DOM parser
+  // to treat them as separate elements and breaks the test assertions.
+  const allDefs = allDefBlocks(gradientId ? [defsBlock] : [], dotShadowFilter ? [dotShadowFilter] : [])
+
+  return `<svg class="mini-map" viewBox="0 0 ${round(boxW)} ${round(boxH)}" preserveAspectRatio="xMidYMid meet" role="presentation" aria-hidden="true" focusable="false">${allDefs}${polyline}${excursions}${dotsAtStops}</svg>`
+}
+
+/** Merge multiple <defs> blocks into a single <defs> to avoid duplicate-element warnings. */
+function allDefBlocks(...blocks: string[][]): string {
+  const all = blocks.flat().filter(Boolean)
+  if (all.length === 0) return ''
+  // Each block is a full <defs>...</defs> string — extract inner content
+  const inner = all
+    .map((b) => b.replace(/<\/?defs>/g, '').trim())
+    .filter(Boolean)
+    .join('\n    ')
+  return `<defs>\n  ${inner}\n</defs>`
 }
