@@ -24,10 +24,17 @@ function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseI
 }
 
 const SHARED_PARTITION_KEY = 'shared'
+const HISTORY_TABLE = 'ItineraryHistory'
+/** #29: maximum number of history versions kept per trip (oldest is dropped beyond this). */
+const HISTORY_MAX_VERSIONS_PER_TRIP = 10
 
 /**
  * Snapshot of an itinerary entity's pre-patch state, stored as a JSON blob in
  * the `previousStateJson` column so a single-level undo (#51) can restore it.
+ *
+ * The exact same shape is also persisted as a full row in the ItineraryHistory
+ * table (#29, multi-level): the `stateJson` column of a history entity holds
+ * this JSON, so both mechanisms stay structurally identical.
  */
 type PreviousItineraryState = {
   name: string
@@ -36,6 +43,87 @@ type PreviousItineraryState = {
   endCity: string
   thumbnail?: string
   itineraryJson: string
+}
+
+/**
+ * Extract the snapshot-able state from a raw Itineraries-table entity.
+ * Used for both the single-level undo column and the #29 history rows, so the
+ * two can never drift apart.
+ */
+function extractPreviousState(entity: Record<string, unknown>): PreviousItineraryState {
+  return {
+    name: entity.name as string,
+    createdAt: entity.createdAt as string,
+    startCity: entity.startCity as string,
+    endCity: entity.endCity as string,
+    thumbnail: entity.thumbnail as string | undefined,
+    itineraryJson: entity.itineraryJson as string,
+  }
+}
+
+/**
+ * #29 — append a pre-mutation state snapshot to the ItineraryHistory table.
+ *
+ * Table design:
+ *   - partitionKey = trip id (all versions of one trip live in one partition)
+ *   - rowKey       = 16-digit zero-padded REVERSE tick (Number.MAX_SAFE_INTEGER
+ *                    - epochMs) + '-' + nanoid(6). Lexicographically descending
+ *                    order == newest first, so "newest version" is simply the
+ *                    first row of a desc-sorted listing.
+ *   - stateJson    = full previous entity state (PreviousItineraryState JSON)
+ *   - createdAt    = ISO timestamp of when the version was recorded
+ *
+ * Best-effort by design: the primary mutation has already landed when this
+ * runs, so a history failure is logged (logError) but never fails the request.
+ * The table is created on demand via ensureTable; if even that fails the
+ * append is skipped for this request.
+ *
+ * Cap: keeps at most HISTORY_MAX_VERSIONS_PER_TRIP versions per trip; when the
+ * append overshoots the cap, the oldest versions (lexicographically largest
+ * reverse-tick rowKeys) are deleted. Cap failures are logged, not thrown.
+ */
+async function appendItineraryHistory(
+  ctx: InvocationContext,
+  tripId: string,
+  state: PreviousItineraryState,
+): Promise<void> {
+  try {
+    const historyClient = await ensureTable(HISTORY_TABLE)
+
+    // List the existing versions BEFORE inserting the new one. Ascending rowKey
+    // order == oldest first (largest reverse tick first). Listing pre-insert is
+    // also what lets the cap math below be exact: existing + 1 (the new row)
+    // must stay within the cap, and the row we just added — the newest — can
+    // then never be picked for deletion.
+    const versions: { rowKey: string }[] = []
+    for await (const entity of historyClient.listEntities({
+      queryOptions: { filter: `PartitionKey eq '${tripId}'` },
+    })) {
+      versions.push({ rowKey: (entity as Record<string, unknown>).rowKey as string })
+    }
+
+    const reverseTick = String(Number.MAX_SAFE_INTEGER - Date.now()).padStart(16, '0')
+    await historyClient.createEntity({
+      partitionKey: tripId,
+      rowKey: `${reverseTick}-${nanoid(6)}`,
+      stateJson: JSON.stringify(state),
+      createdAt: new Date().toISOString(),
+    })
+
+    const overflow = versions.length + 1 - HISTORY_MAX_VERSIONS_PER_TRIP
+    if (overflow > 0) {
+      for (const version of versions.slice(0, overflow)) {
+        try {
+          await historyClient.deleteEntity(tripId, version.rowKey)
+        } catch (err: any) {
+          // A concurrent delete (404) means another request already pruned it.
+          if (err?.statusCode !== 404) throw err
+        }
+      }
+    }
+  } catch (err) {
+    logError(ctx, `appendItineraryHistory: failed to record history version for trip ${tripId}`, err)
+  }
 }
 
 /**
@@ -284,14 +372,11 @@ export async function updateItineraryHandler(
 
     // Snapshot the entity's pre-patch state (single-level undo, #51) before any
     // fields are overwritten below, so a later POST .../undo can restore it.
-    const previousState: PreviousItineraryState = {
-      name: entity.name as string,
-      createdAt: entity.createdAt as string,
-      startCity: entity.startCity as string,
-      endCity: entity.endCity as string,
-      thumbnail: entity.thumbnail as string | undefined,
-      itineraryJson: entity.itineraryJson as string,
-    }
+    // The same snapshot is appended to ItineraryHistory (#29, multi-level,
+    // best-effort) so older versions stay reachable via
+    // POST .../history/restore/{rowKey} even after previousStateJson is
+    // overwritten or cleared.
+    const previousState = extractPreviousState(entity)
 
     const itinerary = JSON.parse(entity.itineraryJson as string) as Record<string, unknown>
     if (typeof patch.title === 'string') itinerary.title = patch.title
@@ -312,6 +397,10 @@ export async function updateItineraryHandler(
       previousStateJson: JSON.stringify(previousState),
     })
 
+    // After the primary mutation has succeeded (appendItineraryHistory is
+    // best-effort and never fails the PATCH).
+    await appendItineraryHistory(ctx, id, previousState)
+
     // updateEntity returns only response headers/etag, not the entity body.
     // The merged `itinerary` object above is exactly what we persisted, so
     // return it directly instead of trying to re-read a non-existent body
@@ -330,15 +419,47 @@ export async function updateItineraryHandler(
 }
 
 /**
- * Undo the last PATCH to an itinerary (single-level only, #51).
+ * #29 — fetch the newest ItineraryHistory version for a trip. With the
+ * reverse-tick rowKey scheme, ascending rowKey order is newest-first, so the
+ * first row of the partition listing IS the newest version. Returns undefined
+ * when the partition is empty; also returns undefined (not a throw) when the
+ * history table itself doesn't exist yet (legacy trips, fresh deployment).
+ */
+async function getNewestHistoryVersion(tripId: string): Promise<{ rowKey: string; stateJson: string; state: PreviousItineraryState } | undefined> {
+  const historyClient = getTableClient(HISTORY_TABLE)
+  try {
+    for await (const entity of historyClient.listEntities({
+      queryOptions: { filter: `PartitionKey eq '${tripId}'` },
+    })) {
+      const stored = entity as Record<string, unknown>
+      const stateJson = stored.stateJson as string
+      return {
+        rowKey: stored.rowKey as string,
+        stateJson,
+        state: JSON.parse(stateJson) as PreviousItineraryState,
+      }
+    }
+    return undefined
+  } catch (err: any) {
+    if (err?.statusCode === 404 || err?.errorCode === 'TableNotFound') return undefined
+    throw err
+  }
+}
+
+/**
+ * Undo the last PATCH to an itinerary.
  *
- * Itineraries are fully public/shared (#47): any visitor can overwrite any
- * other visitor's trip via PATCH with no history kept, so one bad edit is
- * silently unrecoverable. `updateItineraryHandler` now snapshots the
- * pre-patch state into `previousStateJson` on every PATCH; this endpoint
- * restores that snapshot and then clears it, so undo can only be applied
- * once per edit (no multi-level history — that remains a possible future
- * enhancement).
+ * Primary path is the #51 single-level snapshot: restore `previousStateJson`
+ * (if non-empty) and clear it, exactly as before #29 — existing clients and
+ * tests keep working unchanged.
+ *
+ * #29 fallback: when the snapshot column is empty (already consumed by an
+ * earlier undo), the newest ItineraryHistory version for the trip is restored
+ * instead. The pre-undo entity state is preserved as the new
+ * `previousStateJson`, so undo remains repeatable down the history chain
+ * (undo → undo → …) instead of dead-ending after one use. Returns the same
+ * 409 as before when there is nothing to undo at all (no snapshot, no
+ * history).
  */
 export async function undoItineraryHandler(
   req: HttpRequest,
@@ -369,35 +490,82 @@ export async function undoItineraryHandler(
     const client = getTableClient('Itineraries')
     const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
 
-    const previousStateJson = entity.previousStateJson as string | undefined
-    if (!previousStateJson) {
-      return withHeaders({ status: 409, body: JSON.stringify({ error: 'No previous version available to undo' }), headers: { 'Content-Type': 'application/json' } }, origin)
-    }
+    let targetState: PreviousItineraryState
+    let hasPreviousVersion: boolean
+    // Pop bookkeeping: undo ALWAYS consumes the newest history row when one
+    // exists — both paths. In the column path the snapshot and the newest row
+    // hold the same pre-edit state (both written by the same PATCH), so
+    // popping keeps the two mechanisms in lockstep: the next undo falls
+    // through to the next-older history version instead of re-restoring the
+    // same snapshot forever. In the fallback path the popped row is the one
+    // being restored. Successive undos therefore walk backwards through
+    // history and eventually reach the same 409 "nothing to undo" as the
+    // pre-#29 single-level behavior.
+    let consumedRowKey: string | undefined
 
-    const previousState = JSON.parse(previousStateJson) as PreviousItineraryState
+    const previousStateJson = entity.previousStateJson as string | undefined
+    if (previousStateJson) {
+      // #51 primary path (unchanged behavior).
+      targetState = JSON.parse(previousStateJson) as PreviousItineraryState
+      // Clear the snapshot (rather than omitting the property, which would
+      // leave the old value untouched under Merge semantics) so the same
+      // snapshot cannot be reapplied — #29 continues the chain via history.
+      hasPreviousVersion = false
+      // If a history row still holds this exact snapshot (normal since #29:
+      // every PATCH appends the same state it writes to the column), pop it so
+      // the next undo moves to the next-older version. When the row differs
+      // (pre-#29 data, or a newer PATCH whose append failed), leave history
+      // untouched — fallback then restores the newer version, which is correct.
+      const newest = await getNewestHistoryVersion(id)
+      if (newest && newest.stateJson === previousStateJson) consumedRowKey = newest.rowKey
+    } else {
+      // #29 fallback: restore the newest history version (smallest reverse-tick
+      // rowKey) and pop it off the chain.
+      const newest = await getNewestHistoryVersion(id)
+      if (!newest) {
+        return withHeaders({ status: 409, body: JSON.stringify({ error: 'No previous version available to undo' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      }
+      targetState = newest.state
+      consumedRowKey = newest.rowKey
+      // Older versions remain, so more undo is still available afterwards.
+      hasPreviousVersion = true
+    }
 
     await client.updateEntity({
       partitionKey: SHARED_PARTITION_KEY,
       rowKey: id,
       eTag: entity.etag as string | undefined,
-      name: previousState.name,
-      createdAt: previousState.createdAt,
-      startCity: previousState.startCity,
-      endCity: previousState.endCity,
-      itineraryJson: previousState.itineraryJson,
-      thumbnail: previousState.thumbnail,
-      // Clear the snapshot (rather than omitting the property, which would
-      // leave the old value untouched under Merge semantics) so this undo
-      // cannot be reapplied — single-level undo only.
+      name: targetState.name,
+      createdAt: targetState.createdAt,
+      startCity: targetState.startCity,
+      endCity: targetState.endCity,
+      itineraryJson: targetState.itineraryJson,
+      thumbnail: targetState.thumbnail,
       previousStateJson: '',
     })
 
-    const restoredItinerary = JSON.parse(previousState.itineraryJson) as Record<string, unknown>
+    if (consumedRowKey) {
+      // Pop the consumed version so the next undo restores the one before it.
+      // Deleting first would leave the trip restored but the version stuck if
+      // the entity update fails, so the entity update happens above and this
+      // is the cleanup leg (best-effort: a failure here logs, it does not
+      // fail an already-successful undo).
+      try {
+        const historyClient = getTableClient(HISTORY_TABLE)
+        await historyClient.deleteEntity(id, consumedRowKey)
+      } catch (err: any) {
+        if (err?.statusCode !== 404) {
+          logError(ctx, `undoItineraryHandler: failed to pop consumed history version ${consumedRowKey} for trip ${id}`, err)
+        }
+      }
+    }
+
+    const restoredItinerary = JSON.parse(targetState.itineraryJson) as Record<string, unknown>
     return withHeaders(
       {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...restoredItinerary, hasPreviousVersion: false }),
+        body: JSON.stringify({ ...restoredItinerary, hasPreviousVersion }),
       },
       origin,
     )
@@ -407,6 +575,96 @@ export async function undoItineraryHandler(
     return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
   }
 }
+
+/**
+ * #29 — restore one specific ItineraryHistory version onto the trip entity.
+ *
+ * Replacement (Merge-mode update with every column explicitly set) of the
+ * current entity with the stored state, keeping the original partition/rowKey.
+ * The pre-restore state is appended to the history first, so restoring never
+ * destroys the current state — it just becomes another version in the chain.
+ *
+ * Same rate limit, error shapes and logError conventions as PATCH/undo.
+ */
+export async function restoreItineraryHistoryHandler(
+  req: HttpRequest,
+  ctx: InvocationContext,
+): Promise<HttpResponseInit> {
+  const origin = req.headers.get('origin') ?? undefined
+  if (req.method === 'OPTIONS') return withHeaders(corsPreflightResponse(origin), origin)
+  if (req.method !== 'POST') return withHeaders({ status: 405, body: JSON.stringify({ error: 'Method Not Allowed' }), headers: { 'Content-Type': 'application/json' } }, origin)
+
+  const rateLimitOwnerId = req.headers?.get('X-Owner-Id') ?? 'unknown'
+  const rateLimitResult = await checkAndIncrementItineraryWriteRateLimit(req, rateLimitOwnerId, ctx)
+  if (!rateLimitResult.allowed) {
+    const retryAfter = rateLimitResult.retryAfterSeconds ?? 3600
+    return withHeaders(
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+        body: JSON.stringify({ error: 'Rate limit exceeded', retryAfterSeconds: retryAfter }),
+      },
+      origin,
+    )
+  }
+
+  try {
+    const id = req.params.id
+    if (!id) return withHeaders({ status: 400, body: JSON.stringify({ error: 'Missing itinerary id' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    const rowKey = req.params.rowKey
+    if (!rowKey) return withHeaders({ status: 400, body: JSON.stringify({ error: 'Missing history rowKey' }), headers: { 'Content-Type': 'application/json' } }, origin)
+
+    const client = getTableClient('Itineraries')
+    const entity = await client.getEntity(SHARED_PARTITION_KEY, id) as Record<string, unknown>
+
+    const historyClient = getTableClient(HISTORY_TABLE)
+    let savedState: PreviousItineraryState | undefined
+    try {
+      const stored = await historyClient.getEntity(id, rowKey) as Record<string, unknown>
+      savedState = JSON.parse(stored.stateJson as string) as PreviousItineraryState
+    } catch (err: any) {
+      if (err?.statusCode === 404 || err?.errorCode === 'TableNotFound') {
+        return withHeaders({ status: 404, body: JSON.stringify({ error: 'History version not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+      }
+      throw err
+    }
+
+    // Preserve the current state in history before overwriting the entity, so
+    // a restore is itself undoable and no state is ever lost.
+    await appendItineraryHistory(ctx, id, extractPreviousState(entity))
+
+    await client.updateEntity({
+      partitionKey: SHARED_PARTITION_KEY,
+      rowKey: id,
+      eTag: entity.etag as string | undefined,
+      name: savedState.name,
+      createdAt: savedState.createdAt,
+      startCity: savedState.startCity,
+      endCity: savedState.endCity,
+      itineraryJson: savedState.itineraryJson,
+      thumbnail: savedState.thumbnail,
+      // The pre-restore state becomes the single-level undo snapshot, so plain
+      // POST .../undo undoes the restore without touching the history chain.
+      previousStateJson: JSON.stringify(extractPreviousState(entity)),
+    })
+
+    const restoredItinerary = JSON.parse(savedState.itineraryJson) as Record<string, unknown>
+    return withHeaders(
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...restoredItinerary, hasPreviousVersion: true, restoredFrom: rowKey }),
+      },
+      origin,
+    )
+  } catch (err: any) {
+    if (err?.statusCode === 404) return withHeaders({ status: 404, body: JSON.stringify({ error: 'Not found' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    if (err?.statusCode === 412 || err?.code === 'UpdateConditionNotSatisfied') return withHeaders({ status: 409, body: JSON.stringify({ error: 'Conflict: itinerary was modified concurrently' }), headers: { 'Content-Type': 'application/json' } }, origin)
+    logError(ctx, 'restoreItineraryHistoryHandler: internal error', err)
+    return withHeaders({ status: 500, body: JSON.stringify({ error: 'Internal error' }), headers: { 'Content-Type': 'application/json' } }, origin)
+  }
+}
+
 app.http('itineraries', {
   methods: ['GET', 'POST', 'OPTIONS'],
   authLevel: 'anonymous',
@@ -432,4 +690,12 @@ app.http('itineraryUndo', {
   authLevel: 'anonymous',
   route: 'itineraries/{id}/undo',
   handler: undoItineraryHandler,
+})
+
+// #29 — restore one specific history version of a trip.
+app.http('itineraryHistoryRestore', {
+  methods: ['POST', 'OPTIONS'],
+  authLevel: 'anonymous',
+  route: 'itineraries/{id}/history/restore/{rowKey}',
+  handler: restoreItineraryHistoryHandler,
 })
