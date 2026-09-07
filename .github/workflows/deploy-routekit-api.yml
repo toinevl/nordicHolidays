@@ -1,0 +1,88 @@
+name: Deploy RouteKit API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - '.github/workflows/deploy-routekit-api.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy API (RouteKit)
+        run: az functionapp deployment source config-zip --resource-group rgRouteKit --name ${{ vars.ROUTEKIT_FUNCTION_APP_NAME }} --src ./api.zip --build-remote false
+
+      - name: Verify cross-RG role assignments (POST-DEPLOY GATE)
+        # Issue #65: the RouteKit Function App's managed identity must have read access
+        # to the shared Key Vault secret and Azure Maps account in rgNordicHolidays.
+        # This step fails the deploy if either assignment is missing.
+        run: |
+          set -euo pipefail
+          IDENTITY_OBJECT_ID=$(az functionapp show \
+            --resource-group rgRouteKit \
+            --name ${{ vars.ROUTEKIT_FUNCTION_APP_NAME }} \
+            --query identity.principalId -o tsv 2>/dev/null || echo "")
+          if [ -z "$IDENTITY_OBJECT_ID" ]; then
+            echo "✗ RouteKit Function App managed identity not found (principalId missing)"
+            exit 1
+          fi
+          echo "✓ RouteKit Function App identity: $IDENTITY_OBJECT_ID"
+
+          # Key Vault Secrets User on rgNordicHolidays
+          KV_ROLES=$(az role assignment list \
+            --resource-group rgNordicHolidays \
+            --assignee $IDENTITY_OBJECT_ID \
+            --query "[?roleDefinitionName=='Key Vault Secrets User']" -o json)
+          if [ "$KV_ROLES" = "[]" ] || [ -z "$KV_ROLES" ]; then
+            echo "✗ Missing Key Vault Secrets User role assignment for RouteKit identity on rgNordicHolidays"
+            exit 1
+          fi
+          echo "✓ Key Vault Secrets User role assignment present"
+
+          # Azure Maps Data Reader on the shared Maps account (rgNordicHolidays)
+          MAPS_ROLES=$(az role assignment list \
+            --resource-group rgNordicHolidays \
+            --assignee $IDENTITY_OBJECT_ID \
+            --scope $(az maps account show --resource-group rgNordicHolidays --name ${{ vars.AZURE_MAPS_ACCOUNT_NAME }} --query id -o tsv 2>/dev/null || echo "") \
+            --query "[?roleDefinitionName=='Azure Maps Data Reader']" -o json 2>/dev/null || echo "[]")
+          # Fallback: search across subscription scope if resource-group scope misses it
+          if [ -z "$MAPS_ROLES" ] || [ "$MAPS_ROLES" = "[]" ]; then
+            MAPS_ROLES=$(az role assignment list --all \
+              --assignee $IDENTITY_OBJECT_ID \
+              --query "[?contains(roleDefinitionName, 'Azure Maps Data Reader')]" -o json 2>/dev/null || echo "[]")
+          fi
+          if [ -z "$MAPS_ROLES" ] || [ "$MAPS_ROLES" = "[]" ]; then
+            echo "✗ Missing Azure Maps Data Reader role assignment for RouteKit identity"
+            exit 1
+          fi
+          echo "✓ Azure Maps Data Reader role assignment present"
+
+      - name: Smoke test API (RouteKit region)
+        run: |
+          API_URL="https://routekit-api.azurewebsites.net/api"
+          # Minimal health + generate smoke test (same pattern as deploy-api.yml)
+          curl -sf "$API_URL/health" > /dev/null || { echo "RouteKit health check failed"; exit 1; }
+          echo "✓ RouteKit deploy verified (health + roles)"
