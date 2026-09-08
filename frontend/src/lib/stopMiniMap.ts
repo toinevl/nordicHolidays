@@ -39,6 +39,10 @@ export interface StopMiniMapOptions {
   contextOutline?: [number, number][]
   /** #70: display name per stop (same order as stops). Rendered as SVG text above the dots. */
   labels?: string[]
+  /** #70: desired label font size in SCREEN px (compensated into viewBox units via cssHeightPx). */
+  labelScreenPx?: number
+  /** #70: the CSS height the svg renders at (px) — needed to compensate the label font size. */
+  cssHeightPx?: number
 }
 
 const DEFAULT_ASPECT_RATIO = 5
@@ -255,6 +259,15 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
     .join('')
 
   // #70: stop labels — placed above the dot (below it when near the frame top).
+  // Font-size compensation: the viewBox scale differs per render (route bbox +
+  // aspect ratio), but with preserveAspectRatio + a fixed CSS height the scale
+  // is exactly renderedHeightPx / boxH. A font-size in viewBox units of
+  // labelScreenPx * boxH / cssHeightPx therefore always renders at a CONSTANT
+  // screen size, regardless of how wide the route bbox is.
+  const labelFontSize = options.labelScreenPx && options.cssHeightPx
+    ? round((options.labelScreenPx * boxH) / options.cssHeightPx)
+    : 0
+  const labelFontSizeAttr = labelFontSize > 0 ? ` font-size="${labelFontSize}"` : ''
   const labelEls = options.labels && options.labels.length === stops.length
     ? stopPoints
         .map(([x, y], i) => {
@@ -262,7 +275,7 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
           if (!raw) return ''
           const text = escapeXml(truncateLabel(raw))
           const above = y > rBig * 4
-          return `<text class="mini-map-label${i === 0 ? ' mini-map-label--start' : ''}" x="${x}" y="${above ? round(y - rBig * 2.2) : round(y + rBig * 3.2)}" text-anchor="middle">${text}</text>`
+          return `<text class="mini-map-label${i === 0 ? ' mini-map-label--start' : ''}" x="${x}" y="${above ? round(y - rBig * 2.2) : round(y + rBig * 3.2)}"${labelFontSizeAttr} text-anchor="middle">${text}</text>`
         })
         .join('')
     : ''

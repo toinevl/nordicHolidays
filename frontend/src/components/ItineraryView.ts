@@ -397,11 +397,28 @@ export class ItineraryView {
     const el = document.getElementById('trip-preview')
     if (!el || this.stops.length === 0) return
 
+    // #70: labels only read at low density — keep start/end + a spread, max 6.
+    // Non-place labels (e.g. 'Return → Netherlands') are never labeled.
+    const MAX_PREVIEW_LABELS = 6
+    const labelable = (name: string) => name && !name.includes('→') && !name.includes('Return')
+    const labelCount = this.stops.filter(s => labelable(s.dest)).length
+    const step = Math.max(1, Math.ceil(labelCount / MAX_PREVIEW_LABELS))
+    let seen = 0
+    const labels = this.stops.map((s, i) => {
+      if (!labelable(s.dest)) return ''
+      const isEdge = i === 0 || i === this.stops.length - 1
+      seen++
+      if (isEdge || seen % step === 1) return s.dest
+      return ''
+    })
+
     el.innerHTML = `
       <div class="trip-preview-map">${buildStopMiniMapSvg(this.stops, {
         aspectRatio: 8,
         contextOutline: SCANDINAVIA_OUTLINE,
-        labels: this.stops.map((s) => s.dest),
+        labels,
+        labelScreenPx: 11,
+        cssHeightPx: 120,
       })}</div>
       <a class="btn btn--primary trip-preview-cta" href="#map-page">${t('map.previewCta')}</a>`
 

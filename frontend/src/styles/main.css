@@ -335,9 +335,11 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
 .mini-map-dot--start { fill: var(--primary); }
 .mini-map-dot--active { stroke: var(--ink); stroke-width: 1.5; }
 .mini-map-dot--daytrip { fill: none; stroke: var(--accent-2); stroke-width: 1.5; }
-/* #70: stop labels in the trip-preview — outlined text keeps contrast on the silhouette */
+/* #70: stop labels in the trip-preview — outlined text keeps contrast on the silhouette.
+   font-size is only a fallback: when the svg carries font-size attrs (labelScreenPx
+   compensation), the per-element attribute wins over this CSS value. */
 .mini-map-label {
-  font-size: 11px;
+  font-size: 10px;
   fill: var(--ink);
   stroke: var(--bg-alt);
   stroke-width: 2.5;
