@@ -1,4 +1,5 @@
 import { affiliateConfig } from '../config'
+import { SCANDINAVIA_OUTLINE } from '../data/scandinaviaOutline'
 import { getSeasonInfo } from '../data/seasonData'
 import { getLocale, t, tpl } from '../i18n/index'
 import { activityUrl, carRentalUrl, lodgingUrl } from '../lib/affiliate'
@@ -397,7 +398,11 @@ export class ItineraryView {
     if (!el || this.stops.length === 0) return
 
     el.innerHTML = `
-      <div class="trip-preview-map">${buildStopMiniMapSvg(this.stops, { aspectRatio: 8 })}</div>
+      <div class="trip-preview-map">${buildStopMiniMapSvg(this.stops, {
+        aspectRatio: 8,
+        contextOutline: SCANDINAVIA_OUTLINE,
+        labels: this.stops.map((s) => s.dest),
+      })}</div>
       <a class="btn btn--primary trip-preview-cta" href="#map-page">${t('map.previewCta')}</a>`
 
     el.querySelectorAll<HTMLAnchorElement>('.trip-preview-cta').forEach((cta) => {

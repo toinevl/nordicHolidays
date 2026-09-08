@@ -37,6 +37,8 @@ export interface StopMiniMapOptions {
   activeIndex?: number
   /** #70: [lng,lat] polygon rendered as a soft landmass silhouette behind the route (trip-preview only). */
   contextOutline?: [number, number][]
+  /** #70: display name per stop (same order as stops). Rendered as SVG text above the dots. */
+  labels?: string[]
 }
 
 const DEFAULT_ASPECT_RATIO = 5
@@ -47,6 +49,16 @@ const MIN_EXTENT = 1
 
 function round(value: number): number {
   return Math.round(value * 100) / 100
+}
+
+/** #70: keep preview labels compact — 13 visible chars + ellipsis. */
+function truncateLabel(name: string, max = 13): string {
+  return name.length <= max + 1 ? name : `${name.slice(0, max)}…`
+}
+
+/** XML-escape for SVG text content (module stays dependency-free). */
+function escapeXml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 /** Project [lng, lat] to planar units (x east, y south so north is up in SVG) with a cos(meanLat) x-correction. */
@@ -242,6 +254,19 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
     })
     .join('')
 
+  // #70: stop labels — placed above the dot (below it when near the frame top).
+  const labelEls = options.labels && options.labels.length === stops.length
+    ? stopPoints
+        .map(([x, y], i) => {
+          const raw = options.labels![i]
+          if (!raw) return ''
+          const text = escapeXml(truncateLabel(raw))
+          const above = y > rBig * 4
+          return `<text class="mini-map-label${i === 0 ? ' mini-map-label--start' : ''}" x="${x}" y="${above ? round(y - rBig * 2.2) : round(y + rBig * 3.2)}" text-anchor="middle">${text}</text>`
+        })
+        .join('')
+    : ''
+
   // Drop-shadow filter definition — defined once, reused by all dots
   const dotShadowFilter = `<defs>
     <filter id="mini-map-dot-shadow" x="-20%" y="-20%" dx="0" dy="1" stdDeviation="1">
@@ -278,7 +303,7 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
   // to treat them as separate elements and breaks the test assertions.
   const allDefs = allDefBlocks(gradientId ? [defsBlock] : [], dotShadowFilter ? [dotShadowFilter] : [])
 
-  return `<svg class="mini-map" viewBox="0 0 ${round(boxW)} ${round(boxH)}" preserveAspectRatio="xMidYMid meet" role="presentation" aria-hidden="true" focusable="false">${allDefs}${contextPath}${polyline}${excursions}${dotsAtStops}</svg>`
+  return `<svg class="mini-map" viewBox="0 0 ${round(boxW)} ${round(boxH)}" preserveAspectRatio="xMidYMid meet" role="presentation" aria-hidden="true" focusable="false">${allDefs}${contextPath}${polyline}${excursions}${dotsAtStops}${labelEls}</svg>`
 }
 
 /** Merge multiple <defs> blocks into a single <defs> to avoid duplicate-element warnings. */

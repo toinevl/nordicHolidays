@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildStopMiniMapSvg, projectCoords, projectCoordsWithMeanLat } from './stopMiniMap'
 import { SCANDINAVIA_OUTLINE } from '../data/scandinaviaOutline'
+import { buildStopMiniMapSvg, projectCoords, projectCoordsWithMeanLat } from './stopMiniMap'
 
 /** Minimal stop factory — coords are [lng, lat], real Nordic places. */
 function stop(coords: [number, number], nights = 1) {
@@ -72,6 +72,44 @@ describe('trip-preview geographic context (#70)', () => {
     const d = svg.match(/class="mini-map-context"[^>]*d="([^"]*)"/)![1]
     const xs = d.match(/-?[\d.]+/g)!.map(Number)
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(w * 0.3)
+  })
+})
+
+describe('trip-preview stop labels (#70)', () => {
+  const nordicStops = [
+    { coords: [12.94, 55.61] as [number, number], nights: 2 },  // Malmö
+    { coords: [11.97, 57.71] as [number, number], nights: 2 },  // Göteborg
+    { coords: [18.07, 59.33] as [number, number], nights: 3 },  // Stockholm
+  ]
+
+  it('omits labels when not provided (backwards compatible)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops)
+    expect(svg).not.toContain('mini-map-label')
+  })
+
+  it('renders provided labels as SVG text at the stop positions', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, {
+      labels: ['Malmö', 'Göteborg', 'Stockholm'],
+    })
+    expect(svg).toContain('mini-map-label')
+    expect(svg).toContain('Malmö')
+    expect(svg).toContain('Stockholm')
+    expect(svg.indexOf('mini-map-label')).toBeGreaterThan(svg.indexOf('mini-map-dot'))
+  })
+
+  it('truncates long names with an ellipsis at 13 chars', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, {
+      labels: ['Malmö', 'Göteborg', 'Västra Götaland Region'],
+    })
+    expect(svg).toContain('Västra Götala…')
+    expect(svg).not.toContain('Västra Götaland Region')
+  })
+
+  it('skips empty label strings (sparse labels) and XML-escapes names', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { labels: ['Malmö', '', 'Stockholm'] })
+    expect(svg).toContain('Malmö')
+    expect(svg).toContain('Stockholm')
+    expect(svg).not.toContain('>Göteborg<')
   })
 })
 
