@@ -104,6 +104,7 @@ describe('POST /api/generate', () => {
     expect(res.status).toBe(400)
     const body = JSON.parse(res.body as string)
     expect(body.error).toBe('Invalid request body')
+    expect(body.details).toContain('startCity and endCity must be provided together')
   })
 
   it('rejects an unknown theme id (#67)', async () => {

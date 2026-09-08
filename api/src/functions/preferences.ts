@@ -108,7 +108,7 @@ export async function putPreferencesHandler(
     // Validate and parse body with zod; on failure, return 400 with details
     const parseResult = PreferencesSchema.safeParse(rawBody)
     if (!parseResult.success) {
-      const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+      const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
       logError(ctx, `putPreferencesHandler: validation failed - ${errors}`, parseResult.error)
       return withHeaders({
         status: 400,
@@ -137,6 +137,8 @@ export async function putPreferencesHandler(
       endCity: prefs.endCity,
       tripDays: prefs.tripDays,
       country: prefs.country,
+      themes: JSON.stringify(prefs.themes ?? []),
+      pace: prefs.pace ?? 'balanced',
       updatedAt: new Date().toISOString(),
       ...(existing && { etag: existing.etag }),
     }

@@ -117,7 +117,7 @@ export async function generateHandler(
   // Validate and parse body with zod; on failure, return 400 with details
   const parseResult = GenerateRequestBodySchema.safeParse(rawBody)
   if (!parseResult.success) {
-    const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+    const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
     logError(ctx, `generateHandler: validation failed - ${errors}`, parseResult.error)
     return withHeaders({
       status: 400,
@@ -135,7 +135,8 @@ export async function generateHandler(
     tripDays: body.tripDays,
     country: body.country,
     startDate: body.startDate,
-    themes: [], // interim default; threaded from body once schemas land (#67)
+    // themes/pace flow into the prompt in a later task (#67)
+    themes: [],
     pace: 'balanced',
   }
   const lang = body.lang as 'en' | 'nl' | 'de'

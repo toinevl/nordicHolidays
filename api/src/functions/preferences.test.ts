@@ -99,6 +99,11 @@ describe('PUT /api/preferences', () => {
     const body = JSON.parse(result.body as string)
     expect(body.themes).toEqual(['nature', 'food'])
     expect(body.pace).toBe('relaxed')
+    // The columns must actually be persisted, not just echoed in the response
+    expect(client.createEntity).toHaveBeenCalledOnce()
+    const savedEntity = client.createEntity.mock.calls[0][0]
+    expect(savedEntity.themes).toBe(JSON.stringify(['nature', 'food']))
+    expect(savedEntity.pace).toBe('relaxed')
   })
 
   it('defaults themes and pace when omitted (#67)', async () => {
