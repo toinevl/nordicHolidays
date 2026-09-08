@@ -120,14 +120,16 @@ describe('trip-preview stop labels (#70)', () => {
     })
     // viewBox-hoogte ~4.5 → 11px scherm ≈ 11 * 4.5 / 120 ≈ 0.41 units (heel klein getal);
     // zonder compensatie zou CSS 11px in viewBox-units ≈ 270px op scherm betekenen.
-    const fontSize = svg.match(/font-size="([\d.]+)"/)
-    expect(fontSize).toBeTruthy()
-    expect(Number(fontSize![1])).toBeLessThan(2)
+    // #70: de grootte gaat als INLINE style mee — CSS (.mini-map-label) verslaat
+    // presentatie-attributen, dus een font-size-attribuut zou genegeerd worden.
+    const style = svg.match(/style="font-size:([\d.]+)px"/)
+    expect(style).toBeTruthy()
+    expect(Number(style![1])).toBeLessThan(2)
   })
 
   it('keeps CSS font when no compensation options given (backwards compat)', () => {
     const svg = buildStopMiniMapSvg(nordicStops, { labels: ['Malmö', 'Göteborg', 'Stockholm'] })
-    expect(svg).not.toMatch(/font-size=/)
+    expect(svg).not.toMatch(/style="font-size:/)
   })
 })
 

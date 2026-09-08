@@ -267,7 +267,12 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
   const labelFontSize = options.labelScreenPx && options.cssHeightPx
     ? round((options.labelScreenPx * boxH) / options.cssHeightPx)
     : 0
-  const labelFontSizeAttr = labelFontSize > 0 ? ` font-size="${labelFontSize}"` : ''
+  // #70: the label font must be set as an INLINE style, not a presentation
+  // attribute — a CSS rule (.mini-map-label { font-size }) beats presentation
+  // attributes, which made labels render at CSS px inside a viewBox that is
+  // scaled ~15x (read: giant text covering the whole strip). Inline style wins
+  // over the stylesheet, so the compensated unit-size actually applies.
+  const labelFontSizeStyle = labelFontSize > 0 ? ` style="font-size:${labelFontSize}px"` : ''
   const labelEls = options.labels && options.labels.length === stops.length
     ? stopPoints
         .map(([x, y], i) => {
@@ -275,7 +280,7 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
           if (!raw) return ''
           const text = escapeXml(truncateLabel(raw))
           const above = y > rBig * 4
-          return `<text class="mini-map-label${i === 0 ? ' mini-map-label--start' : ''}" x="${x}" y="${above ? round(y - rBig * 2.2) : round(y + rBig * 3.2)}"${labelFontSizeAttr} text-anchor="middle">${text}</text>`
+          return `<text class="mini-map-label${i === 0 ? ' mini-map-label--start' : ''}" x="${x}" y="${above ? round(y - rBig * 2.2) : round(y + rBig * 3.2)}"${labelFontSizeStyle} text-anchor="middle">${text}</text>`
         })
         .join('')
     : ''
