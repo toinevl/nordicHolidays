@@ -80,7 +80,7 @@ export class NotesBoard {
     if (!text) return
     const displayName = nameEl.value.trim()
     this.adding = true
-    this.render()
+    this.renderInto(this.host!)
     try {
       const created = await apiClient.addNote(this.itineraryId, {
         stopId: this.stopId,

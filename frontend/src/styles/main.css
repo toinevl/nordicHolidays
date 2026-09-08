@@ -324,10 +324,11 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
   stroke: var(--primary); stroke-width: 1;
   stroke-dasharray: 3 3; opacity: 0.7;
 }
-/* #70: landmass silhouette behind the route (trip-preview) */
+/* #70: landmass silhouette behind the route (trip-preview) — needs real
+   contrast against the card background or it reads as an empty white field */
 .mini-map-context {
-  fill: var(--bg-subtle);
-  stroke: var(--border);
+  fill: #E3DCCF;
+  stroke: #C9C0B0;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
@@ -349,7 +350,13 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
 }
 .mini-map-label--start { font-weight: 600; }
 /* Trip-preview variant: taller, chrome-less strip inside its own card */
-.trip-preview-map .mini-map { height: 120px; background: transparent; border-bottom: none; }
+/* Trip-preview variant (#70): the map is 3:1 now (Scandinavia needs vertical
+   space) — cap its width so the letterboxed SVG doesn't leave huge empty
+   flanks, and center it */
+.trip-preview-map { display: flex; justify-content: center; }
+/* #70: width follows the 3:1 aspect (120px height → 360px map) so the
+   letterboxed SVG fills its block instead of floating with huge empty flanks */
+.trip-preview-map .mini-map { height: 120px; width: auto; background: transparent; border-bottom: none; }
 @media print {
   .mini-map { display: none; }
 }
