@@ -6,6 +6,8 @@ import { PreferencesSchema, logError } from '../lib/schemas'
 import { ensureTable, getTableClient } from '../lib/tableClient'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
+import { TRIP_THEME_IDS } from '../region/types'
+import type { TripPace, TripThemeId } from '../region/types'
 // WR-07 / H7: ensure every response carries Cache-Control and Content-Type
 // in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
 // injects. withCors is aliased so the wrapper can call it without recursion.
@@ -41,6 +43,23 @@ function parseStoredArray(value: unknown, field: string, ctx: { log: (msg: strin
   }
 }
 
+/**
+ * #67: tolerant parse for the themes column — corrupt JSON, non-array or
+ * unknown ids all degrade to [] / filtered lists, mirroring parseStoredArray.
+ */
+function parseStoredThemes(value: unknown, ctx: { log: (msg: string) => void }): TripThemeId[] {
+  const parsed = parseStoredArray(value, 'themes', ctx)
+  return parsed.filter((id): id is TripThemeId => (TRIP_THEME_IDS as readonly string[]).includes(id))
+}
+
+/**
+ * #67: tolerant parse for the pace column — anything but the two non-default
+ * vocabulary values falls back to 'balanced'.
+ */
+function parseStoredPace(value: unknown): TripPace {
+  return value === 'relaxed' || value === 'packed' ? value : 'balanced'
+}
+
 function entityToPreferences(entity: Record<string, unknown>, ctx: { log: (msg: string) => void }): Preferences {
   const raw = entity as Record<string, unknown>
   return {
@@ -50,8 +69,8 @@ function entityToPreferences(entity: Record<string, unknown>, ctx: { log: (msg: 
     endCity: (raw.endCity as string) || DEFAULT_PREFERENCES.endCity,
     tripDays: typeof raw.tripDays === 'number' ? (raw.tripDays as number) : DEFAULT_PREFERENCES.tripDays,
     country: (raw.country as string) || DEFAULT_PREFERENCES.country,
-    themes: DEFAULT_PREFERENCES.themes, // interim; tolerant column parse lands in Task 3 (#67)
-    pace: DEFAULT_PREFERENCES.pace,
+    themes: parseStoredThemes(raw.themes, ctx),
+    pace: parseStoredPace(raw.pace),
   }
 }
 
