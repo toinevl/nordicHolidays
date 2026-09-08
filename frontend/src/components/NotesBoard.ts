@@ -144,8 +144,8 @@ export class NotesBoard {
     toggle.setAttribute('aria-label', 'Notities voor deze stop')
     toggle.setAttribute('aria-expanded', String(this.expanded))
     toggle.innerHTML = count > 0
-      ? `💬 ${count} ${escapeHtml(t('notes.label'))} <span class="notes-add-hint">+ ${escapeHtml(t('notes.add'))}</span>`
-      : `💬 <span class="notes-add-hint">${escapeHtml(t('notes.add'))}</span>`
+      ? `💬 ${count} ${escapeHtml(t('notes.label'))}`
+      : `💬 ${escapeHtml(t('notes.label'))}`
     toggle.addEventListener('click', () => {
       this.expanded = !this.expanded
       toggle.setAttribute('aria-expanded', String(this.expanded))
@@ -226,24 +226,41 @@ export class NotesBoard {
     if (!this.adding) {
       const addBtn = document.createElement('button')
       addBtn.type = 'button'
-      addBtn.className = 'notes-add-btn'
+      addBtn.className = 'notes-add-btn btn--primary'
       addBtn.textContent = `+ ${t('notes.add')}`
       addBtn.addEventListener('click', () => { this.adding = true; this.renderInto(host) })
       panel.appendChild(addBtn)
     } else {
       const form = document.createElement('div')
       form.className = 'notes-form'
+      const nameGroup = document.createElement('div')
+      nameGroup.className = 'form-group'
+      const nameLabel = document.createElement('label')
+      nameLabel.className = 'form-label'
+      nameLabel.textContent = t('notes.nameLabel')
+      nameLabel.htmlFor = 'notes-name'
       const nameInput = document.createElement('input')
+      nameInput.id = 'notes-name'
       nameInput.type = 'text'
       nameInput.className = 'form-input notes-name'
       nameInput.maxLength = 30
       nameInput.placeholder = t('notes.nameLabel')
       nameInput.value = getCachedDisplayName()
+      nameGroup.append(nameLabel, nameInput)
+
+      const textGroup = document.createElement('div')
+      textGroup.className = 'form-group'
+      const textLabel = document.createElement('label')
+      textLabel.className = 'form-label'
+      textLabel.textContent = t('notes.placeholder')
+      textLabel.htmlFor = 'notes-text'
       const textArea = document.createElement('textarea')
+      textArea.id = 'notes-text'
       textArea.className = 'form-input notes-text'
       textArea.maxLength = 500
       textArea.rows = 3
       textArea.placeholder = t('notes.placeholder')
+      textGroup.append(textLabel, textArea)
       const submit = document.createElement('button')
       submit.type = 'button'
       submit.className = 'btn btn--primary btn--small'
@@ -255,7 +272,7 @@ export class NotesBoard {
       cancel.className = 'notes-cancel btn--ghost'
       cancel.textContent = t('notes.cancel')
       cancel.addEventListener('click', () => { this.adding = false; this.renderInto(host) })
-      form.append(nameInput, textArea, submit, cancel)
+      form.append(nameGroup, textGroup, submit, cancel)
       panel.appendChild(form)
     }
 
