@@ -10,6 +10,8 @@ const defaultPreferences: Preferences = {
   tripDays: 21,
   country: regionConfig.defaultCountry,
   startDate: '',
+  themes: [],
+  pace: 'balanced',
 }
 
 // #37: locale comes from i18n's single source of truth (getLocale(), already
