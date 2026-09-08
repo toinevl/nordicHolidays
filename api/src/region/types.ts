@@ -51,3 +51,19 @@ export interface ApiRegionConfig {
     aliases?: string[]
   }>
 }
+
+/**
+ * Fixed vocabulary of trip themes shared by FE (chips) and API (prompt).
+ * The ids travel in Preferences.themes; each region pack maps them to
+ * prompt hints. Keep in sync with frontend/src/lib/tripThemes.ts.
+ */
+export const TRIP_THEME_IDS = [
+  'nature', 'coast', 'city', 'food', 'wildlife', 'history', 'aurora', 'family',
+] as const
+
+export type TripThemeId = typeof TRIP_THEME_IDS[number]
+
+export type TripPace = 'relaxed' | 'balanced' | 'packed'
+
+/** id → prompt hint for the LLM user message (region-specific phrasing). */
+export type TripThemeHints = Record<TripThemeId, string>

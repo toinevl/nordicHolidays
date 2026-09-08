@@ -88,4 +88,27 @@ describe('PUT /api/preferences', () => {
     const body = JSON.parse(result.body as string)
     expect(body.error).toBe('Invalid request body')
   })
+
+  it('saves and returns themes and pace (#67)', async () => {
+    const client = { getEntity: vi.fn(), upsertEntity: vi.fn().mockResolvedValue(undefined), createEntity: vi.fn().mockResolvedValue(undefined) }
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const prefs = { mustVisit: [], avoid: [], startCity: '', endCity: '', tripDays: 14, country: 'SE', themes: ['nature', 'food'], pace: 'relaxed' }
+    const req = { json: async () => prefs, method: 'PUT', headers: new Map() } as any
+    const result = await putPreferencesHandler(req, makeContext())
+    expect(result.status).toBe(201)
+    const body = JSON.parse(result.body as string)
+    expect(body.themes).toEqual(['nature', 'food'])
+    expect(body.pace).toBe('relaxed')
+  })
+
+  it('defaults themes and pace when omitted (#67)', async () => {
+    const client = { getEntity: vi.fn(), upsertEntity: vi.fn().mockResolvedValue(undefined), createEntity: vi.fn().mockResolvedValue(undefined) }
+    ;(getTableClient as ReturnType<typeof vi.fn>).mockReturnValue(client)
+    const req = { json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Göteborg', tripDays: 14, country: 'SE' }), method: 'PUT', headers: new Map() } as any
+    const result = await putPreferencesHandler(req, makeContext())
+    expect(result.status).toBe(201)
+    const body = JSON.parse(result.body as string)
+    expect(body.themes).toEqual([])
+    expect(body.pace).toBe('balanced')
+  })
 })

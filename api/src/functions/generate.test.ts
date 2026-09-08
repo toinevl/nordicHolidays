@@ -88,6 +88,30 @@ describe('POST /api/generate', () => {
     expect(body.startCity).toBe('Amsterdam')
   })
 
+  it('accepts a discovery-mode request without startCity and endCity (#67)', async () => {
+    const itin = makeItinerary()
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: vi.fn().mockResolvedValue(makeOpenAIResponse(itin)) } },
+    })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['coast'], pace: 'packed' }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+  })
+
+  it('rejects a request with only startCity (both-or-neither, #67)', async () => {
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', tripDays: 14 }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(400)
+    const body = JSON.parse(res.body as string)
+    expect(body.error).toBe('Invalid request body')
+  })
+
+  it('rejects an unknown theme id (#67)', async () => {
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['beach-party'] }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(400)
+  })
+
   it('returns 400 for invalid request body', async () => {
     const req = { method: 'POST', headers: { get: () => null }, json: async () => { throw new Error('bad json') } } as any
     const result = await generateHandler(req)

@@ -135,6 +135,8 @@ export async function generateHandler(
     tripDays: body.tripDays,
     country: body.country,
     startDate: body.startDate,
+    themes: [], // interim default; threaded from body once schemas land (#67)
+    pace: 'balanced',
   }
   const lang = body.lang as 'en' | 'nl' | 'de'
 

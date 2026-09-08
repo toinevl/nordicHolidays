@@ -50,6 +50,8 @@ function entityToPreferences(entity: Record<string, unknown>, ctx: { log: (msg: 
     endCity: (raw.endCity as string) || DEFAULT_PREFERENCES.endCity,
     tripDays: typeof raw.tripDays === 'number' ? (raw.tripDays as number) : DEFAULT_PREFERENCES.tripDays,
     country: (raw.country as string) || DEFAULT_PREFERENCES.country,
+    themes: DEFAULT_PREFERENCES.themes, // interim; tolerant column parse lands in Task 3 (#67)
+    pace: DEFAULT_PREFERENCES.pace,
   }
 }
 
