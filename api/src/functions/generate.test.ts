@@ -88,6 +88,45 @@ describe('POST /api/generate', () => {
     expect(body.startCity).toBe('Amsterdam')
   })
 
+  it('accepts a discovery-mode request without startCity and endCity (#67)', async () => {
+    const itin = makeItinerary()
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: vi.fn().mockResolvedValue(makeOpenAIResponse(itin)) } },
+    })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['coast'], pace: 'packed' }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+  })
+
+  it('discovery mode keeps the model-chosen first stop intact (no #175 rename to empty, #67)', async () => {
+    const itin = makeItinerary()
+    itin.startCity = 'Malmö'
+    itin.stops[0].city = 'Malmö'
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14 }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const body = JSON.parse(res.body as string)
+    expect(body.stops[0].city).toBe('Malmö')
+    expect(body.startCity).toBe('Malmö')
+  })
+
+  it('rejects a request with only startCity (both-or-neither, #67)', async () => {
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', tripDays: 14 }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(400)
+    const body = JSON.parse(res.body as string)
+    expect(body.error).toBe('Invalid request body')
+    expect(body.details).toContain('startCity and endCity must be provided together')
+  })
+
+  it('rejects an unknown theme id (#67)', async () => {
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['beach-party'] }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(400)
+  })
+
   it('returns 400 for invalid request body', async () => {
     const req = { method: 'POST', headers: { get: () => null }, json: async () => { throw new Error('bad json') } } as any
     const result = await generateHandler(req)
@@ -744,5 +783,38 @@ describe('POST /api/generate', () => {
     expect(body.stops[2].city).toBe('Uppsala')
     expect(body.stops[2].lat).toBeCloseTo(59.8586, 4)
     expect(body.stops[2].lng).toBeCloseTo(17.6389, 4)
+  })
+
+  // #67: discovery mode (both cities empty) must replace the start/end lines
+  // with a choose-your-own-endpoints instruction, and selected themes/pace
+  // must surface as concrete prompt hints the model can act on.
+  it('discovery prompt asks the model to choose endpoints and includes theme/pace hints (#67)', async () => {
+    const itin = makeItinerary()
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['coast', 'aurora'], pace: 'packed' }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const userMsg = create.mock.calls[0][0].messages.find((m: any) => m.role === 'user').content
+    expect(userMsg).toContain('no fixed start or end city')
+    expect(userMsg).toContain('ferry ports')
+    expect(userMsg).toContain('coastal drives')
+    expect(userMsg).toContain('northern lights')
+    expect(userMsg).toContain('Pace: packed')
+    expect(userMsg).not.toContain('Start city:')
+  })
+
+  it('classic prompt keeps start/end lines and appends theme hints (#67)', async () => {
+    const itin = makeItinerary()
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Göteborg', tripDays: 14, themes: ['food'] }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const userMsg = create.mock.calls[0][0].messages.find((m: any) => m.role === 'user').content
+    expect(userMsg).toContain('Start city: Malmö')
+    expect(userMsg).toContain('End city: Göteborg')
+    expect(userMsg).toContain('local food')
+    expect(userMsg).not.toContain('Pace:')
   })
 })

@@ -1,4 +1,4 @@
-import type { ApiRegionConfig } from './types'
+import type { ApiRegionConfig, TripThemeHints } from './types'
 
 /**
  * Nordic region configuration.
@@ -80,6 +80,18 @@ export const nordicConfig: ApiRegionConfig = {
     12: 'December — winter. Very short days (5-6h south, polar night north). Snow and ice. Christmas markets in cities. Aurora season. Many attractions closed; winter activities (skiing, ice hotels) begin opening. Dress for sub-zero.',
   },
 
+  /** #67: prompt hints per trip-theme id (ids shared with the frontend). */
+  tripThemes: {
+    nature: 'scenic nature, national parks and day hikes',
+    coast: 'coastal drives, islands and seaside towns',
+    city: 'cities, culture, museums and design',
+    food: 'local food scenes, markets and regional specialities',
+    wildlife: 'wildlife watching (moose, seals, whales, seabird colonies)',
+    history: 'historic sites, Viking heritage and old towns',
+    aurora: 'northern lights viewing (only realistic in dark months — check the trip dates)',
+    family: 'family-friendly activities suitable for children',
+  } satisfies TripThemeHints,
+
   promptTemplate: {
     /**
      * #38: region-specific LLM system prompt. Moved verbatim out of
@@ -110,32 +122,59 @@ When creating itineraries:
      */
     buildUserMessage(prefs, lang, existingStops) {
       const countryName = nordicConfig.countries[prefs.country] ?? `${nordicConfig.regionLabel} country`
+      // #67: prompt header (trip framing + border constraint) ...
       const parts: string[] = [
         `Create a ${prefs.tripDays}-day ${nordicConfig.regionLabel} road trip itinerary in ${countryName}.`,
         `All stops must be within ${countryName} — ${nordicConfig.borderConstraint}.`,
-        `Start city: ${prefs.startCity}`,
-        `End city: ${prefs.endCity}`,
       ]
+      // #67: discovery mode — both cities empty (both-or-neither is enforced
+      // upstream in GenerateRequestBodySchema). The model picks practical
+      // endpoints itself; car-rental access is the stated criterion.
+      const startEmpty = !prefs.startCity || prefs.startCity.trim() === ''
+      const endEmpty = !prefs.endCity || prefs.endCity.trim() === ''
+      if (startEmpty && endEmpty) {
+        parts.push(
+          'The traveller has no fixed start or end city. Choose a coherent start and end city yourself — prefer cities with good car-rental access (international airports or ferry ports) so the route is practical to start and finish.',
+        )
+      } else {
+        parts.push(`Start city: ${prefs.startCity}`)
+        parts.push(`End city: ${prefs.endCity}`)
+      }
+      // #67: translate selected themes and pace into explicit prompt hints.
+      if (prefs.themes && prefs.themes.length > 0) {
+        const hints = prefs.themes.map(id => nordicConfig.tripThemes[id]).filter(Boolean)
+        if (hints.length > 0) {
+          parts.push(`Trip themes the traveller cares about — let these drive stop selection: ${hints.join('; ')}.`)
+        }
+      }
+      if (prefs.pace === 'relaxed') {
+        parts.push('Pace: relaxed — prefer 3 or more nights per base and at most one day trip per base.')
+      } else if (prefs.pace === 'packed') {
+        parts.push('Pace: packed — relocate every 1-2 nights and include more stops and day trips.')
+      }
+      // #67: ... and tail (seasonal, must-visit/avoid, existing stops, routing
+      // and language rules) — unchanged content, appended after the new head.
+      const tail: string[] = []
       if (prefs.startDate) {
         const month = parseInt(prefs.startDate.slice(5, 7), 10)
         const seasonal = nordicConfig.seasonalContext[month]
         if (seasonal) {
-          parts.push(`The trip starts on ${prefs.startDate}. ${seasonal}`)
+          tail.push(`The trip starts on ${prefs.startDate}. ${seasonal}`)
         }
       }
-      if (prefs.mustVisit.length > 0) parts.push(`Must include: ${prefs.mustVisit.join(', ')}`)
-      if (prefs.avoid.length > 0) parts.push(`Avoid: ${prefs.avoid.join(', ')}`)
+      if (prefs.mustVisit.length > 0) tail.push(`Must include: ${prefs.mustVisit.join(', ')}`)
+      if (prefs.avoid.length > 0) tail.push(`Avoid: ${prefs.avoid.join(', ')}`)
       if (existingStops && existingStops.length > 0) {
         const stopList = existingStops.map(s => `${s.city} (${s.nights === 0 ? 'day trip' : s.nights + 'n'})`).join(' → ')
-        parts.push(`The current route includes these stops — respect their order and include all of them: ${stopList}`)
+        tail.push(`The current route includes these stops — respect their order and include all of them: ${stopList}`)
       }
-      parts.push('Plan logical routing, mix of famous and off-the-beaten-track stops, with authentic local recommendations.')
+      tail.push('Plan logical routing, mix of famous and off-the-beaten-track stops, with authentic local recommendations.')
       const langInstruction =
         lang === 'nl' ? 'Genereer de reisroute in het Nederlands.'
         : lang === 'de' ? 'Erstelle die Reiseroute auf Deutsch.'
         : 'Generate the itinerary in English.'
-      parts.push(langInstruction)
-      return parts.join('\n')
+      tail.push(langInstruction)
+      return [...parts, ...tail].join('\n')
     },
   },
 }

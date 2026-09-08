@@ -118,12 +118,15 @@ Saves (upserts) travel preferences.
 
 Generates an AI-powered itinerary using Azure AI Foundry (forced tool use for structured output).
 
-**Request body**
+**Request body** (#67: `startCity`/`endCity` are both-or-neither — both empty = discovery mode, where the model picks practical endpoints itself with good car-rental access; sending exactly one is a 400. `themes` and `pace` steer stop selection and travel rhythm.)
 ```json
 {
   "region": "Norrland",
   "duration": 7,
   "startCity": "Umeå",
+  "endCity": "Luleå",
+  "themes": ["nature", "wildlife"],
+  "pace": "relaxed",
   "preferences": {
     "interests": ["hiking", "wildlife"],
     "pace": "relaxed"
@@ -135,7 +138,10 @@ Generates an AI-powered itinerary using Azure AI Foundry (forced tool use for st
 |---|---|---|---|
 | `region` | string | yes | Swedish region or "full country" |
 | `duration` | number | yes | Trip length in days (1–30) |
-| `startCity` | string | no | Departure city (default: Stockholm) |
+| `startCity` | string | no | Departure city. Optional together with `endCity` (#67): both empty = discovery mode, exactly one = 400 |
+| `endCity` | string | no | Arrival city; both-or-neither with `startCity` (#67) |
+| `themes` | string[] | no | Trip theme ids: `nature`, `coast`, `city`, `food`, `wildlife`, `history`, `aurora`, `family` (#67) |
+| `pace` | string | no | `relaxed` \| `balanced` (default) \| `packed` (#67) |
 | `preferences` | object | no | Overrides stored preferences for this request |
 
 **Response 200**

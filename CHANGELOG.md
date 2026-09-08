@@ -7,7 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+- **Reis plannen zonder start-/eindstad (#67)** — nieuwe "Verras mij"-modus in de generator: de LLM kiest zelf praktische eindpunten (voorkeur veerhaven/vliegveld i.v.m. autoverhuur). Nieuwe reiskarakteristieken in beide modi: thema-chips (natuur, kust, steden, eten, wildlife, historie, noorderlicht, familie) en reistempo (rustig/gevarieerd/veel zien). API: `startCity`/`endCity` both-or-neither (400 bij precies één), `themes` + `pace` in preferences en generate-body, tolerant teruglezen van opgeslagen preferences. 6 locales. Fixes onderweg: leesbare 400-details (ook voor refine-fouten), #175/#176-correctieguards bij lege steden, en een ontbrekende globale `.hidden`-CSSregel die discovery-mode in echte browsers de stadsvelden zichtbaar had gelaten.
 
 ## [1.1.0] — 2026-09-03
 

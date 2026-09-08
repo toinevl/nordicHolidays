@@ -2,6 +2,7 @@ import type { InvocationContext } from '@azure/functions'
 import { z } from 'zod'
 
 import { regionConfig } from '../region'
+import { TRIP_THEME_IDS } from '../region/types'
 
 /**
  * Safely log an error via the invocation context.
@@ -100,11 +101,13 @@ export const SaveItineraryBodySchema = z.object({
 export const PreferencesSchema = z.object({
   mustVisit: z.array(z.string().max(500)).max(100).default([]),
   avoid: z.array(z.string().max(500)).max(100).default([]),
-  startCity: z.string().max(200),
-  endCity: z.string().max(200),
+  startCity: z.string().max(200).optional().default(''),
+  endCity: z.string().max(200).optional().default(''),
   tripDays: z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
   country: z.string().max(2).default(regionConfig.defaultCountry),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  themes: z.array(z.enum(TRIP_THEME_IDS)).max(TRIP_THEME_IDS.length).optional().default([]),
+  pace: z.enum(['relaxed', 'balanced', 'packed']).optional().default('balanced'),
 }).strict()
 
 /**
@@ -113,17 +116,23 @@ export const PreferencesSchema = z.object({
 export const GenerateRequestBodySchema = z.object({
   mustVisit: z.array(z.string().max(500)).max(100).default([]),
   avoid: z.array(z.string().max(500)).max(100).default([]),
-  startCity: z.string().max(200),
-  endCity: z.string().max(200),
+  startCity: z.string().max(200).optional().default(''),
+  endCity: z.string().max(200).optional().default(''),
   tripDays: z.number().int().min(1).max(365).transform(val => Math.max(7, Math.min(30, val))),
   country: z.string().max(2).default(regionConfig.defaultCountry),
   lang: z.enum(['en', 'nl', 'de']).default('en'),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  themes: z.array(z.enum(TRIP_THEME_IDS)).max(TRIP_THEME_IDS.length).optional().default([]),
+  pace: z.enum(['relaxed', 'balanced', 'packed']).optional().default('balanced'),
   existingStops: z.array(z.object({
     city: z.string().max(200),
     nights: z.number().int().nonnegative(),
   })).max(50).optional(),
-}).strict()
+}).strict().refine(
+  // both-or-neither: exactly one filled is invalid (both empty = discovery mode)
+  b => ((b.startCity ?? '') === '') === ((b.endCity ?? '') === ''),
+  { message: 'startCity and endCity must be provided together (both empty = discovery mode)' },
+)
 
 export const ItineraryPutBodySchema = z.object({
   title: z.string().max(500).optional(),

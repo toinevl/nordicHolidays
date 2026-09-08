@@ -1,8 +1,10 @@
 import { apiClient } from '../api/client'
 import { t, tpl } from '../i18n/index'
 import type { LocaleKey } from '../i18n/types'
-import { type CitySuggestion, searchLocalCities, searchNominatim } from '../lib/citySearch'
+import type { CitySuggestion } from '../lib/citySearch'
+import { searchLocalCities, searchNominatim } from '../lib/citySearch'
 import { escapeHtml } from '../lib/escape'
+import { THEME_LABEL_KEYS, TRIP_THEME_IDS } from '../lib/tripThemes'
 import { regionConfig } from '../region'
 import type { Store } from '../store'
 import type { Itinerary, Preferences } from '../types'
@@ -49,6 +51,13 @@ export class GeneratorPanel {
   private onError: GenerateErrorCallback
   private cityLookupRequest = 0
   private lastLocale: string = ''
+  /**
+   * #67: the user pressed "From A to B" while both city prefs are empty.
+   * syncRouteMode() otherwise derives discovery from empty prefs and would
+   * flip the fields straight back to hidden; classicForced keeps classic
+   * mode on until discovery is chosen again (which resets it).
+   */
+  private classicForced = false
 
   constructor(store: Store, onGenerate: GenerateCallback, onError: GenerateErrorCallback = () => {}) {
     this.store = store
@@ -99,6 +108,14 @@ export class GeneratorPanel {
           </select>
         </div>
         <div class="form-group">
+          <span class="form-label" id="gen-route-mode-label">${t('generator.routeModeLabel')}</span>
+          <div class="segmented" role="group" aria-labelledby="gen-route-mode-label">
+            <button type="button" id="gen-mode-point" class="segmented__btn" aria-pressed="true">${t('generator.routeModePoint')}</button>
+            <button type="button" id="gen-mode-discover" class="segmented__btn" aria-pressed="false">${t('generator.routeModeDiscover')}</button>
+          </div>
+          <p class="form-hint hidden" id="gen-discover-hint">${t('generator.discoverHint')}</p>
+        </div>
+        <div class="form-group" id="gen-start-group">
           <label class="form-label" for="gen-start">${t('generator.startCity')}</label>
           <div class="city-combobox">
             <input id="gen-start" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-start-results" aria-activedescendant="" />
@@ -106,13 +123,27 @@ export class GeneratorPanel {
           </div>
           <p id="gen-start-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="gen-end-group">
           <label class="form-label" for="gen-end">${t('generator.finishCity')}</label>
           <div class="city-combobox">
             <input id="gen-end" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-end-results" aria-activedescendant="" />
             <div id="gen-end-results" class="city-results hidden" role="listbox" aria-hidden="true"></div>
           </div>
           <p id="gen-end-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="gen-themes-label">${t('generator.themesLabel')}</label>
+          <div class="theme-chips" role="group" aria-labelledby="gen-themes-label">
+            ${TRIP_THEME_IDS.map(id => `<button type="button" class="tag theme-chip" data-theme="${id}" aria-pressed="false">${t(THEME_LABEL_KEYS[id])}</button>`).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="gen-pace">${t('generator.paceLabel')}</label>
+          <select id="gen-pace" class="form-input">
+            <option value="relaxed">${t('generator.paceRelaxed')}</option>
+            <option value="balanced" selected>${t('generator.paceBalanced')}</option>
+            <option value="packed">${t('generator.pacePacked')}</option>
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label" for="gen-days">${t('generator.tripLength')}</label>
@@ -165,6 +196,7 @@ export class GeneratorPanel {
     if (dateInput) dateInput.value = prefs.startDate ?? ''
     this.renderTags('must-visit-tags', 'mustVisit')
     this.renderTags('avoid-tags', 'avoid')
+    this.syncRouteMode()
     this.syncRegenerateVisibility()
   }
 
@@ -188,6 +220,68 @@ export class GeneratorPanel {
 
     this.panel.querySelector('#btn-generate')?.addEventListener('click', () => this.handleGenerate())
     this.panel.querySelector('#btn-regenerate')?.addEventListener('click', () => this.handleGenerate())
+
+    // #67: route mode switcher — discovery clears both cities; classic shows
+    // the fields again (classicForced, see field docs).
+    this.panel.querySelector('#gen-mode-discover')?.addEventListener('click', () => {
+      this.classicForced = false
+      this.updateCityPreference('startCity', '')
+      this.updateCityPreference('endCity', '')
+      const startInput = this.panel.querySelector('#gen-start') as HTMLInputElement | null
+      const endInput = this.panel.querySelector('#gen-end') as HTMLInputElement | null
+      if (startInput) startInput.value = ''
+      if (endInput) endInput.value = ''
+      this.syncRouteMode()
+    })
+    this.panel.querySelector('#gen-mode-point')?.addEventListener('click', () => {
+      this.classicForced = true
+      this.syncRouteMode()
+    })
+
+    // #67: theme chips toggle their id in prefs.themes (deduped).
+    this.panel.querySelectorAll<HTMLButtonElement>('.theme-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const theme = chip.dataset.theme
+        if (!theme) return
+        const current = this.store.getState().preferences.themes
+        const next = current.includes(theme) ? current.filter(id => id !== theme) : [...current, theme]
+        this.store.setState({ preferences: { ...this.store.getState().preferences, themes: next } })
+        this.syncRouteMode()
+      })
+    })
+
+    // #67: pace select writes straight to prefs.
+    this.panel.querySelector('#gen-pace')?.addEventListener('change', (event) => {
+      const value = (event.target as HTMLSelectElement).value as Preferences['pace']
+      this.store.setState({ preferences: { ...this.store.getState().preferences, pace: value } })
+    })
+
+    this.syncRouteMode()
+  }
+
+  /**
+   * #67: mirror route mode + themes + pace from prefs into the DOM. Discovery
+   * = both city prefs empty (trimmed) — unless classicForced, which keeps
+   * classic mode after the user explicitly pressed "From A to B" with still
+   * empty fields.
+   */
+  private syncRouteMode(): void {
+    const prefs = this.store.getState().preferences
+    const discover = !this.classicForced && !(prefs.startCity.trim() || prefs.endCity.trim())
+    const pointBtn = this.panel.querySelector<HTMLButtonElement>('#gen-mode-point')
+    const discoverBtn = this.panel.querySelector<HTMLButtonElement>('#gen-mode-discover')
+    pointBtn?.setAttribute('aria-pressed', String(!discover))
+    discoverBtn?.setAttribute('aria-pressed', String(discover))
+    const startGroup = this.panel.querySelector<HTMLElement>('#gen-start-group')
+    const endGroup = this.panel.querySelector<HTMLElement>('#gen-end-group')
+    startGroup?.classList.toggle('hidden', discover)
+    endGroup?.classList.toggle('hidden', discover)
+    this.panel.querySelector<HTMLElement>('#gen-discover-hint')?.classList.toggle('hidden', !discover)
+    this.panel.querySelectorAll<HTMLButtonElement>('.theme-chip').forEach(chip => {
+      chip.setAttribute('aria-pressed', String(prefs.themes.includes(chip.dataset.theme ?? '')))
+    })
+    const paceSelect = this.panel.querySelector<HTMLSelectElement>('#gen-pace')
+    if (paceSelect) paceSelect.value = prefs.pace
   }
 
   /**
@@ -414,6 +508,7 @@ export class GeneratorPanel {
       if (dateInput) dateInput.value = prefs.startDate ?? ''
       this.renderTags('must-visit-tags', 'mustVisit')
       this.renderTags('avoid-tags', 'avoid')
+      this.syncRouteMode()
     } catch (err: any) {
       if (err instanceof Error) console.error('[loadPreferences]', err)
       /* use defaults */
@@ -426,17 +521,23 @@ export class GeneratorPanel {
     btn.style.display = this.store.getState().currentItinerary ? '' : 'none'
   }
 
+  /** #67: discovery is allowed when the mode switch itself sits on discovery. */
+  private isDiscoverAllowed(): boolean {
+    return this.panel.querySelector<HTMLButtonElement>('#gen-mode-discover')?.getAttribute('aria-pressed') === 'true'
+  }
+
   private async handleGenerate(): Promise<void> {
     const btn = this.panel.querySelector('#btn-generate') as HTMLButtonElement
-    const startCity = (this.panel.querySelector('#gen-start') as HTMLInputElement)?.value.trim()
-    const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim()
+    const startCity = (this.panel.querySelector('#gen-start') as HTMLInputElement)?.value.trim() ?? ''
+    const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim() ?? ''
 
-    if (!startCity) {
+    // #67: both-or-neither. Both empty = discovery (the LLM picks endpoints).
+    if (!startCity && !endCity && !this.isDiscoverAllowed()) {
       this.onError(t('validation.selectStartCity'))
       return
     }
-    if (!endCity) {
-      this.onError(t('validation.selectFinishCity'))
+    if ((!startCity || !endCity) && (startCity || endCity)) {
+      this.onError(t('validation.needBothCities'))
       return
     }
 

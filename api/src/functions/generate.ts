@@ -117,7 +117,7 @@ export async function generateHandler(
   // Validate and parse body with zod; on failure, return 400 with details
   const parseResult = GenerateRequestBodySchema.safeParse(rawBody)
   if (!parseResult.success) {
-    const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+    const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
     logError(ctx, `generateHandler: validation failed - ${errors}`, parseResult.error)
     return withHeaders({
       status: 400,
@@ -135,6 +135,9 @@ export async function generateHandler(
     tripDays: body.tripDays,
     country: body.country,
     startDate: body.startDate,
+    // #67: themes/pace travel into the region prompt (buildUserMessage).
+    themes: body.themes,
+    pace: body.pace,
   }
   const lang = body.lang as 'en' | 'nl' | 'de'
 
@@ -289,7 +292,10 @@ export async function generateHandler(
     // stop's coords when its city name already matches `endCity` — the LLM
     // may choose a different terminus on round trips, and we don't want to
     // clobber that.
-    if (input.stops.length > 0) {
+    // #67: in discovery mode (no startCity/endCity in the request) both prefs
+    // default to '' — skip both corrections entirely, otherwise the model's
+    // own first/last stop would be renamed to an empty string.
+    if (input.stops.length > 0 && prefs.startCity && prefs.startCity.trim() !== '') {
       const first = input.stops[0]
       if (typeof first.city === 'string' && first.city.trim().toLowerCase() !== prefs.startCity.trim().toLowerCase()) {
         const known = lookupCityCoords(prefs.startCity)
@@ -302,7 +308,7 @@ export async function generateHandler(
         input.stops[0] = { ...first, ...patch }
       }
     }
-    if (input.stops.length > 1) {
+    if (input.stops.length > 1 && prefs.endCity && prefs.endCity.trim() !== '') {
       const last = input.stops[input.stops.length - 1]
       if (typeof last.city === 'string' && last.city.trim().toLowerCase() === prefs.endCity.trim().toLowerCase()) {
         const known = lookupCityCoords(prefs.endCity)

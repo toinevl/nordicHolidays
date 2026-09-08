@@ -16,6 +16,8 @@ vi.mock('../api/client', () => ({
       avoid: [],
       startCity: 'Stockholm',
       endCity: 'Gothenburg',
+      themes: [] as string[],
+      pace: 'balanced' as const,
       tripDays: 21,
       country: 'SE',
     })),
@@ -29,6 +31,8 @@ type Prefs = {
   avoid: string[]
   startCity: string
   endCity: string
+  themes: string[]
+  pace: 'relaxed' | 'balanced' | 'packed'
   tripDays: number
   country: string
   startDate?: string
@@ -47,6 +51,8 @@ function makeStore(initialPrefs: Partial<Prefs> = {}) {
       avoid: [],
       startCity: 'Stockholm',
       endCity: 'Gothenburg',
+      themes: [] as string[],
+      pace: 'balanced' as const,
       tripDays: 21,
       country: 'SE',
       ...initialPrefs,
@@ -246,5 +252,74 @@ describe('GeneratorPanel tag inputs (#41 characterization)', () => {
   it('tag inputs have no custom-city hint element', () => {
     expect(document.getElementById('must-visit-hint')).toBeNull()
     expect(document.getElementById('avoid-hint')).toBeNull()
+  })
+})
+
+describe('GeneratorPanel route mode, themes and pace (#67)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    document.body.innerHTML = ''
+    store = makeStore()
+    new GeneratorPanel(store as never, () => {}, () => {})
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('shows both city fields in classic mode and hides them in discovery mode', () => {
+    expect((document.getElementById('gen-start-group') as HTMLElement).classList.contains('hidden')).toBe(false)
+    ;(document.getElementById('gen-mode-discover') as HTMLButtonElement).click()
+    expect((document.getElementById('gen-start-group') as HTMLElement).classList.contains('hidden')).toBe(true)
+    expect((document.getElementById('gen-end-group') as HTMLElement).classList.contains('hidden')).toBe(true)
+    expect((document.getElementById('gen-mode-discover') as HTMLElement).getAttribute('aria-pressed')).toBe('true')
+    ;(document.getElementById('gen-mode-point') as HTMLButtonElement).click()
+    expect((document.getElementById('gen-start-group') as HTMLElement).classList.contains('hidden')).toBe(false)
+  })
+
+  it('toggling discovery clears both city preferences and inputs', () => {
+    ;(document.getElementById('gen-mode-discover') as HTMLButtonElement).click()
+    expect(store.getState().preferences.startCity).toBe('')
+    expect(store.getState().preferences.endCity).toBe('')
+    expect((document.getElementById('gen-start') as HTMLInputElement).value).toBe('')
+  })
+
+  it('renders 8 theme chips from the shared vocabulary and toggling updates the store', () => {
+    const chips = document.querySelectorAll('.theme-chip')
+    expect(chips.length).toBe(8)
+    const coast = document.querySelector('.theme-chip[data-theme="coast"]') as HTMLButtonElement
+    coast.click()
+    expect(store.getState().preferences.themes).toEqual(['coast'])
+    expect(coast.getAttribute('aria-pressed')).toBe('true')
+    coast.click()
+    expect(store.getState().preferences.themes).toEqual([])
+  })
+
+  it('pace select updates the store', () => {
+    const pace = document.getElementById('gen-pace') as HTMLSelectElement
+    pace.value = 'packed'
+    pace.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(store.getState().preferences.pace).toBe('packed')
+  })
+
+  it('generate with both cities empty succeeds (discovery, no validation error)', async () => {
+    const { apiClient } = await import('../api/client')
+    const gen = vi.mocked(apiClient.generateItinerary).mockResolvedValueOnce({ title: 'T', totalDays: 7, startCity: 'Kiruna', endCity: 'Abisko', stops: [], generatedAt: 'x' } as never)
+    ;(document.getElementById('gen-mode-discover') as HTMLButtonElement).click()
+    ;(document.getElementById('btn-generate') as HTMLButtonElement).click()
+    await vi.runAllTimersAsync()
+    expect(gen).toHaveBeenCalledOnce()
+    expect(gen.mock.calls[0][0].startCity).toBe('')
+  })
+
+  it('generate with exactly one city errors with needBothCities', async () => {
+    // Drop the beforeEach panel so the fresh instance below (wired to the
+    // onError spy) is the only one in the DOM — getElementById must resolve
+    // to the panel this test actually drives.
+    document.body.innerHTML = ''
+    const onError = vi.fn()
+    new GeneratorPanel(store as never, () => {}, onError)
+    const input = document.getElementById('gen-start') as HTMLInputElement
+    input.value = 'Malmö'
+    ;(document.getElementById('btn-generate') as HTMLButtonElement).click()
+    await vi.runAllTimersAsync()
+    expect(onError).toHaveBeenCalledOnce()
   })
 })

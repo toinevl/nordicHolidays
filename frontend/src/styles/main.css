@@ -867,6 +867,18 @@ a:focus-visible {
   animation: tagPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* #67: route-mode segmented control + theme chips */
+.segmented { display: flex; gap: 0.25rem; }
+.segmented__btn { flex: 1; padding: 0.375rem 0.75rem; border: 1px solid var(--border); background: var(--bg-subtle); color: var(--ink); border-radius: 0.5rem; font-size: 0.875rem; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+.segmented__btn[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+.theme-chips { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.theme-chip { cursor: pointer; }
+.theme-chip[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+/* #67: this app scopes every display:none to a component class — there is no
+   global `.hidden` rule, so the elements this panel toggles need their own. */
+.form-group.hidden { display: none; }
+.form-hint.hidden { display: none; }
+
 /* ── SEASON CALLOUT ─────────────────────────────────────────────────────── */
 .season-callout {
   display: inline-flex; align-items: center; gap: 0.35rem;
