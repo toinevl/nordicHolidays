@@ -142,8 +142,8 @@ export class NotesBoard {
     toggle.type = 'button'
     toggle.className = 'notes-toggle'
     toggle.innerHTML = count > 0
-      ? `💬 ${count} ${escapeHtml(t('notes.label'))} <span class="notes-add-hint">+ ${escapeHtml(t('notes.add'))}</span>`
-      : `💬 <span class="notes-add-hint">${escapeHtml(t('notes.add'))}</span>`
+      ? `💬 ${count} ${escapeHtml(t('notes.label'))}`
+      : `💬 ${escapeHtml(t('notes.label'))}`
     toggle.addEventListener('click', () => {
       this.expanded = !this.expanded
       if (this.expanded && this.notes === null) void this.loadNotes()
@@ -223,7 +223,7 @@ export class NotesBoard {
     if (!this.adding) {
       const addBtn = document.createElement('button')
       addBtn.type = 'button'
-      addBtn.className = 'notes-add-btn'
+      addBtn.className = 'notes-add-btn btn--primary'
       addBtn.textContent = `+ ${t('notes.add')}`
       addBtn.addEventListener('click', () => { this.adding = true; this.renderInto(host) })
       panel.appendChild(addBtn)
