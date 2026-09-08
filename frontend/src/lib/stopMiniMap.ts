@@ -35,6 +35,8 @@ export interface StopMiniMapOptions {
   paddingRatio?: number
   /** Index of the stop to highlight (the card's own stop). No highlight when omitted. */
   activeIndex?: number
+  /** #70: [lng,lat] polygon rendered as a soft landmass silhouette behind the route (trip-preview only). */
+  contextOutline?: [number, number][]
 }
 
 const DEFAULT_ASPECT_RATIO = 5
@@ -179,6 +181,18 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
 
   const px = ([x, y]: [number, number]): [number, number] => [round(x + offsetX), round(y + offsetY)]
 
+  // #70: geographic context silhouette — same projection and same px() frame
+  // as the stops, so the landmass lines up with the route. Uses the stops'
+  // mean latitude as the scale so route and landmass cannot drift apart.
+  let contextPath = ''
+  if (options.contextOutline && options.contextOutline.length >= 3) {
+    const meanLat = stops.reduce((sum, s) => sum + s.coords[1], 0) / stops.length
+    const ctxProj = projectCoordsWithMeanLat(options.contextOutline, meanLat)
+    const ctxPts = ctxProj.map(px)
+    const d = ctxPts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ') + ' Z'
+    contextPath = `<path class="mini-map-context" d="${d}"></path>`
+  }
+
   // Smooth points use the original projected coords (already in viewBox space)
   const smoothProj = generateSmoothPoints(projected)
 
@@ -264,7 +278,7 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
   // to treat them as separate elements and breaks the test assertions.
   const allDefs = allDefBlocks(gradientId ? [defsBlock] : [], dotShadowFilter ? [dotShadowFilter] : [])
 
-  return `<svg class="mini-map" viewBox="0 0 ${round(boxW)} ${round(boxH)}" preserveAspectRatio="xMidYMid meet" role="presentation" aria-hidden="true" focusable="false">${allDefs}${polyline}${excursions}${dotsAtStops}</svg>`
+  return `<svg class="mini-map" viewBox="0 0 ${round(boxW)} ${round(boxH)}" preserveAspectRatio="xMidYMid meet" role="presentation" aria-hidden="true" focusable="false">${allDefs}${contextPath}${polyline}${excursions}${dotsAtStops}</svg>`
 }
 
 /** Merge multiple <defs> blocks into a single <defs> to avoid duplicate-element warnings. */

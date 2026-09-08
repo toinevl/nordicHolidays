@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildStopMiniMapSvg, projectCoords, projectCoordsWithMeanLat } from './stopMiniMap'
+import { SCANDINAVIA_OUTLINE } from '../data/scandinaviaOutline'
 
 /** Minimal stop factory — coords are [lng, lat], real Nordic places. */
 function stop(coords: [number, number], nights = 1) {
@@ -38,6 +39,39 @@ describe('projectCoordsWithMeanLat (#70)', () => {
     expect(viaGeneral).not.toEqual(viaOld) // verschillende meanLat → verschillende schaal
     const viaOwn = projectCoordsWithMeanLat(pts, (57.7 + 59.3) / 2)
     expect(viaOwn).toEqual(viaOld)
+  })
+})
+
+describe('trip-preview geographic context (#70)', () => {
+  // Malmö → Göteborg → Stockholm — echte Nordische route.
+  const nordicStops = [
+    { coords: [12.94, 55.61] as [number, number], nights: 2 },
+    { coords: [11.97, 57.71] as [number, number], nights: 2 },
+    { coords: [18.07, 59.33] as [number, number], nights: 3 },
+  ]
+
+  it('omits the context layer by default (backwards compatible)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops)
+    expect(svg).not.toContain('mini-map-context')
+  })
+
+  it('renders a closed context path behind the route when enabled', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { contextOutline: SCANDINAVIA_OUTLINE })
+    expect(svg).toContain('mini-map-context')
+    // Vergelijk element-classes, niet raw substrings: het gradient-id
+    // 'mini-map-route-gradient-*' in <defs> bevat 'mini-map-route' ook (paint niet).
+    expect(svg.indexOf('class="mini-map-context"')).toBeLessThan(svg.indexOf('class="mini-map-route"'))
+    expect(svg).toMatch(/class="mini-map-context"[^>]*d="[^"]*Z/)
+  })
+
+  it('context path shares the route projection and viewBox frame', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { contextOutline: SCANDINAVIA_OUTLINE })
+    const viewBox = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)
+    expect(viewBox).toBeTruthy()
+    const w = Number(viewBox![1])
+    const d = svg.match(/class="mini-map-context"[^>]*d="([^"]*)"/)![1]
+    const xs = d.match(/-?[\d.]+/g)!.map(Number)
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(w * 0.3)
   })
 })
 

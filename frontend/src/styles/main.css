@@ -324,6 +324,13 @@ h1,h2,h3,h4 { font-family: var(--font-serif); line-height: var(--lh-tight); font
   stroke: var(--primary); stroke-width: 1;
   stroke-dasharray: 3 3; opacity: 0.7;
 }
+/* #70: landmass silhouette behind the route (trip-preview) */
+.mini-map-context {
+  fill: var(--bg-subtle);
+  stroke: var(--border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
 .mini-map-dot { fill: var(--accent-2); stroke: var(--bg-alt); stroke-width: 1; }
 .mini-map-dot--start { fill: var(--primary); }
 .mini-map-dot--active { stroke: var(--ink); stroke-width: 1.5; }
