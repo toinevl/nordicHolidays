@@ -98,6 +98,20 @@ describe('POST /api/generate', () => {
     expect(res.status).toBe(200)
   })
 
+  it('discovery mode keeps the model-chosen first stop intact (no #175 rename to empty, #67)', async () => {
+    const itin = makeItinerary()
+    itin.startCity = 'Malmö'
+    itin.stops[0].city = 'Malmö'
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14 }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const body = JSON.parse(res.body as string)
+    expect(body.stops[0].city).toBe('Malmö')
+    expect(body.startCity).toBe('Malmö')
+  })
+
   it('rejects a request with only startCity (both-or-neither, #67)', async () => {
     const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', tripDays: 14 }) } as any
     const res = await generateHandler(req, undefined)

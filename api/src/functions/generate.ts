@@ -292,7 +292,10 @@ export async function generateHandler(
     // stop's coords when its city name already matches `endCity` — the LLM
     // may choose a different terminus on round trips, and we don't want to
     // clobber that.
-    if (input.stops.length > 0) {
+    // #67: in discovery mode (no startCity/endCity in the request) both prefs
+    // default to '' — skip both corrections entirely, otherwise the model's
+    // own first/last stop would be renamed to an empty string.
+    if (input.stops.length > 0 && prefs.startCity && prefs.startCity.trim() !== '') {
       const first = input.stops[0]
       if (typeof first.city === 'string' && first.city.trim().toLowerCase() !== prefs.startCity.trim().toLowerCase()) {
         const known = lookupCityCoords(prefs.startCity)
@@ -305,7 +308,7 @@ export async function generateHandler(
         input.stops[0] = { ...first, ...patch }
       }
     }
-    if (input.stops.length > 1) {
+    if (input.stops.length > 1 && prefs.endCity && prefs.endCity.trim() !== '') {
       const last = input.stops[input.stops.length - 1]
       if (typeof last.city === 'string' && last.city.trim().toLowerCase() === prefs.endCity.trim().toLowerCase()) {
         const known = lookupCityCoords(prefs.endCity)
