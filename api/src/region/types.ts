@@ -35,6 +35,8 @@ export interface ApiRegionConfig {
   regionLabel: string
   /** Month (1–12) → seasonal description string for prompt context */
   seasonalContext: Record<number, string>
+  /** #67: trip-theme id → prompt hint for the LLM user message */
+  tripThemes: TripThemeHints
   /** Constraint instruction (e.g. "do not cross international borders") */
   borderConstraint: string
   /** Prompt construction logic for this region */

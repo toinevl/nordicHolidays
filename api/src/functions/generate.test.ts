@@ -770,4 +770,37 @@ describe('POST /api/generate', () => {
     expect(body.stops[2].lat).toBeCloseTo(59.8586, 4)
     expect(body.stops[2].lng).toBeCloseTo(17.6389, 4)
   })
+
+  // #67: discovery mode (both cities empty) must replace the start/end lines
+  // with a choose-your-own-endpoints instruction, and selected themes/pace
+  // must surface as concrete prompt hints the model can act on.
+  it('discovery prompt asks the model to choose endpoints and includes theme/pace hints (#67)', async () => {
+    const itin = makeItinerary()
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['coast', 'aurora'], pace: 'packed' }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const userMsg = create.mock.calls[0][0].messages.find((m: any) => m.role === 'user').content
+    expect(userMsg).toContain('no fixed start or end city')
+    expect(userMsg).toContain('ferry ports')
+    expect(userMsg).toContain('coastal drives')
+    expect(userMsg).toContain('northern lights')
+    expect(userMsg).toContain('Pace: packed')
+    expect(userMsg).not.toContain('Start city:')
+  })
+
+  it('classic prompt keeps start/end lines and appends theme hints (#67)', async () => {
+    const itin = makeItinerary()
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Göteborg', tripDays: 14, themes: ['food'] }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const userMsg = create.mock.calls[0][0].messages.find((m: any) => m.role === 'user').content
+    expect(userMsg).toContain('Start city: Malmö')
+    expect(userMsg).toContain('End city: Göteborg')
+    expect(userMsg).toContain('local food')
+    expect(userMsg).not.toContain('Pace:')
+  })
 })

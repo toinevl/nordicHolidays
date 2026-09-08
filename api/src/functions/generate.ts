@@ -135,9 +135,9 @@ export async function generateHandler(
     tripDays: body.tripDays,
     country: body.country,
     startDate: body.startDate,
-    // themes/pace flow into the prompt in a later task (#67)
-    themes: [],
-    pace: 'balanced',
+    // #67: themes/pace travel into the region prompt (buildUserMessage).
+    themes: body.themes,
+    pace: body.pace,
   }
   const lang = body.lang as 'en' | 'nl' | 'de'
 
