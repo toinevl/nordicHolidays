@@ -47,11 +47,16 @@ function round(value: number): number {
   return Math.round(value * 100) / 100
 }
 
-/** Project [lng, lat] to planar units (x east, y south so north is up in SVG) with a cos(lat) x-correction. */
-export function projectCoords(points: [number, number][]): [number, number][] {
-  const meanLat = points.reduce((sum, [, lat]) => sum + lat, 0) / (points.length || 1)
+/** Project [lng, lat] to planar units (x east, y south so north is up in SVG) with a cos(meanLat) x-correction. */
+export function projectCoordsWithMeanLat(points: [number, number][], meanLat: number): [number, number][] {
   const kx = Math.max(Math.cos((meanLat * Math.PI) / 180), 0.1)
   return points.map(([lng, lat]) => [lng * kx, -lat] as [number, number])
+}
+
+/** Convenience wrapper: scale factor derived from the input's own mean latitude (behaviour unchanged). */
+export function projectCoords(points: [number, number][]): [number, number][] {
+  const meanLat = points.reduce((sum, [, lat]) => sum + lat, 0) / (points.length || 1)
+  return projectCoordsWithMeanLat(points, meanLat)
 }
 
 /**

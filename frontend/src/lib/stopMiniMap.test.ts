@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildStopMiniMapSvg, projectCoords } from './stopMiniMap'
+import { buildStopMiniMapSvg, projectCoords, projectCoordsWithMeanLat } from './stopMiniMap'
 
 /** Minimal stop factory — coords are [lng, lat], real Nordic places. */
 function stop(coords: [number, number], nights = 1) {
@@ -20,6 +20,24 @@ describe('projectCoords', () => {
     // x is scaled down by cos(~59.2°) ≈ 0.51 — never stretched.
     expect(projected[0]![0]).toBeLessThan(13.0007)
     expect(projected[0]![0]).toBeGreaterThan(6)
+  })
+})
+
+describe('projectCoordsWithMeanLat (#70)', () => {
+  it('uses the caller-provided mean latitude scale, not the input mean', () => {
+    const meanLat = 55.6
+    const out = projectCoordsWithMeanLat([[12.9, 55.6], [20.2, 67.8]], meanLat)
+    expect(out[0][0]).toBeCloseTo(12.9 * Math.cos((meanLat * Math.PI) / 180), 5)
+    expect(out[1][0]).toBeCloseTo(20.2 * Math.cos((meanLat * Math.PI) / 180), 5)
+    expect(out[0][1]).toBe(-55.6)
+  })
+  it('projectCoords matches projectCoordsWithMeanLat with its own mean', () => {
+    const pts: [number, number][] = [[11.9, 57.7], [18.0, 59.3]]
+    const viaGeneral = projectCoordsWithMeanLat(pts, 55.0)
+    const viaOld = projectCoords(pts)
+    expect(viaGeneral).not.toEqual(viaOld) // verschillende meanLat → verschillende schaal
+    const viaOwn = projectCoordsWithMeanLat(pts, (57.7 + 59.3) / 2)
+    expect(viaOwn).toEqual(viaOld)
   })
 })
 
