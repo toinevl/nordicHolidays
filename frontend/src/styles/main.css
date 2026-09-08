@@ -1417,8 +1417,8 @@ a:focus-visible {
   color: inherit; padding: 6px 10px; border-radius: 8px; cursor: pointer; font: inherit;
   display: inline-flex; align-items: center; gap: 6px; width: 100%; justify-content: space-between;
 }
-.notes-toggle:hover { border-color: rgba(255,255,255,0.3); }
-.notes-add-hint { opacity: 0.7; font-size: 0.85em; }
+.notes-toggle:hover { border-color: var(--border); }
+.notes-add-btn { }
 .notes-panel { margin-top: 6px; padding: 8px; border: 1px solid var(--border, #DDD7CE); border-radius: 10px; background: var(--bg-subtle, #F0EBE4); }
 .notes-loading, .notes-error, .notes-empty { font-size: 0.9em; opacity: 0.8; margin: 4px 0; }
 .notes-list { list-style: none; padding: 0; margin: 0 0 8px; display: flex; flex-direction: column; gap: 8px; }
