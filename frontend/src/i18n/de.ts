@@ -21,7 +21,7 @@ export const de: LocaleStrings = {
     routeModeLabel: 'Route',
     routeModePoint: 'Von A nach B',
     routeModeDiscover: 'Überrasch mich',
-    discoverHint: 'Wir wählen eine sinnvolle Start- und Zielstadt mit guter Mietwagen-Anbindung (Fährehafen oder Flughafen).',
+    discoverHint: 'Wir wählen eine sinnvolle Start- und Zielstadt mit guter Mietwagen-Anbindung (Fährhafen oder Flughafen).',
     themesLabel: 'Was suchst du auf dieser Reise?',
     paceLabel: 'Reisetempo',
     paceRelaxed: 'Entspannt — länger an einem Ort',

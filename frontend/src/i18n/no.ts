@@ -21,7 +21,7 @@ export const no: LocaleStrings = {
     routeModeLabel: 'Rute',
     routeModePoint: 'Fra A til B',
     routeModeDiscover: 'Overrask meg',
-    discoverHint: 'Vi velger en logisk start- og slutby med god leiebilstilkobling (ferjekai eller flyplass).',
+    discoverHint: 'Vi velger en logisk start- og sluttby med gode leiebilmuligheter (ferjekai eller flyplass).',
     themesLabel: 'Hva ser du etter på denne reisen?',
     paceLabel: 'Reisetempo',
     paceRelaxed: 'Avslappet — bli lenge på ett sted',
@@ -36,7 +36,7 @@ export const no: LocaleStrings = {
     wildlife: 'Dyreliv',
     history: 'Historie & vikinger',
     aurora: 'Nordlys',
-    family: 'Familj med barn',
+    family: 'Familie med barn',
   },
   saved: {
     title: 'Alle reiser',
@@ -295,7 +295,7 @@ export const no: LocaleStrings = {
   validation: {
     selectStartCity: 'Velg en startby',
     selectFinishCity: 'Velg en sluttby',
-    needBothCities: 'Fyll inn både en startby og en slutby — eller velg "Overrask meg".',
+    needBothCities: 'Fyll inn både en startby og en sluttby — eller velg "Overrask meg".',
     minDuration: 'Minimum reiselengde er 7 dager',
     generationFailed: 'Reisegenerering mislyktes — prøv en annen rute eller færre stopp.',
     rateLimit: 'For mange forespørsler. Vent et øyeblikk og prøv igjen.',
