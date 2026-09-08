@@ -243,12 +243,13 @@ export class NotesBoard {
       textArea.placeholder = t('notes.placeholder')
       const submit = document.createElement('button')
       submit.type = 'button'
-      submit.className = 'btn btn--secondary btn--small'
-      submit.textContent = this.adding && this.notes === null ? t('notes.saving') : t('notes.save')
+      submit.className = 'btn btn--primary btn--small'
+      submit.textContent = this.adding ? t('notes.saving') : t('notes.save')
+      submit.disabled = this.adding
       submit.addEventListener('click', () => void this.submitNote(textArea, nameInput))
       const cancel = document.createElement('button')
       cancel.type = 'button'
-      cancel.className = 'notes-cancel'
+      cancel.className = 'notes-cancel btn--ghost'
       cancel.textContent = t('notes.cancel')
       cancel.addEventListener('click', () => { this.adding = false; this.renderInto(host) })
       form.append(nameInput, textArea, submit, cancel)
