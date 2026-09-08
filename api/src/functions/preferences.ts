@@ -4,10 +4,10 @@ import { corsPreflightResponse, withCors } from '../lib/cors'
 import { authErrorResponse, resolveOwnerId } from '../lib/identity'
 import { PreferencesSchema, logError } from '../lib/schemas'
 import { ensureTable, getTableClient } from '../lib/tableClient'
+import type { TripPace, TripThemeId } from '../region/types'
+import { TRIP_THEME_IDS } from '../region/types'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
-import { TRIP_THEME_IDS } from '../region/types'
-import type { TripPace, TripThemeId } from '../region/types'
 // WR-07 / H7: ensure every response carries Cache-Control and Content-Type
 // in addition to the X-Content-Type-Options / CSP / CORS headers that withCors
 // injects. withCors is aliased so the wrapper can call it without recursion.
