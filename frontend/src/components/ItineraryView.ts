@@ -427,7 +427,7 @@ export class ItineraryView {
 
     el.innerHTML = `
       <div class="trip-preview-map">${buildStopMiniMapSvg(this.stops, {
-        aspectRatio: 3,
+        aspectRatio: 2.2,
         contextOutline: SCANDINAVIA_OUTLINE,
         labels,
         labelScreenPx: 11,
