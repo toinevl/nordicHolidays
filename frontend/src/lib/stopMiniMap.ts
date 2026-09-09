@@ -174,16 +174,25 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
   const activeIndex = options.activeIndex ?? -1
 
   const projected = projectCoords(stops.map((s) => s.coords))
-  const xs = projected.map(([x]) => x)
-  const ys = projected.map(([, y]) => y)
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
+
+  // Padding, then letterbox to the requested aspect (content stays centered).
+  // #70: with a context outline, the frame must contain BOTH the stops and the
+  // landmass — otherwise the silhouette (much bigger than the stop bbox)
+  // overflows the viewBox and only a meaningless fragment shows.
+  let framePoints = projected
+  if (options.contextOutline && options.contextOutline.length >= 3) {
+    const meanLat = stops.reduce((sum, s) => sum + s.coords[1], 0) / stops.length
+    framePoints = [...projected, ...projectCoordsWithMeanLat(options.contextOutline, meanLat)]
+  }
+  const fxs = framePoints.map(([x]) => x)
+  const fys = framePoints.map(([, y]) => y)
+  const minX = Math.min(...fxs)
+  const maxX = Math.max(...fxs)
+  const minY = Math.min(...fys)
+  const maxY = Math.max(...fys)
   const contentW = Math.max(maxX - minX, MIN_EXTENT)
   const contentH = Math.max(maxY - minY, MIN_EXTENT)
 
-  // Padding, then letterbox to the requested aspect (content stays centered).
   const pad = paddingRatio * Math.max(contentW, contentH)
   let boxW = contentW + 2 * pad
   let boxH = contentH + 2 * pad

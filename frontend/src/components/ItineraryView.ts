@@ -399,22 +399,35 @@ export class ItineraryView {
 
     // #70: labels only read at low density — keep start/end + a spread, max 6.
     // Non-place labels (e.g. 'Return → Netherlands') are never labeled.
+    // Skåne-cluster fix: stops closer than MIN_SEP_UNITS (~55px on screen)
+    // crowd their labels into an unreadable blob — keep only the first of each
+    // crowded run, so Malmö survives and Helsingborg/Ystad stay unlabeled.
     const MAX_PREVIEW_LABELS = 6
+    const MIN_SEP_UNITS = 9
     const labelable = (name: string) => name && !name.includes('→') && !name.includes('Return')
     const labelCount = this.stops.filter(s => labelable(s.dest)).length
     const step = Math.max(1, Math.ceil(labelCount / MAX_PREVIEW_LABELS))
+    const scale = 120 / 19.44 // trip-preview: cssHeightPx / viewBox height (fixed by aspect+outline)
     let seen = 0
+    let lastLabeledX: number | null = null
     const labels = this.stops.map((s, i) => {
       if (!labelable(s.dest)) return ''
       const isEdge = i === 0 || i === this.stops.length - 1
+      const x = this.stops[i].coords[0] * Math.cos((61 * Math.PI) / 180)
+      if (lastLabeledX !== null && Math.abs(x - lastLabeledX) * scale < MIN_SEP_UNITS && !isEdge) {
+        return ''
+      }
       seen++
-      if (isEdge || seen % step === 1) return s.dest
+      if (isEdge || seen % step === 1) {
+        lastLabeledX = x
+        return s.dest
+      }
       return ''
     })
 
     el.innerHTML = `
       <div class="trip-preview-map">${buildStopMiniMapSvg(this.stops, {
-        aspectRatio: 8,
+        aspectRatio: 3,
         contextOutline: SCANDINAVIA_OUTLINE,
         labels,
         labelScreenPx: 11,
