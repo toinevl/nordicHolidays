@@ -148,7 +148,7 @@ When creating itineraries:
         }
       }
       if (prefs.pace === 'relaxed') {
-        parts.push('Pace: relaxed — prefer 3 or more nights per base and at most one day trip per base.')
+        parts.push('Pace: relaxed (settle in) — stay 3-4 nights at each well-located base, relocate at most once every 3-4 nights, limit total stops to roughly half the trip days (e.g. 7-8 overnight stops for a 14-day trip), keep daily drives under 250 km, and include 2-3 nearby day trips (nights: 0, within 1.5h of their base).')
       } else if (prefs.pace === 'packed') {
         parts.push('Pace: packed — relocate every 1-2 nights and include more stops and day trips.')
       }

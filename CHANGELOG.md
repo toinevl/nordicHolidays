@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Trip-preview leest als kaart (#70)** — de routepreview bovenin 'The Full Route' heeft een subtielde Scandinavië-silhouet als geografische context en stadsnaam-labels bij de stops (Malmö/Stockholm-stijl: start/eind prominent, max ~6, geen labels op dichte clusters). Pure SVG — geen tiles of netwerk; stop-kaartstrips zijn onveranderd. Onderweg gefixt: label-font moet als inline style (CSS verslaat SVG-presentatie-attributen — zonder fix 170px-reuzentekst), en het kaartframe bevat de outline, niet alleen de stop-bbox.
 - **Reis plannen zonder start-/eindstad (#67)** — nieuwe "Verras mij"-modus in de generator: de LLM kiest zelf praktische eindpunten (voorkeur veerhaven/vliegveld i.v.m. autoverhuur). Nieuwe reiskarakteristieken in beide modi: thema-chips (natuur, kust, steden, eten, wildlife, historie, noorderlicht, familie) en reistempo (rustig/gevarieerd/veel zien). API: `startCity`/`endCity` both-or-neither (400 bij precies één), `themes` + `pace` in preferences en generate-body, tolerant teruglezen van opgeslagen preferences. 6 locales. Fixes onderweg: leesbare 400-details (ook voor refine-fouten), #175/#176-correctieguards bij lege steden, en een ontbrekende globale `.hidden`-CSSregel die discovery-mode in echte browsers de stadsvelden zichtbaar had gelaten.
 
 ## [1.1.0] — 2026-09-03

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildStopMiniMapSvg, projectCoords } from './stopMiniMap'
+import { SCANDINAVIA_OUTLINE } from '../data/scandinaviaOutline'
+import { buildStopMiniMapSvg, projectCoords, projectCoordsWithMeanLat } from './stopMiniMap'
 
 /** Minimal stop factory — coords are [lng, lat], real Nordic places. */
 function stop(coords: [number, number], nights = 1) {
@@ -20,6 +21,115 @@ describe('projectCoords', () => {
     // x is scaled down by cos(~59.2°) ≈ 0.51 — never stretched.
     expect(projected[0]![0]).toBeLessThan(13.0007)
     expect(projected[0]![0]).toBeGreaterThan(6)
+  })
+})
+
+describe('projectCoordsWithMeanLat (#70)', () => {
+  it('uses the caller-provided mean latitude scale, not the input mean', () => {
+    const meanLat = 55.6
+    const out = projectCoordsWithMeanLat([[12.9, 55.6], [20.2, 67.8]], meanLat)
+    expect(out[0][0]).toBeCloseTo(12.9 * Math.cos((meanLat * Math.PI) / 180), 5)
+    expect(out[1][0]).toBeCloseTo(20.2 * Math.cos((meanLat * Math.PI) / 180), 5)
+    expect(out[0][1]).toBe(-55.6)
+  })
+  it('projectCoords matches projectCoordsWithMeanLat with its own mean', () => {
+    const pts: [number, number][] = [[11.9, 57.7], [18.0, 59.3]]
+    const viaGeneral = projectCoordsWithMeanLat(pts, 55.0)
+    const viaOld = projectCoords(pts)
+    expect(viaGeneral).not.toEqual(viaOld) // verschillende meanLat → verschillende schaal
+    const viaOwn = projectCoordsWithMeanLat(pts, (57.7 + 59.3) / 2)
+    expect(viaOwn).toEqual(viaOld)
+  })
+})
+
+describe('trip-preview geographic context (#70)', () => {
+  // Malmö → Göteborg → Stockholm — echte Nordische route.
+  const nordicStops = [
+    { coords: [12.94, 55.61] as [number, number], nights: 2 },
+    { coords: [11.97, 57.71] as [number, number], nights: 2 },
+    { coords: [18.07, 59.33] as [number, number], nights: 3 },
+  ]
+
+  it('omits the context layer by default (backwards compatible)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops)
+    expect(svg).not.toContain('mini-map-context')
+  })
+
+  it('renders a closed context path behind the route when enabled', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { contextOutline: SCANDINAVIA_OUTLINE })
+    expect(svg).toContain('mini-map-context')
+    // Vergelijk element-classes, niet raw substrings: het gradient-id
+    // 'mini-map-route-gradient-*' in <defs> bevat 'mini-map-route' ook (paint niet).
+    expect(svg.indexOf('class="mini-map-context"')).toBeLessThan(svg.indexOf('class="mini-map-route"'))
+    expect(svg).toMatch(/class="mini-map-context"[^>]*d="[^"]*Z/)
+  })
+
+  it('context path shares the route projection and viewBox frame', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { contextOutline: SCANDINAVIA_OUTLINE })
+    const viewBox = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)
+    expect(viewBox).toBeTruthy()
+    const w = Number(viewBox![1])
+    const d = svg.match(/class="mini-map-context"[^>]*d="([^"]*)"/)![1]
+    const xs = d.match(/-?[\d.]+/g)!.map(Number)
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(w * 0.3)
+  })
+})
+
+describe('trip-preview stop labels (#70)', () => {
+  const nordicStops = [
+    { coords: [12.94, 55.61] as [number, number], nights: 2 },  // Malmö
+    { coords: [11.97, 57.71] as [number, number], nights: 2 },  // Göteborg
+    { coords: [18.07, 59.33] as [number, number], nights: 3 },  // Stockholm
+  ]
+
+  it('omits labels when not provided (backwards compatible)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops)
+    expect(svg).not.toContain('mini-map-label')
+  })
+
+  it('renders provided labels as SVG text at the stop positions', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, {
+      labels: ['Malmö', 'Göteborg', 'Stockholm'],
+    })
+    expect(svg).toContain('mini-map-label')
+    expect(svg).toContain('Malmö')
+    expect(svg).toContain('Stockholm')
+    expect(svg.indexOf('mini-map-label')).toBeGreaterThan(svg.indexOf('mini-map-dot'))
+  })
+
+  it('truncates long names with an ellipsis at 13 chars', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, {
+      labels: ['Malmö', 'Göteborg', 'Västra Götaland Region'],
+    })
+    expect(svg).toContain('Västra Götala…')
+    expect(svg).not.toContain('Västra Götaland Region')
+  })
+
+  it('skips empty label strings (sparse labels) and XML-escapes names', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { labels: ['Malmö', '', 'Stockholm'] })
+    expect(svg).toContain('Malmö')
+    expect(svg).toContain('Stockholm')
+    expect(svg).not.toContain('>Göteborg<')
+  })
+
+  it('compensates label font size for the viewBox-to-screen scale (#70)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, {
+      labels: ['Malmö', 'Göteborg', 'Stockholm'],
+      labelScreenPx: 11,
+      cssHeightPx: 120,
+    })
+    // viewBox-hoogte ~4.5 → 11px scherm ≈ 11 * 4.5 / 120 ≈ 0.41 units (heel klein getal);
+    // zonder compensatie zou CSS 11px in viewBox-units ≈ 270px op scherm betekenen.
+    // #70: de grootte gaat als INLINE style mee — CSS (.mini-map-label) verslaat
+    // presentatie-attributen, dus een font-size-attribuut zou genegeerd worden.
+    const style = svg.match(/style="font-size:([\d.]+)px"/)
+    expect(style).toBeTruthy()
+    expect(Number(style![1])).toBeLessThan(2)
+  })
+
+  it('keeps CSS font when no compensation options given (backwards compat)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { labels: ['Malmö', 'Göteborg', 'Stockholm'] })
+    expect(svg).not.toMatch(/style="font-size:/)
   })
 })
 

@@ -35,6 +35,14 @@ export interface StopMiniMapOptions {
   paddingRatio?: number
   /** Index of the stop to highlight (the card's own stop). No highlight when omitted. */
   activeIndex?: number
+  /** #70: [lng,lat] polygon rendered as a soft landmass silhouette behind the route (trip-preview only). */
+  contextOutline?: [number, number][]
+  /** #70: display name per stop (same order as stops). Rendered as SVG text above the dots. */
+  labels?: string[]
+  /** #70: desired label font size in SCREEN px (compensated into viewBox units via cssHeightPx). */
+  labelScreenPx?: number
+  /** #70: the CSS height the svg renders at (px) — needed to compensate the label font size. */
+  cssHeightPx?: number
 }
 
 const DEFAULT_ASPECT_RATIO = 5
@@ -47,11 +55,26 @@ function round(value: number): number {
   return Math.round(value * 100) / 100
 }
 
-/** Project [lng, lat] to planar units (x east, y south so north is up in SVG) with a cos(lat) x-correction. */
-export function projectCoords(points: [number, number][]): [number, number][] {
-  const meanLat = points.reduce((sum, [, lat]) => sum + lat, 0) / (points.length || 1)
+/** #70: keep preview labels compact — 13 visible chars + ellipsis. */
+function truncateLabel(name: string, max = 13): string {
+  return name.length <= max + 1 ? name : `${name.slice(0, max)}…`
+}
+
+/** XML-escape for SVG text content (module stays dependency-free). */
+function escapeXml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/** Project [lng, lat] to planar units (x east, y south so north is up in SVG) with a cos(meanLat) x-correction. */
+export function projectCoordsWithMeanLat(points: [number, number][], meanLat: number): [number, number][] {
   const kx = Math.max(Math.cos((meanLat * Math.PI) / 180), 0.1)
   return points.map(([lng, lat]) => [lng * kx, -lat] as [number, number])
+}
+
+/** Convenience wrapper: scale factor derived from the input's own mean latitude (behaviour unchanged). */
+export function projectCoords(points: [number, number][]): [number, number][] {
+  const meanLat = points.reduce((sum, [, lat]) => sum + lat, 0) / (points.length || 1)
+  return projectCoordsWithMeanLat(points, meanLat)
 }
 
 /**
@@ -151,16 +174,25 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
   const activeIndex = options.activeIndex ?? -1
 
   const projected = projectCoords(stops.map((s) => s.coords))
-  const xs = projected.map(([x]) => x)
-  const ys = projected.map(([, y]) => y)
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
+
+  // Padding, then letterbox to the requested aspect (content stays centered).
+  // #70: with a context outline, the frame must contain BOTH the stops and the
+  // landmass — otherwise the silhouette (much bigger than the stop bbox)
+  // overflows the viewBox and only a meaningless fragment shows.
+  let framePoints = projected
+  if (options.contextOutline && options.contextOutline.length >= 3) {
+    const meanLat = stops.reduce((sum, s) => sum + s.coords[1], 0) / stops.length
+    framePoints = [...projected, ...projectCoordsWithMeanLat(options.contextOutline, meanLat)]
+  }
+  const fxs = framePoints.map(([x]) => x)
+  const fys = framePoints.map(([, y]) => y)
+  const minX = Math.min(...fxs)
+  const maxX = Math.max(...fxs)
+  const minY = Math.min(...fys)
+  const maxY = Math.max(...fys)
   const contentW = Math.max(maxX - minX, MIN_EXTENT)
   const contentH = Math.max(maxY - minY, MIN_EXTENT)
 
-  // Padding, then letterbox to the requested aspect (content stays centered).
   const pad = paddingRatio * Math.max(contentW, contentH)
   let boxW = contentW + 2 * pad
   let boxH = contentH + 2 * pad
@@ -173,6 +205,18 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
   const offsetY = (boxH - contentH) / 2 - minY
 
   const px = ([x, y]: [number, number]): [number, number] => [round(x + offsetX), round(y + offsetY)]
+
+  // #70: geographic context silhouette — same projection and same px() frame
+  // as the stops, so the landmass lines up with the route. Uses the stops'
+  // mean latitude as the scale so route and landmass cannot drift apart.
+  let contextPath = ''
+  if (options.contextOutline && options.contextOutline.length >= 3) {
+    const meanLat = stops.reduce((sum, s) => sum + s.coords[1], 0) / stops.length
+    const ctxProj = projectCoordsWithMeanLat(options.contextOutline, meanLat)
+    const ctxPts = ctxProj.map(px)
+    const d = ctxPts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ') + ' Z'
+    contextPath = `<path class="mini-map-context" d="${d}"></path>`
+  }
 
   // Smooth points use the original projected coords (already in viewBox space)
   const smoothProj = generateSmoothPoints(projected)
@@ -223,6 +267,33 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
     })
     .join('')
 
+  // #70: stop labels — placed above the dot (below it when near the frame top).
+  // Font-size compensation: the viewBox scale differs per render (route bbox +
+  // aspect ratio), but with preserveAspectRatio + a fixed CSS height the scale
+  // is exactly renderedHeightPx / boxH. A font-size in viewBox units of
+  // labelScreenPx * boxH / cssHeightPx therefore always renders at a CONSTANT
+  // screen size, regardless of how wide the route bbox is.
+  const labelFontSize = options.labelScreenPx && options.cssHeightPx
+    ? round((options.labelScreenPx * boxH) / options.cssHeightPx)
+    : 0
+  // #70: the label font must be set as an INLINE style, not a presentation
+  // attribute — a CSS rule (.mini-map-label { font-size }) beats presentation
+  // attributes, which made labels render at CSS px inside a viewBox that is
+  // scaled ~15x (read: giant text covering the whole strip). Inline style wins
+  // over the stylesheet, so the compensated unit-size actually applies.
+  const labelFontSizeStyle = labelFontSize > 0 ? ` style="font-size:${labelFontSize}px"` : ''
+  const labelEls = options.labels && options.labels.length === stops.length
+    ? stopPoints
+        .map(([x, y], i) => {
+          const raw = options.labels![i]
+          if (!raw) return ''
+          const text = escapeXml(truncateLabel(raw))
+          const above = y > rBig * 4
+          return `<text class="mini-map-label${i === 0 ? ' mini-map-label--start' : ''}" x="${x}" y="${above ? round(y - rBig * 2.2) : round(y + rBig * 3.2)}"${labelFontSizeStyle} text-anchor="middle">${text}</text>`
+        })
+        .join('')
+    : ''
+
   // Drop-shadow filter definition — defined once, reused by all dots
   const dotShadowFilter = `<defs>
     <filter id="mini-map-dot-shadow" x="-20%" y="-20%" dx="0" dy="1" stdDeviation="1">
@@ -259,7 +330,7 @@ export function buildStopMiniMapSvg(stops: MiniMapStop[], options: StopMiniMapOp
   // to treat them as separate elements and breaks the test assertions.
   const allDefs = allDefBlocks(gradientId ? [defsBlock] : [], dotShadowFilter ? [dotShadowFilter] : [])
 
-  return `<svg class="mini-map" viewBox="0 0 ${round(boxW)} ${round(boxH)}" preserveAspectRatio="xMidYMid meet" role="presentation" aria-hidden="true" focusable="false">${allDefs}${polyline}${excursions}${dotsAtStops}</svg>`
+  return `<svg class="mini-map" viewBox="0 0 ${round(boxW)} ${round(boxH)}" preserveAspectRatio="xMidYMid meet" role="presentation" aria-hidden="true" focusable="false">${allDefs}${contextPath}${polyline}${excursions}${dotsAtStops}${labelEls}</svg>`
 }
 
 /** Merge multiple <defs> blocks into a single <defs> to avoid duplicate-element warnings. */
