@@ -141,7 +141,7 @@ export class NotesBoard {
     const toggle = document.createElement('button')
     toggle.type = 'button'
     toggle.className = 'notes-toggle'
-    toggle.setAttribute('aria-label', 'Notities voor deze stop')
+    toggle.setAttribute('aria-label', t('notes.label'))
     toggle.setAttribute('aria-expanded', String(this.expanded))
     toggle.innerHTML = count > 0
       ? `💬 ${count} ${escapeHtml(t('notes.label'))}`
