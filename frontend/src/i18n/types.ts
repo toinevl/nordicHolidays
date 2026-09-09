@@ -104,6 +104,7 @@ export interface LocaleStrings {
     undoLastEdit: string
     findHotels: string
     findActivities: string
+    affiliateDisclosure: string
     rentCar: string
     tripStarting: string
     addStop: string
