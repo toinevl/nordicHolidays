@@ -269,3 +269,28 @@ couldn't be pointed at the tag fields without changing its signature.
 in a form, enumerate every other input in that form and check whether it
 needs the same treatment. Write the audit into the ticket scope — don't rely
 on "I'll notice it later."
+
+## LLM prompt constraints MUST have server-side guards
+
+The prompt builder (`api/src/region/nordic.ts`) instructs the LLM with
+phrases like "must remain consistent", "always use", "never return",
+"limit total stops to roughly half". **Every such constraint needs a
+server-side fallback guard in `api/src/functions/generate.ts`** that
+enforces it after the response comes back — never trust the LLM blindly.
+
+This is the lesson from #72: the prompt said "totalDays must remain
+consistent with the sum of nights", but the code trusted the LLM. Result:
+14-day trips returned 19 nights, and relaxed-pace became unusable (too many
+short relocations instead of few long stays).
+
+**Rule:** when adding a new `parts.push(...)` instruction to a prompt
+builder, or modifying an existing one, run the
+[llm-output-constraint-guard](software-development/llm-output-constraint-guard)
+checklist BEFORE committing:
+1. What is the constraint?
+2. What happens if the LLM ignores it?
+3. Is there a server-side guard that enforces it?
+4. Does the guard log a warning when it corrects?
+5. Is there a test that verifies the guard works (mock LLM drift)?
+
+If #3 is "no" → STOP. Write the guard first.
