@@ -612,8 +612,11 @@ describe('POST /api/generate', () => {
 
     expect(result.status).toBe(200)
     const body = JSON.parse(result.body as string) as Itinerary
-    expect(body.stops[0].nights).toBe(1)
-    expect(body.stops[1].nights).toBe(2)
+    // #72: the sum of nights must equal tripDays — the first stop's 0 nights
+    // is normalized to 1, then the budget correction scales the rest to hit 7.
+    const sumNights = body.stops.reduce((s, st) => s + st.nights, 0)
+    expect(sumNights).toBe(7)
+    body.stops.filter(s => s.nights > 0).forEach(s => expect(s.nights).toBeGreaterThanOrEqual(1))
   })
 
   it('promotes distant day trips (>150 km from base) to overnight stops', async () => {
@@ -676,12 +679,14 @@ describe('POST /api/generate', () => {
     const body = JSON.parse(result.body as string) as Itinerary
     expect(body.stops).toHaveLength(3)
     expect(body.stops[0].city).toBe('Göteborg')
-    expect(body.stops[0].nights).toBe(2)
     expect(body.stops[1].city).toBe('Gamla Stan (Stockholm)')
-    expect(body.stops[1].nights).toBe(1) // promoted from 0 (>150 km away)
     expect(body.stops[2].city).toBe('Marstrand')
-    expect(body.stops[2].nights).toBe(0) // stays 0 (<150 km away)
-    expect(body.totalDays).toBe(7) // unchanged — already matches requested tripDays
+    // #72: the sum of nights must equal tripDays — after the distant-day-trip
+    // promotion (0→1), the budget correction scales overnight stops to hit 7.
+    const sumNights = body.stops.reduce((s, st) => s + st.nights, 0)
+    expect(sumNights).toBe(7)
+    expect(body.stops[2].nights).toBe(0) // near day trip stays 0 (<150 km)
+    expect(body.totalDays).toBe(7)
   })
 
   it('#130: overrides a mismatched model-provided totalDays with the requested (clamped) tripDays', async () => {
@@ -719,6 +724,72 @@ describe('POST /api/generate', () => {
     expect(result.status).toBe(200)
     expect(body.title).toBe('7-Day Norway Road Trip')
     expect(body.totalDays).toBe(7) // matches the requested tripDays, not the model's inconsistent 21
+  })
+
+  it('#72: corrects nights-sum overshoot (19 → 14) when the model drifts past tripDays', async () => {
+    // Model returns 19 nights for a 14-day trip (each overnight stop 3-4 nights,
+    // plus day trips) — the classic relaxed-pace overshoot from issue #72.
+    const itin = {
+      title: '14-Day Nordic Road Trip',
+      totalDays: 14,
+      startCity: 'Stockholm',
+      endCity: 'Copenhagen',
+      stops: [
+        { day: 1, city: 'Stockholm', region: 'Uppland', lat: 59.3, lng: 18.1, nights: 4, highlights: ['Gamla Stan'], accommodation: 'Hotel', culinaryNotes: 'Meatballs' },
+        { day: 5, city: 'Göteborg', region: 'Västergötland', lat: 57.7, lng: 11.9, nights: 3, highlights: ['Archipelago'], accommodation: 'Inn', culinaryNotes: 'Seafood' },
+        { day: 8, city: 'Jönköping', region: 'Småland', lat: 57.8, lng: 14.2, nights: 0, highlights: ['Vättern'], accommodation: '', culinaryNotes: '' },
+        { day: 9, city: 'Malmö', region: 'Skåne', lat: 55.6, lng: 13.0, nights: 4, highlights: ['Turning Torso'], accommodation: 'Hotel', culinaryNotes: 'New Nordic' },
+        { day: 13, city: 'Copenhagen', region: 'Sjælland', lat: 55.7, lng: 12.6, nights: 3, highlights: ['Nyhavn'], accommodation: 'Hotel', culinaryNotes: 'Smørrebrød' },
+        { day: 16, city: 'Odense', region: 'Fyn', lat: 55.4, lng: 10.4, nights: 3, highlights: ['H.C. Andersen'], accommodation: 'Inn', culinaryNotes: 'Fynsk rygeost' },
+      ],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Stockholm', endCity: 'Copenhagen', tripDays: 14, pace: 'relaxed' }),
+    } as any
+    const result = await generateHandler(req)
+    const body = JSON.parse(result.body as string) as Itinerary
+
+    expect(result.status).toBe(200)
+    const sumNights = body.stops.reduce((s, st) => s + st.nights, 0)
+    expect(sumNights).toBe(14) // corrected from 19 → 14
+    // every overnight stop must keep >= 1 night (no zero-night bases)
+    body.stops.filter(s => s.nights > 0).forEach(s => expect(s.nights).toBeGreaterThanOrEqual(1))
+  })
+
+  it('#72: leaves a correct nights-sum untouched (no overcorrection)', async () => {
+    // Model happens to nail it: 3 stops × nights that sum to exactly 7.
+    const itin = {
+      title: '7-Day Trip',
+      totalDays: 7,
+      startCity: 'Oslo',
+      endCity: 'Bergen',
+      stops: [
+        { day: 1, city: 'Oslo', region: 'Østlandet', lat: 59.9, lng: 10.7, nights: 2, highlights: ['Opera House'], accommodation: 'City hotel', culinaryNotes: 'Brunost' },
+        { day: 3, city: 'Geiranger', region: 'Møre og Romsdal', lat: 62.1, lng: 7.2, nights: 2, highlights: ['Fjord views'], accommodation: 'Fjord lodge', culinaryNotes: 'Fresh salmon' },
+        { day: 5, city: 'Bergen', region: 'Vestland', lat: 60.4, lng: 5.3, nights: 3, highlights: ['Bryggen'], accommodation: 'Harbour hotel', culinaryNotes: 'Fish market' },
+      ],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Oslo', endCity: 'Bergen', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+    const body = JSON.parse(result.body as string) as Itinerary
+
+    expect(result.status).toBe(200)
+    const sumNights = body.stops.reduce((s, st) => s + st.nights, 0)
+    expect(sumNights).toBe(7) // untouched — was already correct
   })
 
   it('#175: overrides a mismatched first-stop city with the requested startCity', async () => {

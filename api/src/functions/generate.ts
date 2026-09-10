@@ -347,6 +347,42 @@ export async function generateHandler(
       stop.nights = 1
     }
 
+    // #72: the model is instructed that "totalDays must remain consistent
+    // with the sum of nights", but can still drift — especially on relaxed
+    // pace where "roughly half the trip days" is ambiguous and the LLM rounds
+    // every stop up (e.g. 5 overnight stops × 3-4 nights = 19 for a 14-day
+    // trip). prefs.tripDays is the real duration (already clamped 7–30), so
+    // the sum of stop.nights MUST equal it — otherwise the FE renders an
+    // inconsistent day count and relaxed pace becomes unusable (too many
+    // short relocations). Correct proportionally on overnight stops only;
+    // day trips (nights: 0) are left untouched. Runs AFTER the
+    // distant-day-trip promotion so those 0→1 promotions are included in
+    // the budget and don't overshoot it.
+    const sumNights = input.stops.reduce((s, st) => s + st.nights, 0)
+    if (sumNights !== prefs.tripDays) {
+      const overnight = input.stops.filter(st => st.nights > 0)
+      if (overnight.length > 0) {
+        const target = prefs.tripDays
+        const scale = target / sumNights
+        let assigned = 0
+        overnight.forEach((st) => {
+          const scaled = Math.max(1, Math.round(st.nights * scale))
+          assigned += (st.nights = scaled)
+        })
+        // Remainder from rounding: distribute ±1 across stops until exact.
+        let diff = target - assigned
+        let idx = 0
+        while (diff !== 0 && idx < overnight.length) {
+          const st = overnight[idx]
+          if (diff > 0) { st.nights += 1; diff -= 1 }
+          else if (diff < 0 && st.nights > 1) { st.nights -= 1; diff += 1 }
+          idx = (idx + 1) % overnight.length
+          if (idx === 0 && diff !== 0 && overnight.every(st => st.nights <= 1)) break
+        }
+        ctx?.warn(`generateHandler: corrected nights-sum ${sumNights} → ${prefs.tripDays} (was ${input.stops.reduce((s, st) => s + st.nights, 0)})`)
+      }
+    }
+
     // #89: enrich each stop with real driving distance/time from Azure Maps.
     // Falls back gracefully to haversine (no multiplier) when Maps isn't
     // configured or a lookup fails — generation never blocks on routing.
