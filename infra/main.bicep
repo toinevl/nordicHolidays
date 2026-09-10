@@ -97,6 +97,21 @@ resource itinerariesTable 'Microsoft.Storage/storageAccounts/tableServices/table
   name: 'Itineraries'
 }
 
+resource leadsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableServices
+  name: 'Leads'
+}
+
+resource partnersTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableServices
+  name: 'Partners'
+}
+
+resource notesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableServices
+  name: 'Notes'
+}
+
 resource preferencesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
   parent: tableServices
   name: 'Preferences'
@@ -116,7 +131,26 @@ resource rateLimitsTable 'Microsoft.Storage/storageAccounts/tableServices/tables
 resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
   parent: storageAccount
   name: 'default'
-  properties: {}
+  properties: {
+    // #153: undo window for automated deletes — daily JSONL table exports
+    // (api/src/functions/exportBackup.ts) land in the private `backups`
+    // container below. Soft-deleted blobs stay recoverable for 14 days.
+    deleteRetentionPolicy: {
+      enabled: true
+      days: 14
+    }
+  }
+}
+
+// #153: private container for the daily JSONL table exports. The
+// exportBackup timer writes backups/<date>/<table>.jsonl here; pruning and
+// access control never expose this container publicly.
+resource backupsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobServices
+  name: 'backups'
+  properties: {
+    publicAccess: 'None'
+  }
 }
 
 // Key Vault
@@ -428,7 +462,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   properties: {
     serverFarmId: serverFarm.id
     enabled: true
-    httpsOnly: false
+    httpsOnly: true // #31: force HTTPS (live clients + smoke tests all use https)
     publicNetworkAccess: 'Enabled'
     clientAffinityEnabled: false
     siteConfig: {
@@ -483,7 +517,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2024-04-01' = {
     STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;EndpointSuffix=${environment().suffixes.storage};AccountName=${storageAccountName};AccountKey=${listKeys(storageAccount.id, '2023-01-01').keys[0].value};BlobEndpoint=${storageAccount.properties.primaryEndpoints.blob};FileEndpoint=${storageAccount.properties.primaryEndpoints.file};QueueEndpoint=${storageAccount.properties.primaryEndpoints.queue};TableEndpoint=${storageAccount.properties.primaryEndpoints.table}'
     TABLES_ENDPOINT: storageAccount.properties.primaryEndpoints.table
     ALLOWED_ORIGINS: join(corsAllowedOrigins, ',')
-    LLM_MODEL: 'gpt-5.4-nano'
+    LLM_MODEL: 'gpt-4o'
     ENTRA_ISSUER_HOST: 'https://${environment().authentication.loginEndpoint}'
     ENTRA_API_AUDIENCE: '46d45892-55e5-4bd4-ad30-bd9fb9b4950b'
     ENTRA_REQUIRED_SCOPE: 'user_impersonation'

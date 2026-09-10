@@ -1,13 +1,15 @@
 import { affiliateConfig } from '../config'
+import { SCANDINAVIA_OUTLINE } from '../data/scandinaviaOutline'
 import { getSeasonInfo } from '../data/seasonData'
 import { getLocale, t, tpl } from '../i18n/index'
 import { activityUrl, carRentalUrl, lodgingUrl } from '../lib/affiliate'
 import { preloadCityPhotos } from '../lib/cityPhoto'
 import { baseFor, isDayTrip } from '../lib/dayTrips'
-import { formatDriveTime, haversineKm } from '../lib/distance'
 import { escapeHtml } from '../lib/escape'
 import { downloadFile, itineraryToGPX, itineraryToGoogleMapsUrl, itineraryToICS, itineraryToWazeUrl } from '../lib/export'
-import { formatStopDateRange, formatTripStart } from '../lib/travelDates'
+import { stopsToMapStops } from '../lib/mapStops'
+import { buildStopMiniMapSvg } from '../lib/stopMiniMap'
+import { formatTripStart } from '../lib/travelDates'
 import type { Accommodation, CulinaryRegion, Itinerary, ItineraryStop, Stop } from '../types'
 import { AddStopForm } from './AddStopForm'
 import { renderOverview } from './TripOverview'
@@ -141,6 +143,7 @@ export class ItineraryView {
     this.renderRouteTools()
     this.renderTimeline()
     this.renderTripIndex()
+    this.renderTripPreview()
     this.renderOverviewFromStops(stops)
     this.renderCulinary()
     this.renderAccommodations()
@@ -233,39 +236,17 @@ export class ItineraryView {
     this.currentItinerary = itinerary
     const locale = getLocale()
     const sd = itinerary.startDate
-    const stops: Stop[] = itinerary.stops.map((s, i) => {
-      const prev = itinerary.stops[i - 1]
-      const from = prev ? prev.city : ''
-      const apiKm = typeof s.km === 'number' ? s.km : (prev ? haversineKm([prev.lng, prev.lat], [s.lng, s.lat]) : 0)
-      const apiTimeMin = typeof s.driveTimeMin === 'number' ? s.driveTimeMin : (apiKm > 0 ? Math.round((apiKm / 80) * 60) : 0)
-      const km = i === 0 ? 0 : apiKm
-      const time = km > 0 ? formatDriveTime(i === 0 ? 0 : apiTimeMin) : ''
-      const stopDate = sd ? formatStopDateRange(sd, s.day, s.nights, locale) : ''
-      return {
-        id: i + 1,
-        days: String(s.day),
-        dates: stopDate,
-        dest: s.city,
-        region: s.region,
-        coords: [s.lng, s.lat] as [number, number],
-        tags: (s as Record<string, unknown>).tags as string[] ?? [],
-        nights: s.nights,
-        desc: '',
-        highlights: s.highlights,
-        from,
-        km,
-        time,
-        zoom: 12,
-        pitch: 45,
-        bearing: 0,
-      }
-    })
+    // #36: the itinerary→Stop[] mapping (previous-stop `from`, Azure Maps km
+    // with haversine fallback, drive time, per-stop date ranges) lives in
+    // lib/mapStops so main.ts's map fan-out shares the exact same conversion.
+    const stops: Stop[] = stopsToMapStops(itinerary)
     this.stops = stops
     this.selectedStopId = 1
     this.currentFilter = 'all'
     this.renderRouteTools()
     this.renderTimeline()
     this.renderTripIndex()
+    this.renderTripPreview()
     this.renderOverviewTable()
     this.renderCulinary()
     this.renderAccommodations()
@@ -406,6 +387,61 @@ export class ItineraryView {
     })
   }
 
+  /**
+   * Trip-preview banner at the top of #itinerary (#24 deel 1): the whole route
+   * as one wide SVG minimap plus a CTA linking to the #map-page 3D overlay.
+   * The overlay itself and its hash-routing live in main.ts — this only
+   * renders the link. Re-rendered by BOTH render paths (project rule).
+   */
+  private renderTripPreview(): void {
+    const el = document.getElementById('trip-preview')
+    if (!el || this.stops.length === 0) return
+
+    // #70: labels only read at low density — keep start/end + a spread, max 6.
+    // Non-place labels (e.g. 'Return → Netherlands') are never labeled.
+    // Skåne-cluster fix: stops closer than MIN_SEP_UNITS (~55px on screen)
+    // crowd their labels into an unreadable blob — keep only the first of each
+    // crowded run, so Malmö survives and Helsingborg/Ystad stay unlabeled.
+    const MAX_PREVIEW_LABELS = 6
+    const MIN_SEP_UNITS = 9
+    const labelable = (name: string) => name && !name.includes('→') && !name.includes('Return')
+    const labelCount = this.stops.filter(s => labelable(s.dest)).length
+    const step = Math.max(1, Math.ceil(labelCount / MAX_PREVIEW_LABELS))
+    const scale = 120 / 19.44 // trip-preview: cssHeightPx / viewBox height (fixed by aspect+outline)
+    let seen = 0
+    let lastLabeledX: number | null = null
+    const labels = this.stops.map((s, i) => {
+      if (!labelable(s.dest)) return ''
+      const isEdge = i === 0 || i === this.stops.length - 1
+      const x = this.stops[i].coords[0] * Math.cos((61 * Math.PI) / 180)
+      if (lastLabeledX !== null && Math.abs(x - lastLabeledX) * scale < MIN_SEP_UNITS && !isEdge) {
+        return ''
+      }
+      seen++
+      if (isEdge || seen % step === 1) {
+        lastLabeledX = x
+        return s.dest
+      }
+      return ''
+    })
+
+    el.innerHTML = `
+      <div class="trip-preview-map">${buildStopMiniMapSvg(this.stops, {
+        aspectRatio: 2.2,
+        contextOutline: SCANDINAVIA_OUTLINE,
+        labels,
+        labelScreenPx: 11,
+        cssHeightPx: 120,
+      })}</div>
+      <a class="btn btn--primary trip-preview-cta" href="#map-page">${t('map.previewCta')}</a>`
+
+    el.querySelectorAll<HTMLAnchorElement>('.trip-preview-cta').forEach((cta) => {
+      cta.addEventListener('click', () => {
+        this.onStopSelect(this.stops[0]!, { fly: true })
+      })
+    })
+  }
+
   private renderOverviewTable(): void {
     const el = document.getElementById('overview-table')
     if (!el || !this.currentItinerary) return
@@ -483,6 +519,7 @@ export class ItineraryView {
               <div class="card-photo" id="photo-${s.id}">
                 <div class="card-photo-placeholder">${escapeHtml(s.dest)}</div>
               </div>
+              ${buildStopMiniMapSvg(this.stops, { activeIndex: idx })}
               <div class="card-content">
               <div class="card-head">
                 <div><div class="card-dest">${escapeHtml(s.dest)}</div><div class="card-region region--${regionColorKey(s.region)}">${escapeHtml(s.region)}</div></div>

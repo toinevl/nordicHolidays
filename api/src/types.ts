@@ -1,4 +1,5 @@
 import { regionConfig } from './region'
+import type { TripPace, TripThemeId } from './region/types'
 
 export type Preferences = {
   mustVisit: string[]
@@ -13,6 +14,10 @@ export type Preferences = {
    * seasonal closures. Absent = generic Nordic guidance (#96).
    */
   startDate?: string
+  /** Selected trip themes; empty = no theme preference. */
+  themes: TripThemeId[]
+  /** Travel pace; 'balanced' mirrors the current prompt default. */
+  pace: TripPace
 }
 
 export type ItineraryStop = {
@@ -88,6 +93,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   endCity: '',
   tripDays: 21,
   country: regionConfig.defaultCountry,
+  themes: [],
+  pace: 'balanced',
 }
 
 export type Profile = {

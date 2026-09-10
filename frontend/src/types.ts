@@ -46,6 +46,10 @@ export type Preferences = {
   country: string
   /** Optional trip start date (YYYY-MM-DD) for seasonal tailoring (#96) */
   startDate?: string
+  /** Selected trip themes; empty = no preference. ids from lib/tripThemes. */
+  themes: string[]
+  /** Travel pace; 'balanced' is the current default behaviour. */
+  pace: 'relaxed' | 'balanced' | 'packed'
 }
 
 export type ItineraryStop = {

@@ -1,8 +1,8 @@
+import { ApiError,apiClient } from '../api/client'
 import { t } from '../i18n/index'
-import { getOwnerId } from '../lib/identity'
-import { apiClient, ApiError } from '../api/client'
-import type { StopNote } from '../types'
 import { escapeHtml } from '../lib/escape'
+import { getOwnerId } from '../lib/identity'
+import type { StopNote } from '../types'
 
 /**
  * Stop-notes prikbord (#173/#174).
@@ -34,6 +34,13 @@ export class NotesBoard {
   private loading = false
   private adding = false
   private error: string | null = null
+  /**
+   * The mounted host this board last rendered into. Async transitions (notes
+   * loaded, note added/deleted) must re-render into THIS node — a bare
+   * this.render() builds a detached tree the visitor never sees (the board
+   * would stay on its previous state, e.g. "Loading…", forever).
+   */
+  private host: HTMLElement | null = null
 
   constructor(
     private readonly itineraryId: string,
@@ -55,7 +62,7 @@ export class NotesBoard {
       return
     }
     this.loading = true
-    this.render()
+    this.rerender()
     try {
       const { notes } = await apiClient.getNotes(this.itineraryId)
       notesCache.set(this.itineraryId, { notes, loadedAt: Date.now() })
@@ -64,7 +71,7 @@ export class NotesBoard {
       this.error = t('notes.loadFailed')
     } finally {
       this.loading = false
-      this.render()
+      this.rerender()
     }
   }
 
@@ -73,7 +80,7 @@ export class NotesBoard {
     if (!text) return
     const displayName = nameEl.value.trim()
     this.adding = true
-    this.render()
+    this.renderInto(this.host!)
     try {
       const created = await apiClient.addNote(this.itineraryId, {
         stopId: this.stopId,
@@ -100,7 +107,7 @@ export class NotesBoard {
       }
     } finally {
       this.adding = false
-      this.render()
+      this.rerender()
     }
   }
 
@@ -108,7 +115,7 @@ export class NotesBoard {
     if (!window.confirm(t('notes.deleteConfirm'))) return
     const prev = this.notes
     this.notes = (this.notes ?? []).filter(n => n.id !== noteId) // optimistic
-    this.render()
+    this.rerender()
     try {
       await apiClient.deleteNote(this.itineraryId, noteId)
       const cached = notesCache.get(this.itineraryId)
@@ -120,7 +127,7 @@ export class NotesBoard {
     } catch {
       this.notes = prev // rollback
       this.onToast(t('notes.deleteFailed'), 'error')
-      this.render()
+      this.rerender()
     }
   }
 
@@ -128,16 +135,20 @@ export class NotesBoard {
     const host = document.createElement('div')
     host.className = 'notes-board'
     host.dataset.stopId = this.stopId
+    this.host = host
 
     const count = this.notes?.length ?? this.cachedCount
     const toggle = document.createElement('button')
     toggle.type = 'button'
     toggle.className = 'notes-toggle'
+    toggle.setAttribute('aria-label', t('notes.label'))
+    toggle.setAttribute('aria-expanded', String(this.expanded))
     toggle.innerHTML = count > 0
-      ? `💬 ${count} ${escapeHtml(t('notes.label'))} <span class="notes-add-hint">+ ${escapeHtml(t('notes.add'))}</span>`
-      : `💬 <span class="notes-add-hint">${escapeHtml(t('notes.add'))}</span>`
+      ? `💬 ${count} ${escapeHtml(t('notes.label'))}`
+      : `💬 ${escapeHtml(t('notes.label'))}`
     toggle.addEventListener('click', () => {
       this.expanded = !this.expanded
+      toggle.setAttribute('aria-expanded', String(this.expanded))
       if (this.expanded && this.notes === null) void this.loadNotes()
       this.renderInto(host)
     })
@@ -145,6 +156,23 @@ export class NotesBoard {
 
     if (this.expanded) this.renderInto(host)
     return host
+  }
+
+  /**
+   * Re-render the whole board (toggle + panel) INTO its live mounted host.
+   * Every async transition (loading → loaded/error, note added/deleted) goes
+   * through here: rendering into a detached replacement silently discards the
+   * update — the mounted board keeps showing the pre-async state forever.
+   * NB: capture the current host FIRST — this.render() reassigns this.host as
+   * a side effect, and replaceWith on that fresh (detached) node would be a
+   * silent self-swap that freezes the visible board.
+   */
+  private rerender(): void {
+    const current = this.host
+    if (!current || !current.isConnected) return
+    const replacement = this.render()
+    current.replaceWith(replacement)
+    this.host = replacement
   }
 
   /** Re-render the expanded panel inside an existing host (keeps the toggle). */
@@ -198,35 +226,53 @@ export class NotesBoard {
     if (!this.adding) {
       const addBtn = document.createElement('button')
       addBtn.type = 'button'
-      addBtn.className = 'notes-add-btn'
+      addBtn.className = 'notes-add-btn btn--primary'
       addBtn.textContent = `+ ${t('notes.add')}`
       addBtn.addEventListener('click', () => { this.adding = true; this.renderInto(host) })
       panel.appendChild(addBtn)
     } else {
       const form = document.createElement('div')
       form.className = 'notes-form'
+      const nameGroup = document.createElement('div')
+      nameGroup.className = 'form-group'
+      const nameLabel = document.createElement('label')
+      nameLabel.className = 'form-label'
+      nameLabel.textContent = t('notes.nameLabel')
+      nameLabel.htmlFor = 'notes-name'
       const nameInput = document.createElement('input')
+      nameInput.id = 'notes-name'
       nameInput.type = 'text'
       nameInput.className = 'form-input notes-name'
       nameInput.maxLength = 30
       nameInput.placeholder = t('notes.nameLabel')
       nameInput.value = getCachedDisplayName()
+      nameGroup.append(nameLabel, nameInput)
+
+      const textGroup = document.createElement('div')
+      textGroup.className = 'form-group'
+      const textLabel = document.createElement('label')
+      textLabel.className = 'form-label'
+      textLabel.textContent = t('notes.placeholder')
+      textLabel.htmlFor = 'notes-text'
       const textArea = document.createElement('textarea')
+      textArea.id = 'notes-text'
       textArea.className = 'form-input notes-text'
       textArea.maxLength = 500
       textArea.rows = 3
       textArea.placeholder = t('notes.placeholder')
+      textGroup.append(textLabel, textArea)
       const submit = document.createElement('button')
       submit.type = 'button'
-      submit.className = 'btn btn--secondary btn--small'
-      submit.textContent = this.adding && this.notes === null ? t('notes.saving') : t('notes.save')
+      submit.className = 'btn btn--primary btn--small'
+      submit.textContent = this.adding ? t('notes.saving') : t('notes.save')
+      submit.disabled = this.adding
       submit.addEventListener('click', () => void this.submitNote(textArea, nameInput))
       const cancel = document.createElement('button')
       cancel.type = 'button'
-      cancel.className = 'notes-cancel'
+      cancel.className = 'notes-cancel btn--ghost'
       cancel.textContent = t('notes.cancel')
       cancel.addEventListener('click', () => { this.adding = false; this.renderInto(host) })
-      form.append(nameInput, textArea, submit, cancel)
+      form.append(nameGroup, textGroup, submit, cancel)
       panel.appendChild(form)
     }
 

@@ -27,9 +27,13 @@ vi.mock('../lib/partners', () => ({
 }))
 
 import { authErrorResponse, resolveOwnerId } from '../lib/identity'
-import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { ITINERARY_FUNCTION } from '../lib/itinerarySchema'
 import { getLlmClient } from '../lib/llmClient'
 import { getPartner } from '../lib/partners'
+// #38: the system prompt is regionalised — assert against the active region
+// pack (the new source of truth) instead of the old lib/itinerarySchema export.
+import { regionConfig } from '../region'
+const SYSTEM_PROMPT = regionConfig.promptTemplate.systemPrompt
 import {
   checkAndIncrementRateLimit,
   checkGlobalDailyGenerateCap,
@@ -82,6 +86,45 @@ describe('POST /api/generate', () => {
     expect(body.stops).toHaveLength(1)
     expect(body.stops[0].city).toBe('Amsterdam')
     expect(body.startCity).toBe('Amsterdam')
+  })
+
+  it('accepts a discovery-mode request without startCity and endCity (#67)', async () => {
+    const itin = makeItinerary()
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: vi.fn().mockResolvedValue(makeOpenAIResponse(itin)) } },
+    })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['coast'], pace: 'packed' }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+  })
+
+  it('discovery mode keeps the model-chosen first stop intact (no #175 rename to empty, #67)', async () => {
+    const itin = makeItinerary()
+    itin.startCity = 'Malmö'
+    itin.stops[0].city = 'Malmö'
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14 }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const body = JSON.parse(res.body as string)
+    expect(body.stops[0].city).toBe('Malmö')
+    expect(body.startCity).toBe('Malmö')
+  })
+
+  it('rejects a request with only startCity (both-or-neither, #67)', async () => {
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', tripDays: 14 }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(400)
+    const body = JSON.parse(res.body as string)
+    expect(body.error).toBe('Invalid request body')
+    expect(body.details).toContain('startCity and endCity must be provided together')
+  })
+
+  it('rejects an unknown theme id (#67)', async () => {
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['beach-party'] }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(400)
   })
 
   it('returns 400 for invalid request body', async () => {
@@ -484,10 +527,31 @@ describe('POST /api/generate', () => {
     expect(SYSTEM_PROMPT).toMatch(/nights.*0|0.*nights/i)
   })
 
+  // #38: the system prompt must come from the active region pack, not from a
+  // hardcoded lib export — a new region (e.g. US) would otherwise silently
+  // inherit Nordic geography in its system message.
+  it('sends the region pack systemPrompt as the LLM system message (#38)', async () => {
+    const itin = makeItinerary()
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Kiruna', tripDays: 7, country: 'SE' }),
+    } as any
+    await generateHandler(req)
+
+    const callArgs = mockCreate.mock.calls[0][0]
+    const systemMessage = callArgs.messages.find((m: { role: string }) => m.role === 'system').content as string
+    expect(systemMessage).toBe(regionConfig.promptTemplate.systemPrompt)
+    expect(systemMessage).toMatch(/Nordic road trip planner/)
+  })
+
   it('SYSTEM_PROMPT requires day trips to carry the excursion destination name and coordinates', () => {
     expect(SYSTEM_PROMPT).toMatch(/destination's own lat\/lng/i)
     expect(SYSTEM_PROMPT).toMatch(/never repeat the base/i)
-    const stopsItems = ITINERARY_FUNCTION.function.parameters.properties.stops.items as any
+    const stopsItems = (ITINERARY_FUNCTION.function.parameters as any).properties.stops.items as any
     expect(stopsItems.properties.lat.description).toMatch(/not the base/i)
     expect(stopsItems.properties.city.description).toMatch(/never a repeat of the base/i)
   })
@@ -499,7 +563,7 @@ describe('POST /api/generate', () => {
   })
 
   it('ITINERARY_FUNCTION nights property description explains 0 = day trip', () => {
-    const stopsItems = ITINERARY_FUNCTION.function.parameters.properties.stops.items as any
+    const stopsItems = (ITINERARY_FUNCTION.function.parameters as any).properties.stops.items as any
     const nightsProperty = stopsItems.properties.nights
     expect(nightsProperty.description).toMatch(/day trip/i)
     expect(nightsProperty.description).toMatch(/0/)
@@ -548,8 +612,11 @@ describe('POST /api/generate', () => {
 
     expect(result.status).toBe(200)
     const body = JSON.parse(result.body as string) as Itinerary
-    expect(body.stops[0].nights).toBe(1)
-    expect(body.stops[1].nights).toBe(2)
+    // #72: the sum of nights must equal tripDays — the first stop's 0 nights
+    // is normalized to 1, then the budget correction scales the rest to hit 7.
+    const sumNights = body.stops.reduce((s, st) => s + st.nights, 0)
+    expect(sumNights).toBe(7)
+    body.stops.filter(s => s.nights > 0).forEach(s => expect(s.nights).toBeGreaterThanOrEqual(1))
   })
 
   it('promotes distant day trips (>150 km from base) to overnight stops', async () => {
@@ -612,12 +679,14 @@ describe('POST /api/generate', () => {
     const body = JSON.parse(result.body as string) as Itinerary
     expect(body.stops).toHaveLength(3)
     expect(body.stops[0].city).toBe('Göteborg')
-    expect(body.stops[0].nights).toBe(2)
     expect(body.stops[1].city).toBe('Gamla Stan (Stockholm)')
-    expect(body.stops[1].nights).toBe(1) // promoted from 0 (>150 km away)
     expect(body.stops[2].city).toBe('Marstrand')
-    expect(body.stops[2].nights).toBe(0) // stays 0 (<150 km away)
-    expect(body.totalDays).toBe(7) // unchanged — already matches requested tripDays
+    // #72: the sum of nights must equal tripDays — after the distant-day-trip
+    // promotion (0→1), the budget correction scales overnight stops to hit 7.
+    const sumNights = body.stops.reduce((s, st) => s + st.nights, 0)
+    expect(sumNights).toBe(7)
+    expect(body.stops[2].nights).toBe(0) // near day trip stays 0 (<150 km)
+    expect(body.totalDays).toBe(7)
   })
 
   it('#130: overrides a mismatched model-provided totalDays with the requested (clamped) tripDays', async () => {
@@ -655,6 +724,72 @@ describe('POST /api/generate', () => {
     expect(result.status).toBe(200)
     expect(body.title).toBe('7-Day Norway Road Trip')
     expect(body.totalDays).toBe(7) // matches the requested tripDays, not the model's inconsistent 21
+  })
+
+  it('#72: corrects nights-sum overshoot (19 → 14) when the model drifts past tripDays', async () => {
+    // Model returns 19 nights for a 14-day trip (each overnight stop 3-4 nights,
+    // plus day trips) — the classic relaxed-pace overshoot from issue #72.
+    const itin = {
+      title: '14-Day Nordic Road Trip',
+      totalDays: 14,
+      startCity: 'Stockholm',
+      endCity: 'Copenhagen',
+      stops: [
+        { day: 1, city: 'Stockholm', region: 'Uppland', lat: 59.3, lng: 18.1, nights: 4, highlights: ['Gamla Stan'], accommodation: 'Hotel', culinaryNotes: 'Meatballs' },
+        { day: 5, city: 'Göteborg', region: 'Västergötland', lat: 57.7, lng: 11.9, nights: 3, highlights: ['Archipelago'], accommodation: 'Inn', culinaryNotes: 'Seafood' },
+        { day: 8, city: 'Jönköping', region: 'Småland', lat: 57.8, lng: 14.2, nights: 0, highlights: ['Vättern'], accommodation: '', culinaryNotes: '' },
+        { day: 9, city: 'Malmö', region: 'Skåne', lat: 55.6, lng: 13.0, nights: 4, highlights: ['Turning Torso'], accommodation: 'Hotel', culinaryNotes: 'New Nordic' },
+        { day: 13, city: 'Copenhagen', region: 'Sjælland', lat: 55.7, lng: 12.6, nights: 3, highlights: ['Nyhavn'], accommodation: 'Hotel', culinaryNotes: 'Smørrebrød' },
+        { day: 16, city: 'Odense', region: 'Fyn', lat: 55.4, lng: 10.4, nights: 3, highlights: ['H.C. Andersen'], accommodation: 'Inn', culinaryNotes: 'Fynsk rygeost' },
+      ],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Stockholm', endCity: 'Copenhagen', tripDays: 14, pace: 'relaxed' }),
+    } as any
+    const result = await generateHandler(req)
+    const body = JSON.parse(result.body as string) as Itinerary
+
+    expect(result.status).toBe(200)
+    const sumNights = body.stops.reduce((s, st) => s + st.nights, 0)
+    expect(sumNights).toBe(14) // corrected from 19 → 14
+    // every overnight stop must keep >= 1 night (no zero-night bases)
+    body.stops.filter(s => s.nights > 0).forEach(s => expect(s.nights).toBeGreaterThanOrEqual(1))
+  })
+
+  it('#72: leaves a correct nights-sum untouched (no overcorrection)', async () => {
+    // Model happens to nail it: 3 stops × nights that sum to exactly 7.
+    const itin = {
+      title: '7-Day Trip',
+      totalDays: 7,
+      startCity: 'Oslo',
+      endCity: 'Bergen',
+      stops: [
+        { day: 1, city: 'Oslo', region: 'Østlandet', lat: 59.9, lng: 10.7, nights: 2, highlights: ['Opera House'], accommodation: 'City hotel', culinaryNotes: 'Brunost' },
+        { day: 3, city: 'Geiranger', region: 'Møre og Romsdal', lat: 62.1, lng: 7.2, nights: 2, highlights: ['Fjord views'], accommodation: 'Fjord lodge', culinaryNotes: 'Fresh salmon' },
+        { day: 5, city: 'Bergen', region: 'Vestland', lat: 60.4, lng: 5.3, nights: 3, highlights: ['Bryggen'], accommodation: 'Harbour hotel', culinaryNotes: 'Fish market' },
+      ],
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    }
+    const mockCreate = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create: mockCreate } } })
+
+    const req = {
+      method: 'POST',
+      headers: { get: () => null },
+      json: async () => ({ mustVisit: [], avoid: [], startCity: 'Oslo', endCity: 'Bergen', tripDays: 7 }),
+    } as any
+    const result = await generateHandler(req)
+    const body = JSON.parse(result.body as string) as Itinerary
+
+    expect(result.status).toBe(200)
+    const sumNights = body.stops.reduce((s, st) => s + st.nights, 0)
+    expect(sumNights).toBe(7) // untouched — was already correct
   })
 
   it('#175: overrides a mismatched first-stop city with the requested startCity', async () => {
@@ -719,5 +854,38 @@ describe('POST /api/generate', () => {
     expect(body.stops[2].city).toBe('Uppsala')
     expect(body.stops[2].lat).toBeCloseTo(59.8586, 4)
     expect(body.stops[2].lng).toBeCloseTo(17.6389, 4)
+  })
+
+  // #67: discovery mode (both cities empty) must replace the start/end lines
+  // with a choose-your-own-endpoints instruction, and selected themes/pace
+  // must surface as concrete prompt hints the model can act on.
+  it('discovery prompt asks the model to choose endpoints and includes theme/pace hints (#67)', async () => {
+    const itin = makeItinerary()
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], tripDays: 14, themes: ['coast', 'aurora'], pace: 'packed' }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const userMsg = create.mock.calls[0][0].messages.find((m: any) => m.role === 'user').content
+    expect(userMsg).toContain('no fixed start or end city')
+    expect(userMsg).toContain('ferry ports')
+    expect(userMsg).toContain('coastal drives')
+    expect(userMsg).toContain('northern lights')
+    expect(userMsg).toContain('Pace: packed')
+    expect(userMsg).not.toContain('Start city:')
+  })
+
+  it('classic prompt keeps start/end lines and appends theme hints (#67)', async () => {
+    const itin = makeItinerary()
+    const create = vi.fn().mockResolvedValue(makeOpenAIResponse(itin))
+    ;(getLlmClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } })
+    const req = { method: 'POST', headers: { get: () => null }, json: async () => ({ mustVisit: [], avoid: [], startCity: 'Malmö', endCity: 'Göteborg', tripDays: 14, themes: ['food'] }) } as any
+    const res = await generateHandler(req, undefined)
+    expect(res.status).toBe(200)
+    const userMsg = create.mock.calls[0][0].messages.find((m: any) => m.role === 'user').content
+    expect(userMsg).toContain('Start city: Malmö')
+    expect(userMsg).toContain('End city: Göteborg')
+    expect(userMsg).toContain('local food')
+    expect(userMsg).not.toContain('Pace:')
   })
 })

@@ -1,8 +1,7 @@
 /// <reference types="vite/client" />
+import { getApiBase } from '../api/client'
 import { getConsent } from './consent'
 import { getOwnerId } from './identity'
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://nordic-holidays-api.azurewebsites.net'
 
 export interface AffiliateClickEvent {
   event: 'affiliate_click'
@@ -42,7 +41,7 @@ export function affiliateClickPayload(target: EventTarget | null): AffiliateClic
  */
 export function trackAffiliateClick(payload: AffiliateClickEvent): void {
   try {
-    fetch(`${API_BASE}/api/track`, {
+    fetch(`${getApiBase()}/api/track`, {
       method: 'POST',
       keepalive: true,
       headers: {

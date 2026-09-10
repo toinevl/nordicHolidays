@@ -1,8 +1,10 @@
 import { apiClient } from '../api/client'
 import { t, tpl } from '../i18n/index'
 import type { LocaleKey } from '../i18n/types'
-import { type CitySuggestion, searchLocalCities, searchNominatim } from '../lib/citySearch'
+import type { CitySuggestion } from '../lib/citySearch'
+import { searchLocalCities, searchNominatim } from '../lib/citySearch'
 import { escapeHtml } from '../lib/escape'
+import { THEME_LABEL_KEYS, TRIP_THEME_IDS } from '../lib/tripThemes'
 import { regionConfig } from '../region'
 import type { Store } from '../store'
 import type { Itinerary, Preferences } from '../types'
@@ -10,6 +12,27 @@ import type { Itinerary, Preferences } from '../types'
 export type GenerateCallback = (itinerary: Itinerary) => void
 export type GenerateErrorCallback = (message: string) => void
 type CityField = 'startCity' | 'endCity'
+
+/**
+ * Differences between the four city combobox instances (#41). Everything not
+ * expressed here is shared behaviour rendered by bindCityCombobox().
+ */
+type CityComboboxConfig = {
+  inputId: string
+  resultsId: string
+  /** Optional "custom city" hint element (only the start/end fields have one). */
+  hintId?: string
+  /** Write the picked suggestion into the input (city fields) — tag inputs clear it in addTagValue instead. */
+  applySelectedValue: boolean
+  /** Persist the typed value as a preference on every input (city fields only). */
+  updatePreferenceOnInput?: boolean
+  /** Which preference updatePreferenceOnInput writes; required when it is true. */
+  field?: CityField
+  /** A suggestion was picked (keyboard or click). */
+  onCommit: (value: string) => void
+  /** Enter pressed with typed text but no active suggestion (tag inputs add it; city fields ignore). */
+  onFreeText?: (value: string) => void
+}
 
 const ALLOWED_COUNTRIES = regionConfig.countries.map(country => ({
   code: country.code,
@@ -28,6 +51,13 @@ export class GeneratorPanel {
   private onError: GenerateErrorCallback
   private cityLookupRequest = 0
   private lastLocale: string = ''
+  /**
+   * #67: the user pressed "From A to B" while both city prefs are empty.
+   * syncRouteMode() otherwise derives discovery from empty prefs and would
+   * flip the fields straight back to hidden; classicForced keeps classic
+   * mode on until discovery is chosen again (which resets it).
+   */
+  private classicForced = false
 
   constructor(store: Store, onGenerate: GenerateCallback, onError: GenerateErrorCallback = () => {}) {
     this.store = store
@@ -78,6 +108,14 @@ export class GeneratorPanel {
           </select>
         </div>
         <div class="form-group">
+          <span class="form-label" id="gen-route-mode-label">${t('generator.routeModeLabel')}</span>
+          <div class="segmented" role="group" aria-labelledby="gen-route-mode-label">
+            <button type="button" id="gen-mode-point" class="segmented__btn" aria-pressed="true">${t('generator.routeModePoint')}</button>
+            <button type="button" id="gen-mode-discover" class="segmented__btn" aria-pressed="false">${t('generator.routeModeDiscover')}</button>
+          </div>
+          <p class="form-hint hidden" id="gen-discover-hint">${t('generator.discoverHint')}</p>
+        </div>
+        <div class="form-group" id="gen-start-group">
           <label class="form-label" for="gen-start">${t('generator.startCity')}</label>
           <div class="city-combobox">
             <input id="gen-start" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-start-results" aria-activedescendant="" />
@@ -85,13 +123,27 @@ export class GeneratorPanel {
           </div>
           <p id="gen-start-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="gen-end-group">
           <label class="form-label" for="gen-end">${t('generator.finishCity')}</label>
           <div class="city-combobox">
             <input id="gen-end" class="form-input" type="text" placeholder="${t('generator.searchCity')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gen-end-results" aria-activedescendant="" />
             <div id="gen-end-results" class="city-results hidden" role="listbox" aria-hidden="true"></div>
           </div>
           <p id="gen-end-hint" class="form-hint city-custom-hint hidden">${t('generator.customCity')}</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="gen-themes-label">${t('generator.themesLabel')}</label>
+          <div class="theme-chips" role="group" aria-labelledby="gen-themes-label">
+            ${TRIP_THEME_IDS.map(id => `<button type="button" class="tag theme-chip" data-theme="${id}" aria-pressed="false">${t(THEME_LABEL_KEYS[id])}</button>`).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="gen-pace">${t('generator.paceLabel')}</label>
+          <select id="gen-pace" class="form-input">
+            <option value="relaxed">${t('generator.paceRelaxed')}</option>
+            <option value="balanced" selected>${t('generator.paceBalanced')}</option>
+            <option value="packed">${t('generator.pacePacked')}</option>
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label" for="gen-days">${t('generator.tripLength')}</label>
@@ -144,6 +196,7 @@ export class GeneratorPanel {
     if (dateInput) dateInput.value = prefs.startDate ?? ''
     this.renderTags('must-visit-tags', 'mustVisit')
     this.renderTags('avoid-tags', 'avoid')
+    this.syncRouteMode()
     this.syncRegenerateVisibility()
   }
 
@@ -167,32 +220,96 @@ export class GeneratorPanel {
 
     this.panel.querySelector('#btn-generate')?.addEventListener('click', () => this.handleGenerate())
     this.panel.querySelector('#btn-regenerate')?.addEventListener('click', () => this.handleGenerate())
+
+    // #67: route mode switcher — discovery clears both cities; classic shows
+    // the fields again (classicForced, see field docs).
+    this.panel.querySelector('#gen-mode-discover')?.addEventListener('click', () => {
+      this.classicForced = false
+      this.updateCityPreference('startCity', '')
+      this.updateCityPreference('endCity', '')
+      const startInput = this.panel.querySelector('#gen-start') as HTMLInputElement | null
+      const endInput = this.panel.querySelector('#gen-end') as HTMLInputElement | null
+      if (startInput) startInput.value = ''
+      if (endInput) endInput.value = ''
+      this.syncRouteMode()
+    })
+    this.panel.querySelector('#gen-mode-point')?.addEventListener('click', () => {
+      this.classicForced = true
+      this.syncRouteMode()
+    })
+
+    // #67: theme chips toggle their id in prefs.themes (deduped).
+    this.panel.querySelectorAll<HTMLButtonElement>('.theme-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const theme = chip.dataset.theme
+        if (!theme) return
+        const current = this.store.getState().preferences.themes
+        const next = current.includes(theme) ? current.filter(id => id !== theme) : [...current, theme]
+        this.store.setState({ preferences: { ...this.store.getState().preferences, themes: next } })
+        this.syncRouteMode()
+      })
+    })
+
+    // #67: pace select writes straight to prefs.
+    this.panel.querySelector('#gen-pace')?.addEventListener('change', (event) => {
+      const value = (event.target as HTMLSelectElement).value as Preferences['pace']
+      this.store.setState({ preferences: { ...this.store.getState().preferences, pace: value } })
+    })
+
+    this.syncRouteMode()
   }
 
-  private bindTagCityLookup(
-    inputId: string,
-    tagsId: string,
-    resultsId: string,
-    field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>,
-  ): void {
-    const input = this.panel.querySelector<HTMLInputElement>(`#${inputId}`)
+  /**
+   * #67: mirror route mode + themes + pace from prefs into the DOM. Discovery
+   * = both city prefs empty (trimmed) — unless classicForced, which keeps
+   * classic mode after the user explicitly pressed "From A to B" with still
+   * empty fields.
+   */
+  private syncRouteMode(): void {
+    const prefs = this.store.getState().preferences
+    const discover = !this.classicForced && !(prefs.startCity.trim() || prefs.endCity.trim())
+    const pointBtn = this.panel.querySelector<HTMLButtonElement>('#gen-mode-point')
+    const discoverBtn = this.panel.querySelector<HTMLButtonElement>('#gen-mode-discover')
+    pointBtn?.setAttribute('aria-pressed', String(!discover))
+    discoverBtn?.setAttribute('aria-pressed', String(discover))
+    const startGroup = this.panel.querySelector<HTMLElement>('#gen-start-group')
+    const endGroup = this.panel.querySelector<HTMLElement>('#gen-end-group')
+    startGroup?.classList.toggle('hidden', discover)
+    endGroup?.classList.toggle('hidden', discover)
+    this.panel.querySelector<HTMLElement>('#gen-discover-hint')?.classList.toggle('hidden', !discover)
+    this.panel.querySelectorAll<HTMLButtonElement>('.theme-chip').forEach(chip => {
+      chip.setAttribute('aria-pressed', String(prefs.themes.includes(chip.dataset.theme ?? '')))
+    })
+    const paceSelect = this.panel.querySelector<HTMLSelectElement>('#gen-pace')
+    if (paceSelect) paceSelect.value = prefs.pace
+  }
+
+  /**
+   * One combobox binding for all four city inputs (#41). The previous
+   * bindTagCityLookup/bindCityLookup pair duplicated ~55 lines of
+   * render/setActive/search/keydown wiring; everything that differs between
+   * the tag inputs (must-visit/avoid) and the city fields (start/end) is
+   * expressed by the config:
+   * - hintId: only the start/end fields have the "custom city" hint element.
+   * - updatePreferenceOnInput: city fields save the typed value as the
+   *   startCity/endCity preference on every input; tag inputs only act on
+   *   commit.
+   * - onCommit: a picked suggestion (input value applied when
+   *   applySelectedValue is true — tag inputs instead add the tag with the
+   *   raw suggestion name and clear the input in addTagValue).
+   * - onFreeText: Enter with no active suggestion (tag inputs add the typed
+   *   text as a tag; city fields do nothing — pre-existing behaviour).
+   */
+  private bindCityCombobox(config: CityComboboxConfig): void {
+    const input = this.panel.querySelector<HTMLInputElement>(`#${config.inputId}`)
+    const resultsId = config.resultsId
     const resultsEl = this.panel.querySelector<HTMLElement>(`#${resultsId}`)
+    const hintEl = config.hintId ? this.panel.querySelector<HTMLElement>(`#${config.hintId}`) : null
     if (!input || !resultsEl) return
 
     let activeIndex = -1
     let suggestions: CitySuggestion[] = []
     let timer = 0
-
-    const addTag = (val: string) => {
-      const trimmed = val.trim()
-      if (!trimmed) return
-      const current = this.store.getState().preferences[field]
-      if (!current.includes(trimmed)) {
-        this.store.setState({ preferences: { ...this.store.getState().preferences, [field]: [...current, trimmed] } })
-        this.renderTags(tagsId, field)
-      }
-      input.value = ''
-    }
 
     const close = () => {
       resultsEl.classList.add('hidden')
@@ -227,7 +344,9 @@ export class GeneratorPanel {
         btn.addEventListener('click', () => {
           const city = suggestions[Number(btn.dataset.index)]
           if (city) {
-            addTag(city.name)
+            if (config.applySelectedValue) input.value = city.name
+            config.onCommit(city.name)
+            hintEl?.classList.add('hidden')
             close()
           }
         })
@@ -246,9 +365,11 @@ export class GeneratorPanel {
 
     const search = async () => {
       const query = input.value.trim()
+      if (config.updatePreferenceOnInput) this.updateCityPreference(config.field as CityField, query)
       window.clearTimeout(timer)
 
       if (query.length < 2) {
+        hintEl?.classList.add('hidden')
         render([])
         return
       }
@@ -256,6 +377,7 @@ export class GeneratorPanel {
       const countryCode = this.store.getState().preferences.country
       const localResults = searchLocalCities(query, countryCode)
       render(localResults)
+      if (hintEl) hintEl.classList.toggle('hidden', localResults.some(city => city.name.toLowerCase() === query.toLowerCase()))
 
       if (localResults.length >= 5) return
       const requestId = ++this.cityLookupRequest
@@ -286,136 +408,68 @@ export class GeneratorPanel {
         event.preventDefault()
         setActive(activeIndex - 1)
       } else if (event.key === 'Enter') {
-        event.preventDefault()
         if (activeIndex >= 0 && suggestions[activeIndex]) {
-          addTag(suggestions[activeIndex].name)
-        } else if (input.value.trim()) {
-          addTag(input.value.trim())
+          event.preventDefault()
+          const city = suggestions[activeIndex]
+          if (config.applySelectedValue) input.value = city.name
+          config.onCommit(city.name)
+          hintEl?.classList.add('hidden')
+          close()
+        } else if (input.value.trim() && config.onFreeText) {
+          event.preventDefault()
+          config.onFreeText(input.value.trim())
+          close()
         }
-        close()
       } else if (event.key === 'Escape') {
         close()
       }
     })
   }
 
-  private bindCityLookup(inputId: string, resultsId: string, hintId: string, field: CityField): void {
-    const input = this.panel.querySelector<HTMLInputElement>(`#${inputId}`)
-    const resultsEl = this.panel.querySelector<HTMLElement>(`#${resultsId}`)
-    const hintEl = this.panel.querySelector<HTMLElement>(`#${hintId}`)
-    if (!input || !resultsEl || !hintEl) return
-
-    let activeIndex = -1
-    let suggestions: CitySuggestion[] = []
-    let timer = 0
-
-    const close = () => {
-      resultsEl.classList.add('hidden')
-      resultsEl.setAttribute('aria-hidden', 'true')
-      input.setAttribute('aria-expanded', 'false')
-      input.setAttribute('aria-activedescendant', '')
-      activeIndex = -1
-    }
-
-    const render = (items: CitySuggestion[]) => {
-      suggestions = items
-      activeIndex = items.length ? 0 : -1
-      const hasItems = items.length > 0
-      input.setAttribute('aria-expanded', String(hasItems))
-      resultsEl.classList.toggle('hidden', !hasItems)
-      resultsEl.setAttribute('aria-hidden', String(!hasItems))
-      if (hasItems) input.setAttribute('aria-activedescendant', `${resultsId}-option-${activeIndex}`)
-      else input.setAttribute('aria-activedescendant', '')
-      resultsEl.innerHTML = items.map((city, index) => {
-        const region = city.region ? `${city.region}, ` : ''
-        const meta = `${region}${city.countryName}`
-        return `
-          <button id="${resultsId}-option-${index}" class="city-option ${index === activeIndex ? 'active' : ''}" type="button" role="option" data-index="${index}" aria-selected="${index === activeIndex}">
-            <span class="city-option__name">${escapeHtml(city.name)}</span>
-            <span class="city-option__meta">${escapeHtml(meta)}</span>
-          </button>
-        `
-      }).join('')
-
-      resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach(btn => {
-        btn.addEventListener('mousedown', event => event.preventDefault())
-        btn.addEventListener('click', () => {
-          const city = suggestions[Number(btn.dataset.index)]
-          if (city) {
-            input.value = city.name
-            this.updateCityPreference(field, city.name)
-            hintEl.classList.add('hidden')
-            close()
-          }
-        })
-      })
-    }
-
-    const setActive = (nextIndex: number) => {
-      if (!suggestions.length) return
-      activeIndex = (nextIndex + suggestions.length) % suggestions.length
-      input.setAttribute('aria-activedescendant', `${resultsId}-option-${activeIndex}`)
-      resultsEl.querySelectorAll<HTMLButtonElement>('.city-option').forEach((btn, index) => {
-        btn.classList.toggle('active', index === activeIndex)
-        btn.setAttribute('aria-selected', String(index === activeIndex))
-      })
-    }
-
-    const search = async () => {
-      const query = input.value.trim()
-      this.updateCityPreference(field, query)
-      window.clearTimeout(timer)
-
-      if (query.length < 2) {
-        hintEl.classList.add('hidden')
-        render([])
-        return
-      }
-
-      const countryCode = this.store.getState().preferences.country
-      const localResults = searchLocalCities(query, countryCode)
-      render(localResults)
-      hintEl.classList.toggle('hidden', localResults.some(city => city.name.toLowerCase() === query.toLowerCase()))
-
-      if (localResults.length >= 5) return
-      const requestId = ++this.cityLookupRequest
-      timer = window.setTimeout(async () => {
-        try {
-          const remoteResults = await searchNominatim(query, countryCode)
-          if (requestId !== this.cityLookupRequest) return
-          const seen = new Set(localResults.flatMap(city => [city.id, cityKey(city)]))
-          render([
-            ...localResults,
-            ...remoteResults.filter((city: CitySuggestion) => !seen.has(city.id) && !seen.has(cityKey(city))),
-          ].slice(0, 8))
-        } catch (err: any) {
-          // Local suggestions are the primary path; remote lookup is optional.
-          if (err instanceof Error) console.error('[cityLookup:searchNominatim]', err)
-        }
-      }, 250)
-    }
-
-    input.addEventListener('input', () => { void search() })
-    input.addEventListener('focus', () => { void search() })
-    input.addEventListener('blur', () => window.setTimeout(close, 120))
-    input.addEventListener('keydown', event => {
-      if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        setActive(activeIndex + 1)
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        setActive(activeIndex - 1)
-      } else if (event.key === 'Enter' && activeIndex >= 0 && suggestions[activeIndex]) {
-        event.preventDefault()
-        const city = suggestions[activeIndex]
-        input.value = city.name
-        this.updateCityPreference(field, city.name)
-        hintEl.classList.add('hidden')
-        close()
-      } else if (event.key === 'Escape') {
-        close()
-      }
+  /** Tag-input variant of the combobox (#41): picked/typed values become tags. */
+  private bindTagCityLookup(
+    inputId: string,
+    tagsId: string,
+    resultsId: string,
+    field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>,
+  ): void {
+    this.bindCityCombobox({
+      inputId,
+      resultsId,
+      applySelectedValue: false,
+      onCommit: value => this.addTagValue(tagsId, field, value),
+      onFreeText: value => this.addTagValue(tagsId, field, value),
     })
+  }
+
+  /** City-field variant of the combobox (#41): the value IS the preference. */
+  private bindCityLookup(inputId: string, resultsId: string, hintId: string, field: CityField): void {
+    this.bindCityCombobox({
+      inputId,
+      resultsId,
+      hintId,
+      applySelectedValue: true,
+      updatePreferenceOnInput: true,
+      field,
+      onCommit: value => this.updateCityPreference(field, value),
+    })
+  }
+
+  /** Add a tag to the given preference list (deduped) and re-render the chips. */
+  private addTagValue(
+    tagsId: string,
+    field: keyof Pick<Preferences, 'mustVisit' | 'avoid'>,
+    value: string,
+  ): void {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    const current = this.store.getState().preferences[field]
+    if (!current.includes(trimmed)) {
+      this.store.setState({ preferences: { ...this.store.getState().preferences, [field]: [...current, trimmed] } })
+      this.renderTags(tagsId, field)
+    }
+    const input = this.panel.querySelector<HTMLInputElement>(`#${tagsId.replace('-tags', '-input')}`)
+    if (input) input.value = ''
   }
 
   private updateCityPreference(field: CityField, value: string): void {
@@ -454,6 +508,7 @@ export class GeneratorPanel {
       if (dateInput) dateInput.value = prefs.startDate ?? ''
       this.renderTags('must-visit-tags', 'mustVisit')
       this.renderTags('avoid-tags', 'avoid')
+      this.syncRouteMode()
     } catch (err: any) {
       if (err instanceof Error) console.error('[loadPreferences]', err)
       /* use defaults */
@@ -466,17 +521,23 @@ export class GeneratorPanel {
     btn.style.display = this.store.getState().currentItinerary ? '' : 'none'
   }
 
+  /** #67: discovery is allowed when the mode switch itself sits on discovery. */
+  private isDiscoverAllowed(): boolean {
+    return this.panel.querySelector<HTMLButtonElement>('#gen-mode-discover')?.getAttribute('aria-pressed') === 'true'
+  }
+
   private async handleGenerate(): Promise<void> {
     const btn = this.panel.querySelector('#btn-generate') as HTMLButtonElement
-    const startCity = (this.panel.querySelector('#gen-start') as HTMLInputElement)?.value.trim()
-    const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim()
+    const startCity = (this.panel.querySelector('#gen-start') as HTMLInputElement)?.value.trim() ?? ''
+    const endCity = (this.panel.querySelector('#gen-end') as HTMLInputElement)?.value.trim() ?? ''
 
-    if (!startCity) {
+    // #67: both-or-neither. Both empty = discovery (the LLM picks endpoints).
+    if (!startCity && !endCity && !this.isDiscoverAllowed()) {
       this.onError(t('validation.selectStartCity'))
       return
     }
-    if (!endCity) {
-      this.onError(t('validation.selectFinishCity'))
+    if ((!startCity || !endCity) && (startCity || endCity)) {
+      this.onError(t('validation.needBothCities'))
       return
     }
 

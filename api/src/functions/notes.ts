@@ -1,11 +1,21 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
+import { HttpRequest, HttpResponseInit, InvocationContext,app } from '@azure/functions'
 import { nanoid } from 'nanoid'
-import { withCors, corsPreflightResponse } from '../lib/cors'
-import { logError, NoteBodySchema } from '../lib/schemas'
-import { checkAndIncrementNoteRateLimit } from '../lib/rateLimit'
+
+import { corsPreflightResponse,withCors } from '../lib/cors'
+import { checkAndIncrementNoteRateLimit, limitReachedHeader } from '../lib/rateLimit'
+import { NoteBodySchema,logError } from '../lib/schemas'
 import { ensureTable } from '../lib/tableClient'
 
 const NOTES_TABLE_NAME = 'Notes'
+/**
+ * #35b: notes are publicly POSTable (rate-limited at 30/hour/IP, but still
+ * unbounded in aggregate), so a trip's partition can grow without limit. The
+ * listing scans at most this many notes per request and returns the NEWEST
+ * NOTES_MAX_RESULTS (oldest are dropped), signalling truncation via
+ * `X-Limit-Reached`. The installed @azure/data-tables listEntities() exposes
+ * no server-side `top` option, so the cap is applied while iterating.
+ */
+const NOTES_MAX_RESULTS = 100
 
 /**
  * A per-stop note on the shared trip board (#173).
@@ -68,13 +78,22 @@ export async function listNotesHandler(
   try {
     const client = await ensureTable(NOTES_TABLE_NAME)
     const notes: TripNote[] = []
+    // #35b: cap the scan (public endpoint, unbounded growth) and keep the
+    // newest NOTES_MAX_RESULTS — insertion order is list order, so once the
+    // buffer is full every extra entity evicts the oldest buffered note.
+    let limitReached = false
     for await (const entity of client.listEntities({
       queryOptions: { filter: `PartitionKey eq '${tripId.replace(/'/g, "''")}'` },
     })) {
-      notes.push(entityToNote(entity as Record<string, unknown>))
+      const note = entityToNote(entity as Record<string, unknown>)
+      if (notes.length >= NOTES_MAX_RESULTS) {
+        limitReached = true
+        notes.shift()
+      }
+      notes.push(note)
     }
     notes.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-    return withCors(
+    const response = withCors(
       {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -82,6 +101,12 @@ export async function listNotesHandler(
       },
       origin,
     )
+    // Truncation flag: ASCII-only header (Azure Functions host rejects
+    // non-ASCII header values — CLAUDE.md), so the body shape stays unchanged.
+    if (limitReached) {
+      ;(response.headers as Record<string, string>)[limitReachedHeader] = 'true'
+    }
+    return response
   } catch (err: any) {
     // Table doesn't exist yet (fresh deployment / first use) → no notes yet
     if (err?.statusCode === 404 || err?.errorCode === 'TableNotFound') {

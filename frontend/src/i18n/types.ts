@@ -18,6 +18,25 @@ export interface LocaleStrings {
     preferencesSaved: string
     generating: string
     country: string
+    routeModeLabel: string
+    routeModePoint: string
+    routeModeDiscover: string
+    discoverHint: string
+    themesLabel: string
+    paceLabel: string
+    paceRelaxed: string
+    paceBalanced: string
+    pacePacked: string
+  }
+  themes: {
+    nature: string
+    coast: string
+    city: string
+    food: string
+    wildlife: string
+    history: string
+    aurora: string
+    family: string
   }
   saved: {
     title: string
@@ -100,6 +119,12 @@ export interface LocaleStrings {
     legendExcursion: string
     loadFailedTitle: string
     loadFailedBody: string
+    /** #24: CTA button under the trip preview — opens the #map-page 3D overlay */
+    previewCta: string
+    /** Static: "Route stops" — heading of the stop timeline inside the #map-page overlay */
+    timelineTitle: string
+    /** Static: "Close stop list" — aria-label on the timeline close button */
+    closeTimeline: string
   }
   b2b: {
     kicker: string
@@ -299,6 +324,7 @@ export interface LocaleStrings {
   validation: {
     selectStartCity: string
     selectFinishCity: string
+    needBothCities: string
     minDuration: string
     generationFailed: string
     rateLimit: string
@@ -356,6 +382,7 @@ export type LocaleKey =
   | `auth.${keyof LocaleStrings['auth']}`
   | `country.${keyof LocaleStrings['country']}`
   | `nav.${keyof LocaleStrings['nav']}`
+  | `themes.${keyof LocaleStrings['themes']}`
   | `hero.${keyof LocaleStrings['hero']}`
   | `hero2.${keyof LocaleStrings['hero2']}`
   | `sections.${keyof LocaleStrings['sections']}`

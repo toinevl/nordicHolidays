@@ -14,6 +14,22 @@ vi.mock('nanoid', () => ({
   nanoid: vi.fn().mockReturnValue('test-id-123'),
 }))
 
+vi.mock('../lib/partners', () => ({
+  // Default: a known partner so happy-path tests pass the #33 existence
+  // check. Unknown-partner tests override with mockResolvedValueOnce(null).
+  getPartner: vi.fn().mockResolvedValue({
+    partnerId: 'camping-nord',
+    displayName: 'Camping Nord',
+    primaryColor: '#2f6f4f',
+    accentColor: '#e8f1ea',
+    affiliateIds: {},
+    generateQuotaPerMonth: 100,
+    rateLimitPerHour: 10,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  }),
+}))
+
+import { getPartner } from '../lib/partners'
 import { checkAndIncrementLeadRateLimit } from '../lib/rateLimit'
 import { ensureTable } from '../lib/tableClient'
 import { createLeadHandler } from './leads'
@@ -64,7 +80,8 @@ describe('POST /api/leads', () => {
   it('accepts optional itineraryId and locale fields', async () => {
     const ctx = makeContext()
     const req = makeRequest({
-      partnerId: 'tromsø-tours',
+      // Real partner slug from the Partners table (ASCII: charset per #33)
+      partnerId: 'tromso-tours',
       email: 'visitor@example.com',
       itineraryId: 'itin-abc',
       consent: true,
@@ -192,6 +209,60 @@ describe('POST /api/leads', () => {
     const body = result.body as string
     expect(body).not.toContain('secret@example.com')
     expect(body).not.toContain('email')
+  })
+
+  it('rejects a lead for an unknown partner with 400', async () => {
+    // Override the known-partner default: getPartner resolves null → unknown
+    ;(getPartner as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+    const ctx = makeContext()
+    const req = makeRequest({
+      partnerId: 'ghost-partner',
+      email: 'traveler@example.com',
+      consent: true,
+    })
+
+    const result = await createLeadHandler(req, ctx)
+
+    expect(getPartner).toHaveBeenCalledWith('ghost-partner')
+    expect(result.status).toBe(400)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('Invalid request body')
+    expect(body.details).toContain('partnerId')
+    // The lead must not reach the Leads table: no client is even created
+    expect(ensureTable).not.toHaveBeenCalled()
+  })
+
+  it('rejects a partnerId with illegal characters with 400 (zod charset rule)', async () => {
+    const ctx = makeContext()
+    const req = makeRequest({
+      // ø is a real Nordic letter but outside the [a-z0-9-] partitionKey charset
+      partnerId: 'tromsø-tours',
+      email: 'traveler@example.com',
+      consent: true,
+    })
+
+    const result = await createLeadHandler(req, ctx)
+
+    expect(result.status).toBe(400)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('Invalid request body')
+    expect(body.details).toContain('partnerId')
+  })
+
+  it('rejects a partnerId longer than 100 chars with 400 (zod max rule)', async () => {
+    const ctx = makeContext()
+    const req = makeRequest({
+      partnerId: 'a'.repeat(101),
+      email: 'traveler@example.com',
+      consent: true,
+    })
+
+    const result = await createLeadHandler(req, ctx)
+
+    expect(result.status).toBe(400)
+    const body = JSON.parse(result.body as string)
+    expect(body.error).toBe('Invalid request body')
+    expect(body.details).toContain('partnerId')
   })
 
   it('stores the lead entity with the correct fields', async () => {

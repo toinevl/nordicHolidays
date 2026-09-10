@@ -4,8 +4,13 @@ import type { Preferences } from '../types'
  * Describes the shape of the prompt-building logic for a region.
  * The buildUserMessage function constructs the user-facing LLM prompt
  * from travel preferences, seasonal context, and region-specific phrasing.
+ * The systemPrompt carries the region-specific system message (#38) so a
+ * new region pack (e.g. US) cannot inherit another region's hardcoded
+ * geography — previously the Nordic system prompt leaked into every region.
  */
 export interface PromptTemplate {
+  /** Region-specific LLM system prompt (e.g. Nordic geography expertise). */
+  systemPrompt: string
   buildUserMessage: (
     prefs: Preferences,
     lang: 'en' | 'nl' | 'de',
@@ -30,6 +35,8 @@ export interface ApiRegionConfig {
   regionLabel: string
   /** Month (1–12) → seasonal description string for prompt context */
   seasonalContext: Record<number, string>
+  /** #67: trip-theme id → prompt hint for the LLM user message */
+  tripThemes: TripThemeHints
   /** Constraint instruction (e.g. "do not cross international borders") */
   borderConstraint: string
   /** Prompt construction logic for this region */
@@ -46,3 +53,19 @@ export interface ApiRegionConfig {
     aliases?: string[]
   }>
 }
+
+/**
+ * Fixed vocabulary of trip themes shared by FE (chips) and API (prompt).
+ * The ids travel in Preferences.themes; each region pack maps them to
+ * prompt hints. Keep in sync with frontend/src/lib/tripThemes.ts.
+ */
+export const TRIP_THEME_IDS = [
+  'nature', 'coast', 'city', 'food', 'wildlife', 'history', 'aurora', 'family',
+] as const
+
+export type TripThemeId = typeof TRIP_THEME_IDS[number]
+
+export type TripPace = 'relaxed' | 'balanced' | 'packed'
+
+/** id → prompt hint for the LLM user message (region-specific phrasing). */
+export type TripThemeHints = Record<TripThemeId, string>

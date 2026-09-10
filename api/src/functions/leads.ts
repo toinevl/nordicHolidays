@@ -2,6 +2,7 @@ import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/fu
 import { nanoid } from 'nanoid'
 
 import { corsPreflightResponse, withCors } from '../lib/cors'
+import { getPartner } from '../lib/partners'
 import { checkAndIncrementLeadRateLimit } from '../lib/rateLimit'
 import { LeadBodySchema, logError } from '../lib/schemas'
 import { ensureTable } from '../lib/tableClient'
@@ -72,6 +73,24 @@ export async function createLeadHandler(
     }
 
     const body = parseResult.data
+
+    // #33: partnerId is the Leads-table partitionKey, so it must reference a
+    // real partner — otherwise anyone can plant arbitrary fake-partition PII
+    // (email addresses) in the table. getPartner does an exact-match
+    // getEntity('partners', <partnerId>) lookup: Azure Table Storage row keys
+    // are case-sensitive, so the lookup is case-sensitive by construction and
+    // 'Camping-Nord' cannot collide with the real 'camping-nord' slug (and
+    // would be rejected here as unknown).
+    const partner = await getPartner(body.partnerId)
+    if (!partner) {
+      logError(ctx, `createLeadHandler: unknown partnerId "${body.partnerId}"`)
+      return withHeaders({
+        status: 400,
+        body: JSON.stringify({ error: 'Invalid request body', details: 'partnerId: unknown_partner' }),
+        headers: { 'Content-Type': 'application/json' },
+      }, origin)
+    }
+
     const client = await ensureTable(LEADS_TABLE_NAME)
     const id = nanoid()
     const now = new Date().toISOString()

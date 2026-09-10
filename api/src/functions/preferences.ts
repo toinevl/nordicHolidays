@@ -4,6 +4,8 @@ import { corsPreflightResponse, withCors } from '../lib/cors'
 import { authErrorResponse, resolveOwnerId } from '../lib/identity'
 import { PreferencesSchema, logError } from '../lib/schemas'
 import { ensureTable, getTableClient } from '../lib/tableClient'
+import type { TripPace, TripThemeId } from '../region/types'
+import { TRIP_THEME_IDS } from '../region/types'
 import type { Preferences } from '../types'
 import { DEFAULT_PREFERENCES } from '../types'
 // WR-07 / H7: ensure every response carries Cache-Control and Content-Type
@@ -24,15 +26,51 @@ function withHeaders(response: HttpResponseInit, origin?: string): HttpResponseI
 
 const ROW_KEY = 'default'
 
-function entityToPreferences(entity: Record<string, unknown>): Preferences {
+/**
+ * #40: tolerant JSON parse for stored array columns. A single corrupt cell in
+ * the Preferences table used to throw on every read for that owner (a
+ * permanent 500). Now it degrades to the default and logs, so the row stays
+ * usable and the next save heals it.
+ */
+function parseStoredArray(value: unknown, field: string, ctx: { log: (msg: string) => void }): string[] {
+  if (!value) return []
+  try {
+    const parsed: unknown = JSON.parse(value as string)
+    return Array.isArray(parsed) ? (parsed as string[]) : []
+  } catch {
+    ctx.log(`preferences: corrupt JSON in column '${field}' — falling back to []`)
+    return []
+  }
+}
+
+/**
+ * #67: tolerant parse for the themes column — corrupt JSON, non-array or
+ * unknown ids all degrade to [] / filtered lists, mirroring parseStoredArray.
+ */
+function parseStoredThemes(value: unknown, ctx: { log: (msg: string) => void }): TripThemeId[] {
+  const parsed = parseStoredArray(value, 'themes', ctx)
+  return parsed.filter((id): id is TripThemeId => (TRIP_THEME_IDS as readonly string[]).includes(id))
+}
+
+/**
+ * #67: tolerant parse for the pace column — anything but the two non-default
+ * vocabulary values falls back to 'balanced'.
+ */
+function parseStoredPace(value: unknown): TripPace {
+  return value === 'relaxed' || value === 'packed' ? value : 'balanced'
+}
+
+function entityToPreferences(entity: Record<string, unknown>, ctx: { log: (msg: string) => void }): Preferences {
   const raw = entity as Record<string, unknown>
   return {
-    mustVisit: raw.mustVisit ? JSON.parse(raw.mustVisit as string) : [],
-    avoid: raw.avoid ? JSON.parse(raw.avoid as string) : [],
+    mustVisit: parseStoredArray(raw.mustVisit, 'mustVisit', ctx),
+    avoid: parseStoredArray(raw.avoid, 'avoid', ctx),
     startCity: (raw.startCity as string) || DEFAULT_PREFERENCES.startCity,
     endCity: (raw.endCity as string) || DEFAULT_PREFERENCES.endCity,
     tripDays: typeof raw.tripDays === 'number' ? (raw.tripDays as number) : DEFAULT_PREFERENCES.tripDays,
     country: (raw.country as string) || DEFAULT_PREFERENCES.country,
+    themes: parseStoredThemes(raw.themes, ctx),
+    pace: parseStoredPace(raw.pace),
   }
 }
 
@@ -50,7 +88,7 @@ export async function getPreferencesHandler(
     return withHeaders({
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entityToPreferences(entity as Record<string, unknown>)),
+      body: JSON.stringify(entityToPreferences(entity as Record<string, unknown>, ctx)),
     }, origin)
   } catch (err: any) {
     if (err instanceof Error && err.name === 'AuthError') {
@@ -89,7 +127,7 @@ export async function putPreferencesHandler(
     // Validate and parse body with zod; on failure, return 400 with details
     const parseResult = PreferencesSchema.safeParse(rawBody)
     if (!parseResult.success) {
-      const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+      const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
       logError(ctx, `putPreferencesHandler: validation failed - ${errors}`, parseResult.error)
       return withHeaders({
         status: 400,
@@ -118,6 +156,8 @@ export async function putPreferencesHandler(
       endCity: prefs.endCity,
       tripDays: prefs.tripDays,
       country: prefs.country,
+      themes: JSON.stringify(prefs.themes ?? []),
+      pace: prefs.pace ?? 'balanced',
       updatedAt: new Date().toISOString(),
       ...(existing && { etag: existing.etag }),
     }

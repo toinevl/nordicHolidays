@@ -6,11 +6,30 @@ import { getTableClient } from '../lib/tableClient'
 /**
  * #152 — data-retention cleanup.
  *
- * A daily timer that deletes stale rows from the two tables that accumulate
+ * A daily timer that deletes stale rows from the tables that accumulate
  * personal data over time:
- *   - `Itineraries` — public/shared trips (no owner), default 365-day window.
- *   - `Leads`       — partner lead-capture rows with an email, default 730-day
- *                     window (B2B partners expect a longer follow-up window).
+ *   - `Itineraries`      — public/shared trips (no owner), default 365-day
+ *                          window.
+ *   - `ItineraryHistory` — #29 multi-level trip history. Swept with the SAME
+ *                          cutoff age as Itineraries. Design choice: rows are
+ *                          NOT swept by their parent trip's lifecycle (that
+ *                          would need an OrphanLookup: listing history
+ *                          partitions and checking each against the live
+ *                          trips table for every run). The system `timestamp`
+ *                          of a history row is the moment it was written, so
+ *                          the simple same-cutoff sweep keeps bounded history
+ *                          for actively-edited trips (every PATCH on a live
+ *                          trip rewrites nothing in the parent but writes new
+ *                          history rows, which then age out on their own) —
+ *                          and a deleted trip's leftover history simply ages
+ *                          out within RETENTION_ITINERARY_DAYS of the last
+ *                          write. History rows are older snapshots of the
+ *                          same (already-public) trip data, so there is no
+ *                          retention reason to treat them stricter than the
+ *                          trip itself.
+ *   - `Leads`            — partner lead-capture rows with an email, default
+ *                          730-day window (B2B partners expect a longer
+ *                          follow-up window).
  *
  * "Stale" is measured against the Table Storage system `timestamp` (last
  * modified), so an itinerary that is still being edited keeps resetting its
@@ -18,7 +37,7 @@ import { getTableClient } from '../lib/tableClient'
  *
  * The retention windows and a dry-run switch are environment-driven so ops can
  * tune them (and preview a run) without a redeploy:
- *   RETENTION_ITINERARY_DAYS  (default 365)
+ *   RETENTION_ITINERARY_DAYS  (default 365) — also governs ItineraryHistory
  *   RETENTION_LEADS_DAYS      (default 730)
  *   RETENTION_DRY_RUN         -> DRY-RUN BY DEFAULT (scan + count, delete
  *                               nothing). Set to exactly "0" to enable real
@@ -107,11 +126,13 @@ export async function retentionCleanupHandler(_myTimer: Timer, ctx: InvocationCo
     const leadsCutoff = now - leadsDays * DAY_MS
 
     const itineraries = await sweepTable('Itineraries', itineraryCutoff, dryRun, ctx)
+    const history = await sweepTable('ItineraryHistory', itineraryCutoff, dryRun, ctx)
     const leads = await sweepTable('Leads', leadsCutoff, dryRun, ctx)
 
     const summary =
       `retention-cleanup complete dryRun=${dryRun} ` +
       `itineraries(days=${itineraryDays},scanned=${itineraries.scanned},deleted=${itineraries.deleted}) ` +
+      `history(days=${itineraryDays},scanned=${history.scanned},deleted=${history.deleted}) ` +
       `leads(days=${leadsDays},scanned=${leads.scanned},deleted=${leads.deleted})`
 
     const anyCtx = ctx as any

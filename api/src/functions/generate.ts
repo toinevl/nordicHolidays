@@ -3,7 +3,7 @@ import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/fu
 import { corsPreflightResponse, withCors } from '../lib/cors'
 import { haversineKm } from '../lib/geo'
 import { authErrorResponse, resolveOwnerId } from '../lib/identity'
-import { ITINERARY_FUNCTION, SYSTEM_PROMPT } from '../lib/itinerarySchema'
+import { ITINERARY_FUNCTION } from '../lib/itinerarySchema'
 import { getLlmClient, getModel } from '../lib/llmClient'
 import { getPartner } from '../lib/partners'
 import { checkAndIncrementRateLimit, checkGlobalDailyGenerateCap, checkPartnerDailyGenerateCap } from '../lib/rateLimit'
@@ -117,7 +117,7 @@ export async function generateHandler(
   // Validate and parse body with zod; on failure, return 400 with details
   const parseResult = GenerateRequestBodySchema.safeParse(rawBody)
   if (!parseResult.success) {
-    const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.code}`).join('; ')
+    const errors = parseResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
     logError(ctx, `generateHandler: validation failed - ${errors}`, parseResult.error)
     return withHeaders({
       status: 400,
@@ -135,6 +135,9 @@ export async function generateHandler(
     tripDays: body.tripDays,
     country: body.country,
     startDate: body.startDate,
+    // #67: themes/pace travel into the region prompt (buildUserMessage).
+    themes: body.themes,
+    pace: body.pace,
   }
   const lang = body.lang as 'en' | 'nl' | 'de'
 
@@ -219,7 +222,9 @@ export async function generateHandler(
       model: getModel(),
       max_completion_tokens: maxTokens,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        // #38: the system prompt is region-specific (promptTemplate.systemPrompt)
+        // so a new region pack cannot inherit Nordic geography by accident.
+        { role: 'system', content: regionConfig.promptTemplate.systemPrompt },
         { role: 'user', content: buildUserMessage(prefs, lang, body.existingStops) },
       ],
       tools: [ITINERARY_FUNCTION],
@@ -287,7 +292,10 @@ export async function generateHandler(
     // stop's coords when its city name already matches `endCity` — the LLM
     // may choose a different terminus on round trips, and we don't want to
     // clobber that.
-    if (input.stops.length > 0) {
+    // #67: in discovery mode (no startCity/endCity in the request) both prefs
+    // default to '' — skip both corrections entirely, otherwise the model's
+    // own first/last stop would be renamed to an empty string.
+    if (input.stops.length > 0 && prefs.startCity && prefs.startCity.trim() !== '') {
       const first = input.stops[0]
       if (typeof first.city === 'string' && first.city.trim().toLowerCase() !== prefs.startCity.trim().toLowerCase()) {
         const known = lookupCityCoords(prefs.startCity)
@@ -300,7 +308,7 @@ export async function generateHandler(
         input.stops[0] = { ...first, ...patch }
       }
     }
-    if (input.stops.length > 1) {
+    if (input.stops.length > 1 && prefs.endCity && prefs.endCity.trim() !== '') {
       const last = input.stops[input.stops.length - 1]
       if (typeof last.city === 'string' && last.city.trim().toLowerCase() === prefs.endCity.trim().toLowerCase()) {
         const known = lookupCityCoords(prefs.endCity)
@@ -337,6 +345,42 @@ export async function generateHandler(
       const stop = input.stops[index]
       ctx?.warn(`generateHandler: promoting ${stop.city} to overnight stop (${Math.round(km)} km from ${baseCity})`)
       stop.nights = 1
+    }
+
+    // #72: the model is instructed that "totalDays must remain consistent
+    // with the sum of nights", but can still drift — especially on relaxed
+    // pace where "roughly half the trip days" is ambiguous and the LLM rounds
+    // every stop up (e.g. 5 overnight stops × 3-4 nights = 19 for a 14-day
+    // trip). prefs.tripDays is the real duration (already clamped 7–30), so
+    // the sum of stop.nights MUST equal it — otherwise the FE renders an
+    // inconsistent day count and relaxed pace becomes unusable (too many
+    // short relocations). Correct proportionally on overnight stops only;
+    // day trips (nights: 0) are left untouched. Runs AFTER the
+    // distant-day-trip promotion so those 0→1 promotions are included in
+    // the budget and don't overshoot it.
+    const sumNights = input.stops.reduce((s, st) => s + st.nights, 0)
+    if (sumNights !== prefs.tripDays) {
+      const overnight = input.stops.filter(st => st.nights > 0)
+      if (overnight.length > 0) {
+        const target = prefs.tripDays
+        const scale = target / sumNights
+        let assigned = 0
+        overnight.forEach((st) => {
+          const scaled = Math.max(1, Math.round(st.nights * scale))
+          assigned += (st.nights = scaled)
+        })
+        // Remainder from rounding: distribute ±1 across stops until exact.
+        let diff = target - assigned
+        let idx = 0
+        while (diff !== 0 && idx < overnight.length) {
+          const st = overnight[idx]
+          if (diff > 0) { st.nights += 1; diff -= 1 }
+          else if (diff < 0 && st.nights > 1) { st.nights -= 1; diff += 1 }
+          idx = (idx + 1) % overnight.length
+          if (idx === 0 && diff !== 0 && overnight.every(st => st.nights <= 1)) break
+        }
+        ctx?.warn(`generateHandler: corrected nights-sum ${sumNights} → ${prefs.tripDays} (was ${input.stops.reduce((s, st) => s + st.nights, 0)})`)
+      }
     }
 
     // #89: enrich each stop with real driving distance/time from Azure Maps.

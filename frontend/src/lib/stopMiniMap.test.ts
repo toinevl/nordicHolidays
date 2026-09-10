@@ -1,0 +1,246 @@
+import { describe, expect, it } from 'vitest'
+
+import { SCANDINAVIA_OUTLINE } from '../data/scandinaviaOutline'
+import { buildStopMiniMapSvg, projectCoords, projectCoordsWithMeanLat } from './stopMiniMap'
+
+/** Minimal stop factory — coords are [lng, lat], real Nordic places. */
+function stop(coords: [number, number], nights = 1) {
+  return { coords, nights }
+}
+
+describe('projectCoords', () => {
+  it('keeps y (latitude) unchanged and corrects x by cos(meanLat)', () => {
+    // Malmö and Höga Kusten — a genuinely north-south Nordic stretch.
+    const projected = projectCoords([
+      [13.0007, 55.6059],
+      [18.3, 62.8],
+    ])
+    // y is the negated latitude so north ends up at the top of the SVG viewport.
+    expect(projected[0]![1]).toBe(-55.6059)
+    expect(projected[1]![1]).toBe(-62.8)
+    // x is scaled down by cos(~59.2°) ≈ 0.51 — never stretched.
+    expect(projected[0]![0]).toBeLessThan(13.0007)
+    expect(projected[0]![0]).toBeGreaterThan(6)
+  })
+})
+
+describe('projectCoordsWithMeanLat (#70)', () => {
+  it('uses the caller-provided mean latitude scale, not the input mean', () => {
+    const meanLat = 55.6
+    const out = projectCoordsWithMeanLat([[12.9, 55.6], [20.2, 67.8]], meanLat)
+    expect(out[0][0]).toBeCloseTo(12.9 * Math.cos((meanLat * Math.PI) / 180), 5)
+    expect(out[1][0]).toBeCloseTo(20.2 * Math.cos((meanLat * Math.PI) / 180), 5)
+    expect(out[0][1]).toBe(-55.6)
+  })
+  it('projectCoords matches projectCoordsWithMeanLat with its own mean', () => {
+    const pts: [number, number][] = [[11.9, 57.7], [18.0, 59.3]]
+    const viaGeneral = projectCoordsWithMeanLat(pts, 55.0)
+    const viaOld = projectCoords(pts)
+    expect(viaGeneral).not.toEqual(viaOld) // verschillende meanLat → verschillende schaal
+    const viaOwn = projectCoordsWithMeanLat(pts, (57.7 + 59.3) / 2)
+    expect(viaOwn).toEqual(viaOld)
+  })
+})
+
+describe('trip-preview geographic context (#70)', () => {
+  // Malmö → Göteborg → Stockholm — echte Nordische route.
+  const nordicStops = [
+    { coords: [12.94, 55.61] as [number, number], nights: 2 },
+    { coords: [11.97, 57.71] as [number, number], nights: 2 },
+    { coords: [18.07, 59.33] as [number, number], nights: 3 },
+  ]
+
+  it('omits the context layer by default (backwards compatible)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops)
+    expect(svg).not.toContain('mini-map-context')
+  })
+
+  it('renders a closed context path behind the route when enabled', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { contextOutline: SCANDINAVIA_OUTLINE })
+    expect(svg).toContain('mini-map-context')
+    // Vergelijk element-classes, niet raw substrings: het gradient-id
+    // 'mini-map-route-gradient-*' in <defs> bevat 'mini-map-route' ook (paint niet).
+    expect(svg.indexOf('class="mini-map-context"')).toBeLessThan(svg.indexOf('class="mini-map-route"'))
+    expect(svg).toMatch(/class="mini-map-context"[^>]*d="[^"]*Z/)
+  })
+
+  it('context path shares the route projection and viewBox frame', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { contextOutline: SCANDINAVIA_OUTLINE })
+    const viewBox = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)
+    expect(viewBox).toBeTruthy()
+    const w = Number(viewBox![1])
+    const d = svg.match(/class="mini-map-context"[^>]*d="([^"]*)"/)![1]
+    const xs = d.match(/-?[\d.]+/g)!.map(Number)
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(w * 0.3)
+  })
+})
+
+describe('trip-preview stop labels (#70)', () => {
+  const nordicStops = [
+    { coords: [12.94, 55.61] as [number, number], nights: 2 },  // Malmö
+    { coords: [11.97, 57.71] as [number, number], nights: 2 },  // Göteborg
+    { coords: [18.07, 59.33] as [number, number], nights: 3 },  // Stockholm
+  ]
+
+  it('omits labels when not provided (backwards compatible)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops)
+    expect(svg).not.toContain('mini-map-label')
+  })
+
+  it('renders provided labels as SVG text at the stop positions', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, {
+      labels: ['Malmö', 'Göteborg', 'Stockholm'],
+    })
+    expect(svg).toContain('mini-map-label')
+    expect(svg).toContain('Malmö')
+    expect(svg).toContain('Stockholm')
+    expect(svg.indexOf('mini-map-label')).toBeGreaterThan(svg.indexOf('mini-map-dot'))
+  })
+
+  it('truncates long names with an ellipsis at 13 chars', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, {
+      labels: ['Malmö', 'Göteborg', 'Västra Götaland Region'],
+    })
+    expect(svg).toContain('Västra Götala…')
+    expect(svg).not.toContain('Västra Götaland Region')
+  })
+
+  it('skips empty label strings (sparse labels) and XML-escapes names', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { labels: ['Malmö', '', 'Stockholm'] })
+    expect(svg).toContain('Malmö')
+    expect(svg).toContain('Stockholm')
+    expect(svg).not.toContain('>Göteborg<')
+  })
+
+  it('compensates label font size for the viewBox-to-screen scale (#70)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, {
+      labels: ['Malmö', 'Göteborg', 'Stockholm'],
+      labelScreenPx: 11,
+      cssHeightPx: 120,
+    })
+    // viewBox-hoogte ~4.5 → 11px scherm ≈ 11 * 4.5 / 120 ≈ 0.41 units (heel klein getal);
+    // zonder compensatie zou CSS 11px in viewBox-units ≈ 270px op scherm betekenen.
+    // #70: de grootte gaat als INLINE style mee — CSS (.mini-map-label) verslaat
+    // presentatie-attributen, dus een font-size-attribuut zou genegeerd worden.
+    const style = svg.match(/style="font-size:([\d.]+)px"/)
+    expect(style).toBeTruthy()
+    expect(Number(style![1])).toBeLessThan(2)
+  })
+
+  it('keeps CSS font when no compensation options given (backwards compat)', () => {
+    const svg = buildStopMiniMapSvg(nordicStops, { labels: ['Malmö', 'Göteborg', 'Stockholm'] })
+    expect(svg).not.toMatch(/style="font-size:/)
+  })
+})
+
+describe('buildStopMiniMapSvg', () => {
+  it('returns an empty string for an empty stop list', () => {
+    expect(buildStopMiniMapSvg([])).toBe('')
+  })
+
+  it('renders a single stop as a start dot without a polyline (Trondheim edge case)', () => {
+    const svg = buildStopMiniMapSvg([stop([10.3951, 63.4305])])
+    expect(svg).toContain('<svg')
+    expect(svg).toContain('<circle')
+    expect(svg).toContain('mini-map-dot--start')
+    expect(svg).not.toContain('<polyline')
+  })
+
+  it('draws a polyline through all stops in order (Malmö → Gothenburg → Stockholm)', () => {
+    const svg = buildStopMiniMapSvg([
+      stop([13.0007, 55.6059]), // Malmö
+      stop([11.9746, 57.7089]), // Gothenburg
+      stop([18.0686, 59.3293]), // Stockholm
+    ])
+    const polyline = svg.match(/<polyline[^>]*points="([^"]+)"/)
+    expect(polyline).toBeTruthy()
+    const pts = polyline![1]!.split(' ').map((p) => p.split(',').map(Number))
+    // 3 stops → 1 midpoint vertex between Gothenburg and Stockholm (and another between
+    // Malmö and Gothenburg), giving 3 + 2 - 1 = 4 vertices: start, mid1, mid2, end.
+    // Catmull-Rom ensures the original stop positions are still on the polyline
+    // (start, end, and stop 2 sits at pts[2] between two midpoints).
+    expect(pts).toHaveLength(4)
+    // The original stop positions are still present in the polyline
+    const malmo = pts[0]!
+    const stockholm = pts[3]!
+    expect(stockholm[0]).toBeGreaterThan(malmo[0]!) // Stockholm is east of Malmö
+    expect(malmo[1]).toBeGreaterThan(stockholm[1]!) // …and SVG y grows downward: south = larger y
+  })
+
+  it('marks the first stop with the larger start dot and others with regular dots', () => {
+    const svg = buildStopMiniMapSvg([
+      stop([13.0007, 55.6059]), // Malmö
+      stop([18.0686, 59.3293]), // Stockholm
+    ])
+    const radii = [...svg.matchAll(/<circle[^>]*r="([\d.]+)"/g)].map((m) => Number(m[1]))
+    expect(radii).toHaveLength(2)
+    expect(radii[0]).toBeGreaterThan(radii[1]!)
+  })
+
+  it('adds ~10% padding: dots never sit on the viewBox edge (Bergen → Tromsø span)', () => {
+    const svg = buildStopMiniMapSvg([
+      stop([5.3241, 60.3929]), // Bergen
+      stop([18.9553, 69.6492]), // Tromsø
+    ])
+    const viewBox = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)!
+    const [, w, h] = viewBox
+    const coords = [...svg.matchAll(/cx="([\d.]+)" cy="([\d.]+)"/g)].map((m) => [Number(m[1]), Number(m[2])])
+    const padW = Math.min(...coords.map(([x]) => x))
+    const padE = Number(w) - Math.max(...coords.map(([x]) => x))
+    const padN = Math.min(...coords.map(([, y]) => y))
+    const padS = Number(h) - Math.max(...coords.map(([, y]) => y))
+    const margin = Number(h) * 0.05 // 10% padding split across both sides, minus tolerance
+    expect(padW).toBeGreaterThanOrEqual(margin)
+    expect(padE).toBeGreaterThanOrEqual(margin)
+    expect(padN).toBeGreaterThanOrEqual(margin)
+    expect(padS).toBeGreaterThanOrEqual(margin)
+  })
+
+  it('letterboxes the viewBox to the requested aspect ratio (wide trip preview)', () => {
+    // Tall, narrow route (Bergen → Trondheim → Tromsø) into a 8:1 strip.
+    const svg = buildStopMiniMapSvg(
+      [
+        stop([5.3241, 60.3929]),
+        stop([10.3951, 63.4305]),
+        stop([18.9553, 69.6492]),
+      ],
+      { aspectRatio: 8 },
+    )
+    const [, w, h] = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/)!
+    expect(Number(w) / Number(h)).toBeCloseTo(8, 1)
+  })
+
+  it('highlights the active stop with the larger active dot', () => {
+    const svg = buildStopMiniMapSvg(
+      [
+        stop([13.0007, 55.6059]), // Malmö
+        stop([14.5356, 61.0015]), // Mora & Lake Siljan
+        stop([18.0686, 59.3293]), // Stockholm
+      ],
+      { activeIndex: 1 },
+    )
+    const active = svg.match(/<circle class="[^"]*mini-map-dot--active[^"]*" cx="[^"]*" cy="[^"]*" r="([\d.]+)"/)
+    const regular = svg.match(/<circle class="mini-map-dot" [^]* r="([\d.]+)"/)
+    expect(active).toBeTruthy()
+    expect(Number(active![1])).toBeGreaterThan(Number(regular![1]))
+  })
+
+  it('draws dashed excursion lines from day trips to their overnight base (Stockholm Archipelago)', () => {
+    const svg = buildStopMiniMapSvg([
+      stop([18.0686, 59.3293], 1), // Stockholm (overnight base)
+      stop([18.5, 59.45], 0), // Stockholm Archipelago (day trip)
+    ])
+    expect(svg).toContain('<line class="mini-map-excursion"')
+    expect(svg).toContain('mini-map-dot--daytrip')
+  })
+
+  it('does not treat NaN or negative coordinates specially — Reykjavík-style west-of-greenwich lng works', () => {
+    // Bergen and Ålesund sit close to each other; both north of 60°N.
+    const svg = buildStopMiniMapSvg([
+      stop([5.3241, 60.3929]),
+      stop([6.1546, 62.4723]),
+    ])
+    expect(svg).not.toContain('NaN')
+    expect(svg).not.toContain('Infinity')
+  })
+})

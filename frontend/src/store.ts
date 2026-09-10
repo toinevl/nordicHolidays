@@ -1,15 +1,6 @@
-import { LOCALE_STORAGE_KEY, setLocale } from './i18n/index'
+import { getLocale } from './i18n/index'
 import { regionConfig } from './region'
-import type { AppState, Locale, Preferences } from './types'
-
-function readInitialLocale(): Locale {
-  try {
-    const stored = localStorage.getItem(LOCALE_STORAGE_KEY)
-    return stored === 'nl' ? 'nl' : 'en'
-  } catch {
-    return 'en'
-  }
-}
+import type { AppState, Preferences } from './types'
 
 const defaultPreferences: Preferences = {
   mustVisit: [],
@@ -19,13 +10,20 @@ const defaultPreferences: Preferences = {
   tripDays: 21,
   country: regionConfig.defaultCountry,
   startDate: '',
+  themes: [],
+  pace: 'balanced',
 }
 
+// #37: locale comes from i18n's single source of truth (getLocale(), already
+// resolved by the boot-time detection chain in lib/localeDetection). The old
+// readInitialLocale() only knew nl/en, so sv/da/no/de visitors kept
+// store.locale='en' while the UI spoke their language — breaking the
+// locale-based re-render triggers in GeneratorPanel/SavedTripsPanel.
 const initialState: Omit<AppState, 'locale'> = {
-  currentItinerary: null,
+  preferences: { ...defaultPreferences },
   savedItineraries: [],
-  preferences: defaultPreferences,
   isGenerating: false,
+  currentItinerary: null,
   unsaved: false,
   activeTripName: null,
   activeTripId: null,
@@ -35,9 +33,7 @@ const initialState: Omit<AppState, 'locale'> = {
 
 type Listener = () => void
 export function createStore() {
-  const initialLocale = readInitialLocale()
-  setLocale(initialLocale)
-  let state: AppState = { ...initialState, locale: initialLocale }
+  let state: AppState = { ...initialState, locale: getLocale() }
   const listeners = new Set<Listener>()
 
   return {

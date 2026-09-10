@@ -11,10 +11,78 @@ export const RATE_LIMIT_ITINERARY_WRITE_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_TRACK_PER_OWNER_PER_HOUR = 60
 export const RATE_LIMIT_TRACK_PER_IP_PER_HOUR = 120
 export const RATE_LIMIT_PARTNER_LOOKUP_PER_IP_PER_HOUR = 60
+export const RATE_LIMIT_PROFILE_PUBLIC_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_LEADS_PER_IP_PER_HOUR = 5
 export const RATE_LIMIT_NOTES_PER_OWNER_PER_HOUR = 20
 export const RATE_LIMIT_NOTES_PER_IP_PER_HOUR = 30
 export const RATE_LIMIT_TABLE_NAME = 'RateLimits'
+
+/**
+ * #35: ASCII-only response header signalling that a list endpoint hit its
+ * result cap and older entries were cut from the response. Header (not body)
+ * so existing clients reading the plain array/object shape keep working;
+ * ASCII-safe per the Azure Functions host's non-ASCII header rejection.
+ */
+export const limitReachedHeader = 'X-Limit-Reached'
+
+/**
+ * #32: how long the shared availability-limiter circuit breaker stays open
+ * after a Table Storage failure before the next request is allowed through
+ * to probe storage again.
+ */
+export const RATE_LIMIT_BREAKER_WINDOW_MS = 5 * 60 * 1000
+
+// #32: in-memory circuit-breaker state shared by the availability-oriented
+// per-owner/per-IP limiters in this module. 0 = closed (healthy). After a
+// Table Storage failure the breaker opens: for RATE_LIMIT_BREAKER_WINDOW_MS
+// every availability limiter short-circuits to `{ allowed: true }` WITHOUT
+// touching storage, so an outage neither turns each request into a
+// multi-second storage timeout nor floods the logs — the limiters keep
+// failing open (availability first), but bounded in time and observable.
+// This is deliberately process-local and dependency-free: it is a latency/
+// noise mitigation, not a correctness mechanism (each instance may keep
+// admitting requests while the breaker is open — that is the accepted
+// fail-open trade-off, now with a probe every 5 minutes instead of on
+// every request).
+let limiterBreakerOpenUntil = 0
+
+/**
+ * Test hook: the breaker is module-global state; tests reset it between
+ * cases so they stay order-independent.
+ */
+export function resetRateLimitCircuitBreakerForTests(): void {
+  limiterBreakerOpenUntil = 0
+}
+
+/**
+ * True while the availability limiters should bypass Table Storage entirely.
+ * When the open-state window has expired, closes the breaker (logs once) so
+ * the caller's request acts as the next storage probe (half-open).
+ */
+function isLimiterBreakerOpen(logger?: any): boolean {
+  if (limiterBreakerOpenUntil === 0) return false
+  if (Date.now() < limiterBreakerOpenUntil) return true
+  limiterBreakerOpenUntil = 0
+  logError(logger, `Rate limit circuit breaker: ${Math.round(RATE_LIMIT_BREAKER_WINDOW_MS / 1000)}s open-state window expired, probing Table Storage again`)
+  return false
+}
+
+/**
+ * Record a Table Storage failure in one of the availability limiters.
+ * Still fails OPEN (returns allowed are handled by the caller), but on the
+ * first failure arms the shared circuit breaker with a loud log entry;
+ * failures while already open log quietly so the outage stays visible
+ * without flooding the log stream.
+ */
+function noteLimiterStorageFailure(logger: any, message: string, err: unknown): void {
+  const detail = err instanceof Error ? err.message : String(err)
+  if (limiterBreakerOpenUntil === 0) {
+    limiterBreakerOpenUntil = Date.now() + RATE_LIMIT_BREAKER_WINDOW_MS
+    logError(logger, `${message}: ${detail} — fail-open AND rate-limit circuit breaker OPEN for ${Math.round(RATE_LIMIT_BREAKER_WINDOW_MS / 1000)}s: requests skip rate limiting until the next probe (#32)`)
+    return
+  }
+  logError(logger, `${message}: ${detail}`)
+}
 
 // Lazy initialization for table creation
 let ensureTablePromise: Promise<void> | null = null
@@ -133,6 +201,11 @@ export async function checkAndIncrementRateLimit(
   ownerId: string,
   logger?: any
 ): Promise<RateLimitResult> {
+  // #32: while the shared breaker is open (recent Table Storage failure),
+  // fail open WITHOUT touching storage — no per-request timeouts, no log flood.
+  if (isLimiterBreakerOpen(logger)) {
+    return { allowed: true }
+  }
   try {
     // Ensure the table exists on first use
     await ensureTableExists(logger)
@@ -195,8 +268,8 @@ export async function checkAndIncrementRateLimit(
           timestamp: now.toISOString(),
         })
       } else {
-        // Table error; fail open
-        logError(logger, `Rate limit check failed for owner ${ownerId}: ${err instanceof Error ? err.message : String(err)}`)
+        // Table error; fail open (availability) and arm the shared breaker (#32)
+        noteLimiterStorageFailure(logger, `Rate limit check failed for owner ${ownerId}`, err)
         return { allowed: true }
       }
     }
@@ -252,16 +325,16 @@ export async function checkAndIncrementRateLimit(
           timestamp: now.toISOString(),
         })
       } else {
-        // Table error; fail open
-        logError(logger, `Rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`)
+        // Table error; fail open (availability) and arm the shared breaker (#32)
+        noteLimiterStorageFailure(logger, `Rate limit check failed for IP ${ip}`, err)
         return { allowed: true }
       }
     }
 
     return { allowed: true }
   } catch (err) {
-    // Outer error; fail open
-    logError(logger, `Rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    // Outer error; fail open (availability) and arm the shared breaker (#32)
+    noteLimiterStorageFailure(logger, 'Rate limit check failed', err)
     return { allowed: true }
   }
 }
@@ -287,6 +360,11 @@ export async function checkAndIncrementTrackRateLimit(
   ownerId: string,
   logger?: any
 ): Promise<RateLimitResult> {
+  // #32: while the shared breaker is open (recent Table Storage failure),
+  // fail open WITHOUT touching storage — no per-request timeouts, no log flood.
+  if (isLimiterBreakerOpen(logger)) {
+    return { allowed: true }
+  }
   try {
     await ensureTableExists(logger)
 
@@ -326,7 +404,7 @@ export async function checkAndIncrementTrackRateLimit(
             timestamp: now.toISOString(),
           })
         } else {
-          logError(logger, `Track rate limit check failed for ${bucket.label}: ${err instanceof Error ? err.message : String(err)}`)
+          noteLimiterStorageFailure(logger, `Track rate limit check failed for ${bucket.label}`, err)
           return { allowed: true }
         }
       }
@@ -334,7 +412,7 @@ export async function checkAndIncrementTrackRateLimit(
 
     return { allowed: true }
   } catch (err) {
-    logError(logger, `Track rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    noteLimiterStorageFailure(logger, 'Track rate limit check failed', err)
     return { allowed: true }
   }
 }
@@ -344,6 +422,11 @@ export async function checkAndIncrementItineraryWriteRateLimit(
   ownerId: string,
   logger?: any
 ): Promise<RateLimitResult> {
+  // #32: while the shared breaker is open (recent Table Storage failure),
+  // fail open WITHOUT touching storage — no per-request timeouts, no log flood.
+  if (isLimiterBreakerOpen(logger)) {
+    return { allowed: true }
+  }
   try {
     await ensureTableExists(logger)
 
@@ -378,7 +461,7 @@ export async function checkAndIncrementItineraryWriteRateLimit(
           timestamp: now.toISOString(),
         })
       } else {
-        logError(logger, `Itinerary-write rate limit check failed for owner ${ownerId}: ${err instanceof Error ? err.message : String(err)}`)
+        noteLimiterStorageFailure(logger, `Itinerary-write rate limit check failed for owner ${ownerId}`, err)
         return { allowed: true }
       }
     }
@@ -408,14 +491,14 @@ export async function checkAndIncrementItineraryWriteRateLimit(
           timestamp: now.toISOString(),
         })
       } else {
-        logError(logger, `Itinerary-write rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`)
+        noteLimiterStorageFailure(logger, `Itinerary-write rate limit check failed for IP ${ip}`, err)
         return { allowed: true }
       }
     }
 
     return { allowed: true }
   } catch (err) {
-    logError(logger, `Itinerary-write rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    noteLimiterStorageFailure(logger, 'Itinerary-write rate limit check failed', err)
     return { allowed: true }
   }
 }
@@ -433,6 +516,11 @@ export async function checkAndIncrementNoteRateLimit(
   ownerId: string,
   logger?: any
 ): Promise<RateLimitResult> {
+  // #32: while the shared breaker is open (recent Table Storage failure),
+  // fail open WITHOUT touching storage — no per-request timeouts, no log flood.
+  if (isLimiterBreakerOpen(logger)) {
+    return { allowed: true }
+  }
   try {
     await ensureTableExists(logger)
 
@@ -472,7 +560,7 @@ export async function checkAndIncrementNoteRateLimit(
             timestamp: now.toISOString(),
           })
         } else {
-          logError(logger, `Notes rate limit check failed for ${bucket.label}: ${err instanceof Error ? err.message : String(err)}`)
+          noteLimiterStorageFailure(logger, `Notes rate limit check failed for ${bucket.label}`, err)
           return { allowed: true }
         }
       }
@@ -480,7 +568,7 @@ export async function checkAndIncrementNoteRateLimit(
 
     return { allowed: true }
   } catch (err) {
-    logError(logger, `Notes rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    noteLimiterStorageFailure(logger, 'Notes rate limit check failed', err)
     return { allowed: true }
   }
 }
@@ -496,6 +584,11 @@ export async function checkAndIncrementPartnerLookupRateLimit(
   req: HttpRequest,
   logger?: any
 ): Promise<RateLimitResult> {
+  // #32: while the shared breaker is open (recent Table Storage failure),
+  // fail open WITHOUT touching storage — no per-request timeouts, no log flood.
+  if (isLimiterBreakerOpen(logger)) {
+    return { allowed: true }
+  }
   try {
     await ensureTableExists(logger)
 
@@ -530,14 +623,14 @@ export async function checkAndIncrementPartnerLookupRateLimit(
           timestamp: now.toISOString(),
         })
       } else {
-        logError(logger, `Partner-lookup rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`)
+        noteLimiterStorageFailure(logger, `Partner-lookup rate limit check failed for IP ${ip}`, err)
         return { allowed: true }
       }
     }
 
     return { allowed: true }
   } catch (err) {
-    logError(logger, `Partner-lookup rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    noteLimiterStorageFailure(logger, 'Partner-lookup rate limit check failed', err)
     return { allowed: true }
   }
 }
@@ -553,6 +646,11 @@ export async function checkAndIncrementLeadRateLimit(
   req: HttpRequest,
   logger?: any
 ): Promise<RateLimitResult> {
+  // #32: while the shared breaker is open (recent Table Storage failure),
+  // fail open WITHOUT touching storage — no per-request timeouts, no log flood.
+  if (isLimiterBreakerOpen(logger)) {
+    return { allowed: true }
+  }
   try {
     await ensureTableExists(logger)
 
@@ -587,14 +685,77 @@ export async function checkAndIncrementLeadRateLimit(
           timestamp: now.toISOString(),
         })
       } else {
-        logError(logger, `Leads rate limit check failed for IP ${ip}: ${err instanceof Error ? err.message : String(err)}`)
+        noteLimiterStorageFailure(logger, `Leads rate limit check failed for IP ${ip}`, err)
         return { allowed: true }
       }
     }
 
     return { allowed: true }
   } catch (err) {
-    logError(logger, `Leads rate limit check failed: ${err instanceof Error ? err.message : String(err)}`)
+    noteLimiterStorageFailure(logger, 'Leads rate limit check failed', err)
+    return { allowed: true }
+  }
+}
+
+/**
+ * Check and increment rate limit for public profile lookups (#45).
+ * /api/profile/public is anonymous and echoes display names by ownerId, and
+ * creator ids are publicly visible on shared itineraries — without a limiter
+ * display names could be enumerated without bound. Same per-IP-only pattern
+ * as the partner-lookup limiter; uses the `profile-public-ip:` partition
+ * prefix so counters never share a bucket with the other limiters.
+ */
+export async function checkAndIncrementProfilePublicRateLimit(
+  req: HttpRequest,
+  logger?: any
+): Promise<RateLimitResult> {
+  // #32: while the shared breaker is open (recent Table Storage failure),
+  // fail open WITHOUT touching storage — no per-request timeouts, no log flood.
+  if (isLimiterBreakerOpen(logger)) {
+    return { allowed: true }
+  }
+  try {
+    await ensureTableExists(logger)
+
+    const client = getTableClient(RATE_LIMIT_TABLE_NAME)
+    const now = new Date()
+    const hourWindow = getCurrentHourWindow()
+    const ip = extractIp(req)
+    const retryAfter = getSecondsUntilHourEnd()
+
+    const partitionKey = `profile-public-ip:${ip}`
+    try {
+      const entity = await client.getEntity(partitionKey, hourWindow)
+      const count = (entity.count as number) ?? 0
+      if (count >= RATE_LIMIT_PROFILE_PUBLIC_PER_IP_PER_HOUR) {
+        return { allowed: false, retryAfterSeconds: retryAfter }
+      }
+      await client.updateEntity(
+        {
+          partitionKey: entity.partitionKey as string,
+          rowKey: entity.rowKey as string,
+          ...entity,
+          count: count + 1,
+        },
+        'Merge'
+      )
+    } catch (err: any) {
+      if (err?.statusCode === 404) {
+        await client.createEntity({
+          partitionKey,
+          rowKey: hourWindow,
+          count: 1,
+          timestamp: now.toISOString(),
+        })
+      } else {
+        noteLimiterStorageFailure(logger, `Profile-public rate limit check failed for IP ${ip}`, err)
+        return { allowed: true }
+      }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    noteLimiterStorageFailure(logger, 'Profile-public rate limit check failed', err)
     return { allowed: true }
   }
 }
@@ -608,8 +769,10 @@ export async function checkAndIncrementLeadRateLimit(
  * table (same get-then-update-with-Merge / create-on-404 pattern as the hourly
  * limiters). Once the running count exceeds `GENERATE_DAILY_CAP` (default 500)
  * the request is refused with the seconds remaining until the counter rolls
- * over at the next UTC midnight. Fails OPEN on any Table Storage error, matching
- * every other limiter in this module.
+ * over at the next UTC midnight. Unlike the per-owner/per-IP availability
+ * limiters, this cap FAILS CLOSED on any Table Storage error (#32): it is a
+ * hard spend boundary, so a storage outage must degrade to 429s, not to
+ * unbounded LLM spend.
  */
 export async function checkGlobalDailyGenerateCap(logger?: any): Promise<RateLimitResult> {
   const cap = Number(process.env.GENERATE_DAILY_CAP) || 500
@@ -649,15 +812,19 @@ export async function checkGlobalDailyGenerateCap(logger?: any): Promise<RateLim
           timestamp: now.toISOString(),
         })
       } else {
-        logError(logger, `Global daily generate cap check failed: ${err instanceof Error ? err.message : String(err)}`)
-        return { allowed: true }
+        // #32: this cap is a hard spend boundary, not an availability feature.
+        // Fail CLOSED — refuse generation — rather than silently unbounding
+        // LLM spend during a Table Storage outage.
+        logError(logger, `Global daily generate cap check failed (failing closed): ${err instanceof Error ? err.message : String(err)}`)
+        return { allowed: false, retryAfterSeconds: retryAfter }
       }
     }
 
     return { allowed: true }
   } catch (err) {
-    logError(logger, `Global daily generate cap check failed: ${err instanceof Error ? err.message : String(err)}`)
-    return { allowed: true }
+    // #32: fail closed here too (e.g. ensureTableExists/getTableClient blow up).
+    logError(logger, `Global daily generate cap check failed (failing closed): ${err instanceof Error ? err.message : String(err)}`)
+    return { allowed: false, retryAfterSeconds: getSecondsUntilUtcMidnight() }
   }
 }
 
@@ -667,7 +834,8 @@ export async function checkGlobalDailyGenerateCap(logger?: any): Promise<RateLim
  * Same mechanism as checkGlobalDailyGenerateCap, but scoped to a single partner
  * slug (`gen-partner:<slug>` / <YYYY-MM-DD>) and driven by that partner's own
  * `llmDailyCap` config value rather than an env var. Fails OPEN on any Table
- * Storage error.
+ * Storage error (best-effort per-partner fairness; the #32 fail-closed global
+ * cap still bounds total spend when storage is down).
  */
 export async function checkPartnerDailyGenerateCap(
   partnerSlug: string,
